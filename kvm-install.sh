@@ -45,6 +45,10 @@ function parseParm () {
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
 				prm_id="$value"
 				;;
+			--virt )
+				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				prm_virt="$value"
+				;;
 			--replace )
 				prm_replace="${value:-1}"
 				;;
@@ -82,11 +86,11 @@ function getNetworkDevice () {
 	ifaces="$(ip link show | sed -n -e 's/\([0-9]\+: \)\([^:]\+\).*/\2/p')"
 	rc=$? ; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	
-	for if in $ifaces ; do
-		if [ "$if" == "lo" ] ; then #ignore loopback device
+	for ifc in $ifaces ; do
+		if [ "$ifc" == "lo" ] ; then #ignore loopback device
 			/bin/true
 		else
-			printf "%s\n" $if
+			printf "%s\n" $ifc
 			return 0
 		fi
 	done 
@@ -147,8 +151,9 @@ function getDefaultID() {
 prm_mem="768"
 prm_cpu="3,cpuset=2-3"
 prm_replace="0"
-#netdev=$(getNetworkDevice)
-#rc=$?; if [ "$rc" -ne 0 ] ; then exit $rc; fi
+prm_virt="kvm"
+netdev=$(getNetworkDevice)
+rc=$?; if [ "$rc" -ne 0 ] ; then exit $rc; fi
 
 # Parse Parameters
 parseParm "$@"
@@ -181,17 +186,18 @@ printf "\tmemory %s\n" "$prm_mem"
 printf "\tcpu %s\n" "$prm_cpu"
 printf "\tdevice %s\n" "$prm_dev"
 printf "\tnetwork %s\n" "$netdev"
+printf "\tVirtualisation: %s\n" "$prm_virt"
 
 # Action !
 virt_prms="
 	--name "$1"
-	--virt-type kvm
+	--virt-type $prm_virt
 	--memory "$prm_mem"
 	--vcpus "$prm_cpu"
 	--cpu host
 	--import
 	--disk $prm_dev,format=raw,bus=virtio
-	--network type=direct,source=br0:mactap,model=virtio,mac=00:16:3E:A8:6C:$prm_id
+	--network type=direct,source=$netdev,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
 	--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
 	--video virtio
 	--noautoconsole
@@ -202,7 +208,7 @@ virt_prms="
 # @TODO memory balloning for hot-plug and unplug
 domstate=$(virsh dominfo $vmname 2>/dev/null)
 if [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
-	printf "ERROR: machine %s already existing and --replace was not given." \
+	printf "ERROR: machine %s already existing and --replace was not given.\n" \
 		"$vmname" >&2
 	exit 1
 elif [ ! -z "$domstate" ] ; then
