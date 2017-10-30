@@ -67,13 +67,13 @@ function parseParm () {
 #   1 - virtual machine name
 function getDefaultBootDevice () {
 	vmname="$1"
-	if [ -b /dev/vg-sys/$vmname ] ; then
-		printf "/dev/vg-sys/%s\n" "$vmname"
+	if [ -b /dev/vg-sys/$vmname-sys ] ; then
+		printf "/dev/vg-sys/%s-sys\n" "$vmname"
 	elif [ -e /var/lib/libvirt/images/$vmname.raw ] ; then
 		printf "/var/lib/libvirt/images/%s.raw\n" "$vmname"
 	else
 		printf "No Default Device found for machine %s. Candidates:\n" "$vmname" >&2
-		printf "\t/dev/vg-sys/%s\n" "$vmname" >&2
+		printf "\t/dev/vg-sys/%s-sys\n" "$vmname" >&2
 		printf "\t/var/lib/libvirt/images/%s.raw\n" "$vmname" >&2
 		return 1		
 	fi		
