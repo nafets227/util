@@ -134,7 +134,7 @@ function getDefaultID() {
 	fi
 	}
 
-##### Main ###################################################################
+##### kvm-install ############################################################
 # Parameters:
 # 1 - machinename [mandatory]
 # Options:
@@ -146,93 +146,102 @@ function getDefaultID() {
 #   --id   internal ID, needs to be unique in whole system
 #         [default: use a static mapping table inside this script]
 #   --replace replace existing VMs [default=no]
+function kvm-install () {
+	# Set Default values
+	prm_mem="768"
+	prm_cpu="3,cpuset=2-3"
+	prm_replace="0"
+	prm_virt="kvm"
+	netdev=$(getNetworkDevice)
+	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
-# Set Default values
-prm_mem="768"
-prm_cpu="3,cpuset=2-3"
-prm_replace="0"
-prm_virt="kvm"
-netdev=$(getNetworkDevice)
-rc=$?; if [ "$rc" -ne 0 ] ; then exit $rc; fi
+	# Parse Parameters
+	parseParm "$@"
+	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
-# Parse Parameters
-parseParm "$@"
-rc=$?; if [ "$rc" -ne 0 ] ; then exit $rc; fi
-
-# Calculate Domain ID to be used as unique number where needed
-# e.g. in MAC adress
-if [ -z "$prm_id" ] ; then
-	prm_id=$(getDefaultID $vmname)
-	rc=$?; if [ "$rc" -ne 0 ] ; then
-		printf "No ID given (--id) and no Default found for machine %s.\n" \
-			"$vmname" >&2
-		exit $rc;
+	# Calculate Domain ID to be used as unique number where needed
+	# e.g. in MAC adress
+	if [ -z "$prm_id" ] ; then
+		prm_id=$(getDefaultID $vmname)
+		rc=$?; if [ "$rc" -ne 0 ] ; then
+			printf "No ID given (--id) and no Default found for machine %s.\n" \
+				"$vmname" >&2
+			return $rc;
+		fi
 	fi
-fi
 
-# Find Device if not given on commandline
-if [ -z "$prm_dev" ] ; then
-	prm_dev=$(getDefaultBootDevice $vmname)
-	rc=$?; if [ "$rc" -ne 0 ] ; then exit $rc; fi
-fi
+	# Find Device if not given on commandline
+	if [ -z "$prm_dev" ] ; then
+		prm_dev=$(getDefaultBootDevice $vmname)
+		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
+	fi
 
+	# Tell user what we do
+	printf "%s: Installing machine %s (ID=%s)\n" \
+		"$(basename $BASH_SOURCE .sh)" \
+		"$vmname" \
+		"$prm_id"
+	printf "\tmemory %s\n" "$prm_mem"
+	printf "\tcpu %s\n" "$prm_cpu"
+	printf "\tdevice %s\n" "$prm_dev"
+	printf "\tnetwork %s\n" "$netdev"
+	printf "\tVirtualisation: %s\n" "$prm_virt"
 
-# Tell user what we do
-printf "%s: Installing machine %s (ID=%s)\n" \
-	"$(basename $BASH_SOURCE .sh)" \
-	"$vmname" \
-	"$prm_id"
-printf "\tmemory %s\n" "$prm_mem"
-printf "\tcpu %s\n" "$prm_cpu"
-printf "\tdevice %s\n" "$prm_dev"
-printf "\tnetwork %s\n" "$netdev"
-printf "\tVirtualisation: %s\n" "$prm_virt"
-
-# Action !
-virt_prms="
-	--name "$1"
-	--virt-type $prm_virt
-	--memory "$prm_mem"
-	--vcpus "$prm_cpu"
-	--cpu host
-	--import
-	--disk $prm_dev,format=raw,bus=virtio
-	--network type=direct,source=$netdev,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
-	--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
-	--video virtio
-	--noautoconsole
-	--noreboot
-	"
+	# Action !
+	virt_prms="
+		--name "$1"
+		--virt-type $prm_virt
+		--memory "$prm_mem"
+		--vcpus "$prm_cpu"
+		--cpu host
+		--import
+		--disk $prm_dev,format=raw,bus=virtio
+		--network type=direct,source=$netdev,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
+		--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
+		--video virtio
+		--noautoconsole
+		--noreboot
+		"
 	
-# @TODO ostype
-# @TODO memory balloning for hot-plug and unplug
-domstate=$(virsh dominfo $vmname 2>/dev/null)
-if [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
-	printf "ERROR: machine %s already existing and --replace was not given.\n" \
-		"$vmname" >&2
-	exit 1
-elif [ ! -z "$domstate" ] ; then
-	# replace means we delete any existing machine (=domain) with same name
-	state="$(sed -n -e 's/State: *//p' <<<$domstate)"
-	virsh shutdown "$vmname"
-	virsh destroy "$vmname"
-	virsh undefine "$vmname"
-	#@TODO react on state of VM
-	#case $state in
-	#	"running" | "idle" )
-	#	"paused" | "pmsuspended" )
-	#	"in shutdown"
-	#	"shut off" | "crashed" )
-	#	* )
-	#		printf "Unknown State \"%s\" of existing machine %s.\n" \
-	#			" $state" "$vmname"
-	#		exit 1
-	#esac
+	# @TODO ostype
+	# @TODO memory balloning for hot-plug and unplug
+	domstate=$(virsh dominfo $vmname 2>/dev/null)
+	if [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
+		printf "ERROR: machine %s already existing and --replace was not given.\n" \
+			"$vmname" >&2
+		exit 1
+	elif [ ! -z "$domstate" ] ; then
+		# replace means we delete any existing machine (=domain) with same name
+		state="$(sed -n -e 's/State: *//p' <<<$domstate)"
+		virsh shutdown "$vmname"
+		virsh destroy "$vmname"
+		virsh undefine "$vmname"
+		#@TODO react on state of VM
+		#case $state in
+		#	"running" | "idle" )
+		#	"paused" | "pmsuspended" )
+		#	"in shutdown"
+		#	"shut off" | "crashed" )
+		#	* )
+		#		printf "Unknown State \"%s\" of existing machine %s.\n" \
+		#			" $state" "$vmname"
+		#		exit 1
+		#esac
    
-fi	
-echo virt-install $virt_prms
-#DEBUG# virt-install --dry-run $virt_prms
-virt-install $virt_prms
-rc=$? ; if [ $rc -ne 0 ] ; then exit $rc ; fi
+	fi
+	echo virt-install $virt_prms
+	#DEBUG# virt-install --dry-run $virt_prms
+	virt-install $virt_prms
+	rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
 
-exit 0
+	return 0
+	}
+
+##### Main ###################################################################
+# Parameters und Options see kvm-install:
+
+if [ $# -gt 0 ] ; then
+	kvm-install "$@"
+	exit $?
+fi
+
