@@ -53,6 +53,13 @@ function parseParm () {
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
 				prm_virt="$value"
 				;;
+			--auto )
+				if [ "$value_present" -eq 0 ] && [ "${1:0:2}" != "--" ] ; then
+				       	value="$1"
+				       	shift
+				fi
+				prm_auto="${value:-1}"
+				;;
 			--replace )
 				prm_replace="${value:-1}"
 				;;
@@ -136,7 +143,7 @@ function getDefaultID() {
 		printf "Error: no machine name supplied\n" >&2
 		return 1
 	fi
-	vmname="$1"
+	local vmname="$1"
 	
 	case $vmname in
 		vDom   ) id="01" ;;
@@ -179,6 +186,7 @@ function getDefaultID() {
 #   --id   internal ID, needs to be unique in whole system
 #         [default: use a static mapping table inside this script]
 #   --replace replace existing VMs [default=no]
+#   --auto [default=1] auto-start VM at boot
 #   --dry-run done really execute anything.
 function kvm-install () {
 	# Set Default values
@@ -187,6 +195,7 @@ function kvm-install () {
 	prm_replace="0"
 	prm_dryrun="0"
 	prm_virt="kvm"
+	prm_auto="1"
 	netdev=$(getNetworkDevice)
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
@@ -228,10 +237,11 @@ function kvm-install () {
 	printf "\tdisk2: %s\n" "${prm_disk2-<none>}"
 	printf "\tnetwork %s\n" "$netdev"
 	printf "\tVirtualisation: %s\n" "$prm_virt"
+	printf "\tAutoStart: %s\n" "$prm_auto"
 
 	# Action !
 	virt_prms="
-		--name \"$1\"
+		--name \"$vmname\"
 		--virt-type $prm_virt
 		--memory \"$prm_mem\"
 		--vcpus \"$prm_cpu\"
@@ -247,6 +257,11 @@ function kvm-install () {
 	if [ ! -z "$prm_disk2" ] ; then
 		virt_prms="$virt_prms
 			--disk $prm_disk2,format=raw,bus=virtio
+			"
+	fi
+	if [ "$prm_auto" == "1" ] ; then
+		virt_prms="$virt_prms
+			--autostart
 			"
 	fi
 	
