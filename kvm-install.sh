@@ -29,9 +29,13 @@ function parseParm () {
 		
 		#DEBUG printf "DEBUG: parm %s value \"%s\"\n" "$parm" "$value" >&2
 		case "$parm" in
-			--boot | --root | --dev* )
+			--disk | --boot | --root | --dev* )
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
-				prm_dev="$value"
+				prm_disk="$value"
+				;;
+			--disk2 )
+				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				prm_disk2="$value"
 				;;
 			--mem )
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
@@ -52,6 +56,9 @@ function parseParm () {
 			--replace )
 				prm_replace="${value:-1}"
 				;;
+			--dry-run )
+				prm_dryrun="${value:-1}"
+				;;
 			*)
 				printf "Error: unknown Parameter %s with value %s\n" \
 					"$parm" "$value"
@@ -62,10 +69,10 @@ function parseParm () {
 	return 0
 }
 
-##### getDefaultBootDevice ###################################################
+##### getDefaultDisk #########################################################
 # Parameter:
 #   1 - virtual machine name
-function getDefaultBootDevice () {
+function getDefaultDisk () {
 	vmname="$1"
 	if [ -b /dev/vg-sys/$vmname-sys ] ; then
 		printf "/dev/vg-sys/%s-sys\n" "$vmname"
@@ -78,6 +85,30 @@ function getDefaultBootDevice () {
 		return 1		
 	fi		
 } 
+
+##### getDefaultDisk2 ########################################################
+# Parameter:
+#   1 - virtual machine name
+function getDefaultDisk2 () {
+	vmname="$1"
+	for f in \
+			/dev/vg-sys/$vmname-data \
+			/dev/xen-data/$vmname-data \
+			/dev/data/$vmname-data \
+			; do
+		if [ -b $f ] ; then
+			printf "%s\n" "$f"
+			return 0
+		fi
+	done
+
+	if [ -e /var/lib/libvirt/images/$vmname-data.raw ] ; then
+		printf "/var/lib/libvirt/images/%s-data.raw\n" "$vmname"
+	else
+		printf "No Default Disk2 found.\n" >&2
+		return 0
+	fi
+}
 
 ##### getNetworkDevice #######################################################
 # choose Network Device
@@ -108,22 +139,23 @@ function getDefaultID() {
 	vmname="$1"
 	
 	case $vmname in
+		vDom   ) id="01" ;;
 		xen1 | vXen1 | kvm1 | vKvm1 )
-			id="21" ;;
+		         id="05" ;;
 		xen2 | vXen2 | kvm2 | vKvm2 )
-			id="22" ;;
-		vDom   ) id="06" ;;
-		vVdr   ) id="01" ;;
-		vSrv   ) id="05" ;;
-		vMgmt  ) id="03" ;;
-		vWin   ) id="12" ;;
+		         id="06" ;;
+
+		vVdr   ) id="10" ;;
+		vSrv   ) id="11" ;;
+		vMgmt  ) id="12" ;;
+		vWin   ) id="13" ;;
 		
-		vKube1 ) id="31" ;;
-		vKube2 ) id="32" ;;
-		vKube3 ) id="33" ;;
+		vTest  ) id="17" ;;
 		
-		vTest  ) id="08" ;;
-		vVdrNew) id="21" ;;
+		vKube1 ) id="21" ;;
+		vKube2 ) id="22" ;;
+		vKube3 ) id="23" ;;
+		
 	esac
 
 	if [ -z "$id" ] ; then
@@ -138,7 +170,8 @@ function getDefaultID() {
 # Parameters:
 # 1 - machinename [mandatory]
 # Options:
-#   --dev <device> [optional, autodetected]
+#   --disk <device> [optional, autodetected]
+#   --disk2 <device> [optional, autodetected]
 #   --mem <size> [default=1024MB]
 #   --cpu <nr of config> [default: 3,cpuset=2-3]
 #         CPU #0 is intended for physical machine only
@@ -146,11 +179,13 @@ function getDefaultID() {
 #   --id   internal ID, needs to be unique in whole system
 #         [default: use a static mapping table inside this script]
 #   --replace replace existing VMs [default=no]
+#   --dry-run done really execute anything.
 function kvm-install () {
 	# Set Default values
 	prm_mem="768"
 	prm_cpu="3,cpuset=2-3"
 	prm_replace="0"
+	prm_dryrun="0"
 	prm_virt="kvm"
 	netdev=$(getNetworkDevice)
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
@@ -171,8 +206,14 @@ function kvm-install () {
 	fi
 
 	# Find Device if not given on commandline
-	if [ -z "$prm_dev" ] ; then
-		prm_dev=$(getDefaultBootDevice $vmname)
+	if [ -z "$prm_disk" ] ; then
+		prm_disk=$(getDefaultDisk $vmname)
+		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
+	fi
+
+	# Auto-Detect second Disk if not given on commandline
+	if [ -z "$prm_disk2" ] ; then
+		prm_disk2=$(getDefaultDisk2 $vmname)
 		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	fi
 
@@ -183,30 +224,38 @@ function kvm-install () {
 		"$prm_id"
 	printf "\tmemory %s\n" "$prm_mem"
 	printf "\tcpu %s\n" "$prm_cpu"
-	printf "\tdevice %s\n" "$prm_dev"
+	printf "\tboot+root-disk %s\n" "$prm_disk"
+	printf "\tdisk2: %s\n" "${prm_disk2-<none>}"
 	printf "\tnetwork %s\n" "$netdev"
 	printf "\tVirtualisation: %s\n" "$prm_virt"
 
 	# Action !
 	virt_prms="
-		--name "$1"
+		--name \"$1\"
 		--virt-type $prm_virt
-		--memory "$prm_mem"
-		--vcpus "$prm_cpu"
+		--memory \"$prm_mem\"
+		--vcpus \"$prm_cpu\"
 		--cpu host
 		--import
-		--disk $prm_dev,format=raw,bus=virtio
+		--disk $prm_disk,format=raw,bus=virtio
 		--network type=direct,source=$netdev,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
 		--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
 		--video virtio
 		--noautoconsole
 		--noreboot
 		"
+	if [ ! -z "$prm_disk2" ] ; then
+		virt_prms="$virt_prms
+			--disk $prm_disk2,format=raw,bus=virtio
+			"
+	fi
 	
 	# @TODO ostype
 	# @TODO memory balloning for hot-plug and unplug
 	domstate=$(virsh dominfo $vmname 2>/dev/null)
-	if [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
+	if [ "$prm_dryrun" -ne 0 ] ; then
+		/bin/true
+	elif [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
 		printf "ERROR: machine %s already existing and --replace was not given.\n" \
 			"$vmname" >&2
 		exit 1
@@ -231,8 +280,13 @@ function kvm-install () {
 	fi
 	echo virt-install $virt_prms
 	#DEBUG# virt-install --dry-run $virt_prms
-	virt-install $virt_prms
-	rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
+	if [ "$prm_dryrun" -ne 0 ] ; then
+		virt-install --dry-run $virt_prms
+		rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
+	else
+		virt-install $virt_prms
+		rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
+	fi
 
 	return 0
 	}
