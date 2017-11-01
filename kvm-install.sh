@@ -251,6 +251,7 @@ function kvm-install () {
 		--network type=direct,source=$netdev,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
 		--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
 		--video virtio
+		--events on_crash=reboot
 		--noautoconsole
 		--noreboot
 		"
