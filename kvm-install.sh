@@ -37,6 +37,10 @@ function parseParm () {
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
 				prm_disk2="$value"
 				;;
+			--disk3 )
+				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				prm_disk3="$value"
+				;;
 			--mem )
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
 				prm_mem="$value"
@@ -147,6 +151,7 @@ function getDefaultID() {
 	
 	case $vmname in
 		vDom   ) id="01" ;;
+		#Octopus)id="03" ;; # SATIP HW appliance, save the ID here
 		xen1 | vXen1 | kvm1 | vKvm1 )
 		         id="05" ;;
 		xen2 | vXen2 | kvm2 | vKvm2 )
@@ -179,6 +184,7 @@ function getDefaultID() {
 # Options:
 #   --disk <device> [optional, autodetected]
 #   --disk2 <device> [optional, autodetected]
+#   --disk3 <device> [optional, default=empty]
 #   --mem <size> [default=1024MB]
 #   --cpu <nr of config> [default: 3,cpuset=2-3]
 #         CPU #0 is intended for physical machine only
@@ -190,13 +196,18 @@ function getDefaultID() {
 #   --dry-run done really execute anything.
 function kvm-install () {
 	# Set Default values
-	prm_mem="768"
-	prm_cpu="3,cpuset=2-3"
-	prm_replace="0"
-	prm_dryrun="0"
-	prm_virt="kvm"
-	prm_auto="1"
-	netdev=$(getNetworkDevice)
+	local prm_mem="768"
+	local prm_cpu="3,cpuset=2-3"
+	local prm_replace="0"
+	local prm_dryrun="0"
+	local prm_virt="kvm"
+	local prm_auto="1"
+	local prm_id
+	local prm_disk
+	local prm_disk2
+	local prm_disk3
+	local vmname
+	local netdev=$(getNetworkDevice)
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
 	# Parse Parameters
@@ -235,29 +246,35 @@ function kvm-install () {
 	printf "\tcpu %s\n" "$prm_cpu"
 	printf "\tboot+root-disk %s\n" "$prm_disk"
 	printf "\tdisk2: %s\n" "${prm_disk2-<none>}"
+	printf "\tdisk3: %s\n" "${prm_disk3-<none>}"
 	printf "\tnetwork %s\n" "$netdev"
 	printf "\tVirtualisation: %s\n" "$prm_virt"
 	printf "\tAutoStart: %s\n" "$prm_auto"
 
 	# Action !
-	virt_prms="
-		--name \"$vmname\"
+	local virt_prms="
+		--name $vmname
 		--virt-type $prm_virt
-		--memory \"$prm_mem\"
-		--vcpus \"$prm_cpu\"
+		--memory $prm_mem
+		--vcpus=$prm_cpu
 		--cpu host
 		--import
 		--disk $prm_disk,format=raw,bus=virtio
 		--network type=direct,source=$netdev,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
 		--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
 		--video virtio
-		--events on_crash=reboot
+		--events on_crash=restart
 		--noautoconsole
 		--noreboot
 		"
 	if [ ! -z "$prm_disk2" ] ; then
 		virt_prms="$virt_prms
 			--disk $prm_disk2,format=raw,bus=virtio
+			"
+	fi
+	if [ ! -z "$prm_disk3" ] ; then
+		virt_prms="$virt_prms
+			--disk $prm_disk3,format=raw,bus=virtio
 			"
 	fi
 	if [ "$prm_auto" == "1" ] ; then
@@ -268,7 +285,7 @@ function kvm-install () {
 	
 	# @TODO ostype
 	# @TODO memory balloning for hot-plug and unplug
-	domstate=$(virsh dominfo $vmname 2>/dev/null)
+	local domstate=$(virsh dominfo $vmname 2>/dev/null)
 	if [ "$prm_dryrun" -ne 0 ] ; then
 		/bin/true
 	elif [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
@@ -277,7 +294,7 @@ function kvm-install () {
 		exit 1
 	elif [ ! -z "$domstate" ] ; then
 		# replace means we delete any existing machine (=domain) with same name
-		state="$(sed -n -e 's/State: *//p' <<<$domstate)"
+		local state="$(sed -n -e 's/State: *//p' <<<$domstate)"
 		virsh shutdown "$vmname"
 		virsh destroy "$vmname"
 		virsh undefine "$vmname"
