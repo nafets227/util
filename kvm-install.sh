@@ -16,13 +16,17 @@ function parseParm () {
 	fi
 	vmname="$1"
 	shift
-	
+
+	local value
+	local value_present
+
 	while [ $# -gt 0 ] ; do
 		parm="${1%%=*}"
 		if [ "$1" != "$parm" ] ; then # contains =
 			value=${1#*=}
 			value_present=1
 		else
+			value=""
 			value_present=0
 		fi
 		shift
@@ -56,6 +60,14 @@ function parseParm () {
 			--virt )
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
 				prm_virt="$value"
+				;;
+			--os )
+				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				prm_os="$value"
+				;;
+			--sound )
+				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				prm_sound="$value"
 				;;
 			--auto )
 				if [ "$value_present" -eq 0 ] && [ "${1:0:2}" != "--" ] ; then
@@ -178,6 +190,28 @@ function getDefaultID() {
 	fi
 	}
 
+##### getDefaultOS ###########################################################
+# Parameters:
+# 1 - machinename [mandatory]
+function getDefaultOS () {
+	if [ "$#" -lt 1 ] ; then
+		printf "Error: no machine name supplied\n" >&2
+		return 1
+	fi
+	local vmname="$1"
+
+	case $vmname in
+# currently all auto.-detection is disabled
+# if we want a specific OS it has to be given by commandline
+#		vWin   ) os="win10" ;;
+#		vKube* ) os="" ;; # CoreOS: no entry, use blank
+		*      ) os="" ;; # ArchLinux: no entry, use blank
+	esac
+
+	printf "%s\n" "$os"
+	return 0
+}
+
 ##### kvm-install ############################################################
 # Parameters:
 # 1 - machinename [mandatory]
@@ -206,6 +240,8 @@ function kvm-install () {
 	local prm_disk
 	local prm_disk2
 	local prm_disk3
+	local prm_os
+	local prm_sound
 	local vmname
 	local netdev=$(getNetworkDevice)
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
@@ -237,11 +273,19 @@ function kvm-install () {
 		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	fi
 
+	# Auto-Detect OS if not given on commandline
+	if [ -z "$prm_os" ] ; then
+		prm_os=$(getDefaultOS $vmname)
+		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
+	fi
+
 	# Tell user what we do
-	printf "%s: Installing machine %s (ID=%s)\n" \
+	printf "%s: %sInstalling machine %s (ID=%s)\n" \
 		"$(basename $BASH_SOURCE .sh)" \
+		"${prm_dryrun+Dryrun-}" \
 		"$vmname" \
 		"$prm_id"
+	printf "\tOS %s\n" "${prm_os-<default>}"
 	printf "\tmemory %s\n" "$prm_mem"
 	printf "\tcpu %s\n" "$prm_cpu"
 	printf "\tboot+root-disk %s\n" "$prm_disk"
@@ -250,6 +294,7 @@ function kvm-install () {
 	printf "\tnetwork %s\n" "$netdev"
 	printf "\tVirtualisation: %s\n" "$prm_virt"
 	printf "\tAutoStart: %s\n" "$prm_auto"
+	printf "\tSound: %s\n" "${prm_sound-<none>}"
 
 	# Action !
 	local virt_prms="
@@ -280,6 +325,16 @@ function kvm-install () {
 	if [ "$prm_auto" == "1" ] ; then
 		virt_prms="$virt_prms
 			--autostart
+			"
+	fi
+	if [ ! -z "$prm_os" ] ; then
+		virt_prms="$virt_prms
+			--os-variant $prm_os
+			"
+	fi
+	if [ ! -z "$prm_sound" ] ; then
+		virt_prms="$virt_prms
+			--sound $prm_sound
 			"
 	fi
 	
