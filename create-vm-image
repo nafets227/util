@@ -208,11 +208,11 @@ for f in $machboot ; do case "$f" in
 		printf "Installing Grub2\n"
 		arch-chroot $2 <<-EOF
 			pacman -S --needed --noconfirm grub
-			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
 			grub-install --boot-directory=/boot/grub2 $5
-			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
 			grub-mkconfig >/boot/grub2/grub/grub.cfg
-			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
 		EOF
 		rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
 		;;
@@ -220,14 +220,14 @@ for f in $machboot ; do case "$f" in
 		printf "Installing Grub2\n"
 		arch-chroot $2 <<-EOF
 			pacman -S --needed --noconfirm grub efibootmgr
-			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
 			grub-install \\
 				--target=x86_64-efi \\
 				--boot-directory=/boot/grub2 \\
 				--efi-directory=/boot/efi/
-			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
 			grub-mkconfig >/boot/grub2/grub/grub.cfg
-			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
 		EOF
 		rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
 		# Bugfix EFI buggy BIOS - will be redone by systemd ervice
