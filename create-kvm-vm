@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# kvm-install
+# create-kvm-vm
 #
 # Install virtaul machine in KVM
 #
@@ -212,7 +212,7 @@ function getDefaultOS () {
 	return 0
 }
 
-##### kvm-install ############################################################
+##### create-kvm-vm ###########################################################
 # Parameters:
 # 1 - machinename [mandatory]
 # Options:
@@ -228,7 +228,7 @@ function getDefaultOS () {
 #   --replace replace existing VMs [default=no]
 #   --auto [default=1] auto-start VM at boot
 #   --dry-run done really execute anything.
-function kvm-install () {
+function create-kvm-vm () {
 	# Set Default values
 	local prm_mem="768"
 	local prm_cpu="3,cpuset=2-3"
@@ -380,10 +380,10 @@ function kvm-install () {
 	}
 
 ##### Main ###################################################################
-# Parameters und Options see kvm-install:
+# Parameters und Options see create-kvm-vm
 
 if [ $# -gt 0 ] ; then
-	kvm-install "$@"
+	create-kvm-vm "$@"
 	exit $?
 fi
 
