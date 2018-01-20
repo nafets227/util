@@ -1,0 +1,1009 @@
+#! /bin/bash
+#
+# Install a new Machine for ArchLinux
+#
+# (C) 2014 Stefan Schallenberg
+#
+
+##### Usage ##################################################################
+function usage() {
+    echo $1
+    echo
+    echo "Usage: "
+    echo "    $0 <hostname [ <rootdev] "
+    echo "     <hostname> gives the hostname"
+    echo "     <rootdev>  points to the device node of the root device."
+    echo "                It defaults to /dev/vg-sys/<hostname>-sys."
+    echo "     [ -h ] Show help only. Does not execute anything."
+    echo
+    echo "$0 Aborted."
+}
+
+#### Install our special files on machine ####################################
+function add_nafets_files {
+	local readonly name="$1"
+	local readonly mount="$2"
+
+	if [ $# -ne 2 ] ; then
+		printf "Internal Error: %s got %s parms (exp=2)\n" \
+			"$FUNCNAME" "$#" >&2
+		return 1
+	elif [ -z "$name" ] ; then
+		printf "Internal Error: Parm1 is null in %s \n" \
+			"$FUNCNAME" >&2
+		return 1
+	elif [ ! -d "$mount" ] ; then
+		printf "Internal Error: Directory %s does not exist in %s \n" \
+			"$mount" "$FUNCNAME" >&2
+		return 1
+	fi
+
+	# Exit on error
+	set -e
+
+	# Copy SSL private files
+	if [ -d /data/ca/$name ]; then
+		mkdir -p $mount/root/ssl.private
+		cp -L  /data/ca/$name/* $mount/root/ssl.private/
+		chown -R root:root $mount/root/ssl.private
+		chmod -R 400 $mount/root/ssl.private
+		printf "INSTALLED SSL Files\n" >&2
+	fi
+
+	#Get SubVersion Repository
+	svn checkout \
+		--username root@$name \
+		--password "" \
+		--non-interactive \
+		--quiet \
+		--config-dir $mount/root/.subversion \
+	        --config-option servers:global:store-plaintext-passwords=yes \
+	        svn://svn.intranet.nafets.de/tools/trunk \
+		$mount/root/tools
+	printf "INSTALLED subversion repository\n" >&2
+
+	# Copy local modified files to new machine
+	rsync -aHX --delete /root/tools/ $mount/root/tools --exclude=".svn"
+	printf "UPDATED subversion repository\n" >&2
+
+	return 0
+}
+
+#### Install a service that runs additional installations after first boot ###
+function setup_install_service () {
+	# Parameter:
+	#    1 - mounted_rootdir
+	#    2 - Install type - matches to /root/install/install-<type>.sh
+	#        that will be called on first boot
+	if [ ! -d $1/etc/systemd/system ] ; then
+		printf "Internal Error: %s is not a directory.\n" \
+			"$1/etc/systemd/system" >&2
+		return 1
+	elif [ ! -e $1/root/tools/install/install-$2.sh ] ; then
+		printf "Warning: Skipping Install-service (no %s).\n" \
+			"$1/root/tools/install/install-$2.sh" >&2
+		return 0
+	fi
+	printf "Installing Install-Service for machine type %s.\n" "$2" >&2
+	cat >>$1/etc/systemd/system/nafetsde-install.service <<-EOF
+		# nafetsde-install.service
+		#
+		# (C) 2017 Stefan Schallenberg
+		#
+		[Unit]
+		Description="Install $2 machine after first boot (nafets.de)"
+		ConditionPathExists=!/var/lib/nafetsde-install/.done
+
+		[Service]
+		Type=oneshot
+		ExecStart=/root/tools/install/install-$2.sh
+		ExecStartPost=/root/tools/install/install.sh install_env_expire_std_root_pw
+		ExecStartPost=/bin/mkdir -p /var/lib/nafetsde-install
+		ExecStartPost=/bin/touch /var/lib/nafetsde-install/.done
+
+		[Install]
+		WantedBy=multi-user.target
+		EOF
+		
+	arch-chroot $1 <<-EOF
+		systemctl enable nafetsde-install.service
+	EOF
+
+}
+#### Install Arch Linux on a mounted directory ###############################
+function install_arch_ondir () {
+# Parameters: 
+#    1 - hostname
+#    2 - mounted_rootdir
+#    3 - extra packages to install [optional]
+#    4 - machine type [default=xen]
+#    5 - bootdevice to install bootloader (if machtype=kvm)
+#    6 - install type - start install-<type> script after boot
+
+machtype=${4-xen}
+
+case $machtype in
+	xen)
+		newmods="xen-blkfront xen-fbfront xen-netfront xen-kbdfront" # XEN drivers
+		machboot=grubcfg
+		;;
+	kvm)
+		newmods="ata_generic ata_piix pata_acpi "					 # KVM neede drv
+		newmods="$newmods virtio_blk virtio_console virtio_pci"		 # KVM drivers
+		machboot=grub2
+		;;
+	phys)
+		newmods="xen-blkfront xen-fbfront xen-netfront xen-kbdfront" # XEN drivers
+		newmods="$newmods ehci_pci xhci_pci ahci"					 # HW drivers
+		machboot="grubcfg grub2-efi"
+		;;
+	usb)
+		# grub2-efi does not work yet so we disable it.
+		# @TODO: make grub2-efi work on USB Stick
+		# Msg: grub-install: error: failed to get canonical path of /boot/efi
+		machboot="grub2"
+		;;
+	*)
+		printf "Unknown machine type %s in %s\n" "$machtype" "$FUNCNAME" >&2
+		return 1
+esac
+
+#Now chroot into the Arch Bootstrap system
+pacstrap -c -d $2 base openssh subversion $3
+rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
+
+genfstab -U -p $2 >$2/etc/fstab
+rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
+
+#Now chroot into the future system
+arch-chroot $2 <<EOF
+    echo $1 >/etc/hostname
+    systemctl enable sshd.service
+
+    # Now Set the system to German language
+    # for german use: echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+    echo "LANG=en_DK.UTF-8" > /etc/locale.conf
+    echo "KEYMAP=de-latin1-nodeadkeys"  > /etc/vconsole.conf
+    test -e /etc/localtime && rm /etc/localtime
+    ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
+    echo "de_DE.UTF-8 UTF-8" >>/etc/locale.gen
+    echo "en_DK.UTF-8 UTF-8" >>/etc/locale.gen
+    locale-gen
+
+    if [ "$machtype" == "phys" ]; then
+        sed -i -r \
+            -e 's:^[[:blank:]]md_component_detection = 1:\t#&\n\tmd_component_detection = 0 # by create-vm-image:' \
+            -e 's:^.*# global_filter = .*:&\n\tglobal_filter = [ "a|^/dev/sd|", "a|^/dev/xvd|", "r|.*/|" ] # by create-vm-image:' \
+            /etc/lvm/lvm.conf
+    fi
+
+    # Now include the needed modules in initcpio
+    sed -i -re \
+	's/(MODULES=[\("])(.*)([\)"]$)/\1\2$newmods\3/' \
+        /etc/mkinitcpio.conf
+    mkinitcpio -p linux
+    
+    #Root Passwort aendern
+    (echo "password1"; echo "password1") | passwd
+EOF
+
+add_nafets_files "$1" "$2"
+
+for f in $machboot ; do case "$f" in
+	grubcfg) 
+		printf "Installing GrubCFG\n"    
+		#GRUB Config Files
+		mkdir -p $2/boot/grub 2>/dev/null
+	 	cat >$2/boot/grub/grub.cfg <<-EOFGRUB
+			menuentry 'Arch Linux for XEN pygrub' {
+			    set root='hd0,msdos1'
+			    echo    'Loading Linux core repo kernel ...'
+			    linux   /boot/vmlinuz-linux root=/dev/xvda1 ro 
+			    echo    'Loading initial ramdisk ...'
+			    initrd  /boot/initramfs-linux.img
+			}
+			EOFGRUB
+		;;
+	grub2)
+		printf "Installing Grub2\n"
+		arch-chroot $2 <<-EOF
+			pacman -S --needed --noconfirm grub
+			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			grub-install --boot-directory=/boot/grub2 $5
+			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			grub-mkconfig >/boot/grub2/grub/grub.cfg
+			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+		EOF
+		rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
+		;;
+	grub2-efi)
+		printf "Installing Grub2\n"
+		arch-chroot $2 <<-EOF
+			pacman -S --needed --noconfirm grub efibootmgr
+			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			grub-install \\
+				--target=x86_64-efi \\
+				--boot-directory=/boot/grub2 \\
+				--efi-directory=/boot/efi/
+			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+			grub-mkconfig >/boot/grub2/grub/grub.cfg
+			rc=\$? ; if [ \$rc -ne 0 ] ; then return \$rc; fi
+		EOF
+		rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
+		# Bugfix EFI buggy BIOS - will be redone by systemd ervice
+		# nafetsde-efiboot on each shutdown
+		mkdir -p $2/boot/efi/EFI/BOOT
+		rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
+		cp -a	$2/boot/efi/EFI/arch/grubx64.efi \
+			$2/boot/efi/EFI/BOOT/BOOTx64.EFI
+		rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
+		;;
+	 *)
+	 	printf "Internal Error: Invalid machboot \"%s\"\n" "$f" >&2
+esac; done
+
+if [ -z "$6" ] ; then
+	arch-chroot $2 <<-EOF
+		passwd -e root
+	EOF
+	echo "Remember to setup up networking in the new machine, its not done yet!" 
+else
+	setup_install_service "$2" "${6,,}"
+	rc=$? ; if [ $rc -ne 0 ] ; then return $rc; fi
+fi
+
+return 0
+}
+
+
+#### Install Arch Linux ######################################################
+function do_install() {
+# Parameters: 
+#    1 - hostname
+#    2 - rootdev
+#    3 - extra packages to install [optional]
+#    4 - boot device [optional]
+#    5 - physical machine [default=no]
+#    6 - install type - start install-<type> script after boot
+
+is_phys=${5-0}
+echo "About to install Arch Linux for $1 (phys=$is_phys, type=$6)"
+echo "Extra packages: $3"
+if [ -z $4 ]; then
+	echo "Root-Device: $2"
+	echo "Warning: All data on $2 will be DELETED!"
+else
+	echo "Root-Device: $2, Boot-Device: $4"
+	echo "Warning: All data on $2 and $4 will be DELETED!"
+fi
+read -p "Press Enter to Continue, use Ctrl-C to break."
+
+#install needed utilities
+pacman -S --needed --noconfirm arch-install-scripts dosfstools
+
+# Create Filesystems
+mkfs.ext4 $2
+if [ $? -ne 0 ] ; then exit -1; fi
+mount $2 /mnt
+
+if [ ! -z $4 ]; then
+	mkfs.fat -F32 $4
+	if [ $? -ne 0 ] ; then exit -1; fi
+	mkdir -p /mnt/boot/efi
+	mount $4 /mnt/boot/efi
+fi
+
+if [ "$is_phys" == "0" ] ; then 
+	machtype="xen"
+else
+	machtype="phys"
+fi
+	
+install_arch_ondir "$1" "/mnt" "$3" "$machtype" "" $itype
+
+if [ ! -z $4 ]; then
+    umount /mnt/boot/efi
+fi
+umount /mnt
+}
+
+#### Install Arch Linux for KVM, in a Device as disk ########################
+function do_install_kvm () {
+	# Parameters: 
+	#    1 - hostname
+	#    2 - device
+	#    3 - extra packages to install [optional]
+	#    4 - install type - start install-<type> script after boot
+
+	inst_hostname="$1"
+	inst_dev="$2"
+	inst_extrapkg="$3"
+	itype="$4"
+	
+	printf "About to install Arch Linux on KVM for %s (type=%s)\n" \
+	       	"$inst_hostname" "$itype"
+	printf "Extra packages: %s\n" "$inst_extrapkg"
+	printf "Disk-Device: %s\n" "$inst_dev"
+	printf "Warning: All data on %s will be DELETED!\n" "$inst_dev"
+	read -p "Press Enter to Continue, use Ctrl-C to break."
+
+	#install needed utilities
+	pacman -S --needed --noconfirm arch-install-scripts dosfstools rsync
+
+	if [ ! -e "$inst_dev" ] ; then
+		printf "Creating Bootdevice %s (size=10G)\n" "$inst_dev"
+		fallocate -l 10G $inst_dev
+		if [ $? -ne 0 ] ; then
+			printf "Falling back to dd since fallocate is not working.\n" >&2
+			dd if=/dev/zero of=$inst_dev bs=1M count=10240
+			if [ $? -ne 0 ] ; then return -1; fi
+		fi
+	fi
+
+	parted -s -- "$inst_dev" mklabel msdos
+	if [ $? -ne 0 ] ; then return -1; fi
+	parted -s -- "$inst_dev" mkpart primary ext4 100M -1s
+	if [ $? -ne 0 ] ; then return -1; fi
+
+	part=$(kpartx -asv "$(realpath "$inst_dev")" | \
+		sed -n -e 's:^add map \([A-Za-z0-9\-]*\).*:\1:p')
+	if [ $? -ne 0 ] || [ -z "$part" ] ; then return -1; fi
+	
+	# delete superblock to avoid warning when creating the new filesystem
+	dd if=/dev/zero of=/dev/mapper/$part bs=1k count=4 
+	mkfs.ext4 /dev/mapper/$part
+	if [ $? -ne 0 ] ; then return -1; fi
+	
+	mount /dev/mapper/$part /mnt
+	if [ $? -ne 0 ] ; then return -1; fi
+	
+	install_arch_ondir "$inst_hostname" "/mnt" "$inst_extrapkg" "kvm" "/dev/${part%%p1}" $4
+	rc=$?		
+
+	#umount /mnt/boot
+	umount /mnt
+	kpartx -d "$(realpath "$inst_dev")"
+	
+	return $rc
+}
+
+##### download_coreos #########################################################
+function download_coreos {
+	local readonly BASEURL="https://stable.release.core-os.net/amd64-usr"
+	local readonly CACHEBAS="/var/cache/coreos"
+
+	if [ -e $CACHEBAS/current/version.txt ] ; then
+		CACHE_VERSION=$( \
+			gawk --field-separator '=' '/COREOS_VERSION=/ { print $2}' \
+		       	< $CACHEBAS/current/version.txt)
+	else
+		CACHE_VERSION=""
+	fi
+	INET_VERSION=$(curl -L $BASEURL/current/version.txt | \
+		gawk --field-separator '=' '/COREOS_VERSION=/ { print $2}' )
+
+	if [ "$INET_VERSION" != "$CACHE_VERSION" ]; then
+		printf  "Downloading CoreOS Version %s ... \n" "$INET_VERSION" >&2
+		##### Now Download the newer version ##################################
+		local filelist="coreos_production_xen.README"
+		filelist="$filelist,coreos_production_xen_image.bin.bz2"
+		filelist="$filelist,coreos_production_xen_image.bin.bz2.sig"
+		filelist="$filelist,coreos_production_xen_pvgrub.cfg"
+		filelist="$filelist,coreos_production_xen_pygrub.cfg"
+		filelist="$filelist,version.txt"
+		filelist="$filelist,version.txt.sig"
+
+		mkdir -p $CACHEBAS/$INET_VERSION >/dev/null
+		curl -# -L -o "$CACHEBAS/$INET_VERSION/#1" \
+			"$BASEURL/$INET_VERSION/{$filelist}" >&2
+		rc=$?; if [ $rc -ne 0 ]; then
+			printf "Error %s downloading CoreOS from %s to %s\n." \
+				"$rc" \
+				"$BASEURL/$INET_VERSION" \
+			       	"$CACHEBAS/$INET_VERSION" >&2
+			return 1
+		fi
+		rm $CACHEBAS/current >/dev/null
+		ln -s $INET_VERSION $CACHEBAS/current >/dev/null
+		if [ ! -z "$CACHE_VERION" ] ; then
+			rm -rf $CACHEBAS/$CACHE_VERSION >/dev/null # delete old version 
+		fi
+	else
+		printf  "Reusing cached CoreOS Version %s. \n" "$CACHE_VERSION" >&2
+	fi
+
+	printf "%s\n" "$CACHEBAS/current"
+	return 0
+}
+
+##### download CloudOS Config Transpiler ######################################
+function download_coreos_ct {
+	local readonly RELEASE_API_URL="https://api.github.com/repos/coreos/container-linux-config-transpiler/releases"
+	local readonly CACHEBAS="/var/cache/coreos-ct"
+
+	if [ ! -d "$CACHEBAS" ] ; then
+		mkdir -p $CACHEBAS >/dev/null
+	fi
+
+	printf "Identifying coreos-ct latest release.\n" >&2
+	local URL
+	URL=$(curl -s "$RELEASE_API_URL" \
+		| jq '.[0].assets[].browser_download_url' \
+		| grep -- '-unknown-linux-gnu"' \
+		| sed -e 's:^"::' -e 's:"$::' )
+	rc=$?; if [ $rc -ne 0 ]; then
+		printf "Error %s identifying CoreOS-ct at %s.\n" \
+			"$rc" \
+			"$RELEASE_API_URL" >&2
+		return 1
+	fi
+
+	local readonly FNAME="$CACHEBAS/$(basename $URL)"
+	local curlcacheopt=""
+	if [ -e "$FNAME" ] ; then
+		curlcacheopt="-z $FNAME"
+	fi
+	printf "Downloading coreos-ct.\n" >&2
+	curl -L -o "$FNAME" $curlcacheopt "$URL" >&2
+	rc=$?; if [ $rc -ne 0 ]; then
+		printf "Error %s downloading CoreOS-ct from %s to %s\n." \
+			"$rc" \
+			"$URL" \
+		       	"$CACHEBAS" >&2
+		return 1
+	fi
+	chmod +x "$FNAME"
+
+	printf "%s\n" "$FNAME"
+}
+
+##### ltrim #####
+function ltrim {
+	if [ $# -ne 1 ] ; then
+		# Empty String results in empty string
+		return
+	fi
+
+	# remove leading blanks
+	printf "%s\n" "${1#"${1%%[![:space:]]*}"}"
+	}
+
+##### Read CoreOS Config and return list of YAML files #######################
+function read_coreos-ct_conf {
+	# Parameter: Filename
+	if [ ! -e "$1" ] ; then 
+		printf "Internal Error: FileNotFound %s\n" "$1" >&2
+		exit 1
+	fi
+
+	local line line_orig
+	# global: FILES VARS
+#	FILES=""
+
+	while read line_orig ; do
+		# ignore comments
+		line=${line_orig%%#*}
+		# remove leading blanks
+		line="$(ltrim "$line")"
+
+		if [ "${line:0:1}" == "@" ] ; then
+			#If line startes with @ include another file
+			read_coreos-ct_conf "${line:1}"
+		elif [[ "$line" == *"="* ]] ; then
+			#If line contains = treat is as variable
+			local varname=${line%%=*}
+			local value=${line#*=}
+			eval NEW_$varname=$value
+			VARS="$VARS $varname"
+		else
+			words=( $line ) 
+			if [ "${#words[@]}" -gt 1 ] ; then
+				printf "Error: More than one filename per Line in %s: %s\n" "$1" "$line_orig" >&2
+				return 1
+			fi
+			FILES="$FILES $line"
+		fi
+	done < "$1"
+
+#	printf "%s\n" "$(ltrim "$FILES")"
+	return 0
+}
+
+##### Core OS Config builder #################################################################
+# Parm1: hostname - used also for config filenames
+# Parm2: list of Environizing Parameters tp be replaced in templated. e.g. "HOSTNAME IP FQDN"
+#        Values are expected in Variable NEW_<name>, e.g. NEW_HOSTNAME, NEW_IP, NEW_FQDN
+# Output: Filename of ignition file
+# Return Code: 0 if successfull.
+# Messages are prtined to stderr if not successfull.
+function create_coreos-ct_config {
+	# Download coreos configurations transpiler (ct)
+	local CT
+	CT=$(download_coreos_ct)
+	rc=$?; if [ $rc -ne 0 ] ; then
+		printf "Aborting install of machine %s.\n" "$1" >&2
+		return 1
+	fi
+
+	# read config file
+	local YAMLS
+	# Attention: We use the global variabel VARS that may be modified by 
+	# subroutines!
+	VARS="$2"; FILES=""
+	read_coreos-ct_conf $CFG
+	YAMLS=$FILES
+	rc=$?; if [ $rc -ne 0 ] ; then
+		printf "Could not read %s\nAborting install of machine %s.\n" "$CFG" "$1" >&2
+		return 1
+	fi
+	if [ -z "$YAMLS" ] ; then
+		printf "Empty File %s\nAborting install of machine %s.\n" "$CFG" "$1" >&2
+		return 1
+	fi
+
+	# set Filenames
+	tmpdir="$(realpath "$(dirname "$BASH_SOURCE")")/tmp"
+	mkdir -p "$tmpdir" >/dev/null
+	fname_ign="$tmpdir/$1.ignition"
+	fname_yaml="$tmpdir/$1.yaml"
+	JSONS=""
+
+	# Write base information into merged YAML
+	printf "# %s\n" "$fname_yaml" >$fname_yaml
+	printf "#----- generated by %s from %s on %s\n" \
+		"$(realpath $BASH_SOURCE)" \
+		"$(realpath "$CFG")" "$(date)" >>$fname_yaml
+
+	# prepare handling of template variables
+	sed_template_opt=""
+	for f in $VARS ; do
+		eval value=\$NEW_$f
+		if [ -z $value ] ; then
+			printf "Template variabel NEW_%s not set or empty.\n" \
+				"$f" >&2
+			return 1
+		fi
+		printf "#----- Template-Var %s=%s\n" "$f" "$value" >>$fname_yaml
+		sed_template_opt="$sed_template_opt -e s:\${$f}:${value//:/\\:}:" 
+	done
+
+	for f in $YAMLS; do
+		if [ ! -e "$f" ] ; then 
+			printf "File %s referenced in %s not found.\n"  \
+				"$f" "$CFG" >&2
+			return 1
+		fi
+
+		fname_this_input="$(realpath $(dirname $CFG)/$f)"
+		fname_this_yaml="$tmpdir/$1-$(basename $f)"
+		fname_this_json="$tmpdir/$1-$(basename $f .yaml).json"
+		
+		printf "#----- Referenced %s \n" \
+			"$(ls -l $fname_this_input)" \
+			>>$fname_yaml
+		# substitute template variables
+		sed $sed_template_opt \
+		       	<"$fname_this_input" \
+		       	>"$fname_this_yaml"
+		rc=$?; if [ $rc -ne 0 ] ; then
+			printf "Error replacing template vars of File %s referenced in %s.\n" \
+				"$f" "$CFG" >&2
+			return 1
+		fi
+
+		# Check that no variable is referenced without being defined
+		if grep -q '${[^}]*}' $fname_this_yaml ; then
+			printf "Error: Undefined variables %s used in File %s referenced in %s.\n" \
+				"$(sed -n 's:^.*\(\${[^}]*}\).*$:\1:p' <$fname_this_yaml | tr '\n' ' ')" \
+				"$f" "$CFG" >&2
+			return 1
+		fi
+
+		# Transform YAML to JSON:
+		python -c 'import sys,yaml,json; json.dump(yaml.load(sys.stdin), sys.stdout, indent=4)' \
+			<"$fname_this_yaml" \
+		       	>"$fname_this_json"
+		rc=$?; if [ $rc -ne 0 ] ; then
+			printf "Error transforming File %s to JSON (referenced in %s).\n" \
+				"$f" "$CFG" >&2
+			return 1
+		fi
+		JSONS="$JSONS $fname_this_json"
+	done
+
+	# Merge all JSONs:
+	jqfilter=$(cat <<-"EOJQ"
+		. as $src |
+		reduce .[] as $i(
+		      {error: $src, error_cnt: 0};
+
+			# ignition part of config is not supported
+			#              ignition: {
+			#                      config: {
+			#                               append: [],
+			#                               replace: {} },
+		        if $i.storage.disks
+		                then .storage.disks += $i.storage.disks
+		                         | del(.error[.error_cnt].storage.disks)
+		                else . end |
+		        if $i.storage.raid
+		                then .storage.raid += $i.storage.raid
+		                         | del(.error[.error_cnt].storage.raid)
+		                else . end |
+		        if $i.storage.filesystems
+		                then .storage.filesystems += $i.storage.filesystems
+		                         | del(.error[.error_cnt].storage.filesystems)
+		                else . end |
+		        if $i.storage.files
+		                then .storage.files += $i.storage.files
+		                         | del(.error[.error_cnt].storage.files)
+		                else . end |
+		        if .error[.error_cnt].storage | length == 0
+		                then del(.error[.error_cnt].storage)
+		                else . end |
+		        if $i.systemd.units
+		                then .systemd.units += $i.systemd.units
+		                         | del(.error[.error_cnt].systemd.units)
+		                else . end |
+		        if .error[.error_cnt].systemd | length == 0
+		                 then del(.error[.error_cnt].systemd)
+		                else . end |
+		        if $i.networkd.units
+		                then .networkd.units += $i.networkd.units
+		                         | del(.error[.error_cnt].networkd.units)
+		                else . end |
+		        if .error[.error_cnt].networkd | length == 0
+		                 then del(.error[.error_cnt].networkd)
+		                else . end |
+		        if $i.passwd.users
+		                then .passwd.users += $i.passwd.users
+		                         | del(.error[.error_cnt].passwd.users)
+		                else . end |
+		        if $i.passwd.groups
+		                then .passwd.groups += $i.passwd.groups
+		                         | del(.error[.error_cnt].passwd.groups)
+		                else . end |
+		        if .error[.error_cnt].passwd | length == 0
+		                 then del(.error[.error_cnt].passwd)
+		                else . end |
+		        if $i.etcd
+		                then .etcd += $i.etcd
+		                         | del(.error[.error_cnt].etcd)
+		                else . end |
+			if $i | has("flannel")
+		                then .flannel += $i.flannel
+		                         | del(.error[.error_cnt].flannel)
+		                else . end |
+		        if $i.docker
+		                then .docker += $i.docker
+		                         | del(.error[.error_cnt].docker)
+		                else . end |
+		        if $i.update
+		                then .update += $i.update
+		                         | del(.error[.error_cnt].update)
+		                else . end |
+		        if $i.locksmith
+		                then .locksmith += $i.locksmith
+		                         | del(.error[.error_cnt].locksmith)
+		                else . end |
+		        if .error[.error_cnt] | length == 0
+		                 then del(.error[.error_cnt])
+	                else 
+			        .error_cnt += 1
+			end
+		        )
+		| if .error | length > 0 then
+			error(.error | tojson )
+	       	else 
+			del(.error) | del(.error_cnt) 
+		end
+		EOJQ
+		)
+	jq -s "$jqfilter" $JSONS >>$fname_yaml
+	rc=$? ; if [ "$rc" -ne 0 ] ; then
+		printf "Merging JSONs with jq failed. (rc=%s, Infiles=%s)\n" \
+			"$rc" "$JSONS" >&2
+		return 1
+	fi
+
+	# Now process our generated input with coreos config transpiler (ct)
+       	$CT -strict -in-file $fname_yaml -out-file $fname_ign
+	rc=$? ; if [ "$rc" -ne 0 ] ; then
+		printf "CoreOS Config Transpiler failed. (rc=%s, Infile=%s)\n" \
+			"$rc" "$fname_yaml" >&2
+		return 1
+	fi
+
+	printf "%s\n" "$fname_ign"
+	return 0
+}
+
+##### Core OS #################################################################
+function do_install_coreos-ct {
+	# Parameters: 
+	#    1 - hostname
+	#    2 - rootdev
+	
+	# make sure all needed tools are installed
+	for pgm in kpartx lsblk dig jq ; do
+		which "$pgm" >/dev/null || { echo "Missing $pgm" >&2 ; exit 1 ; }
+		done
+	python -c 'import sys,yaml,json' >/dev/null || \
+		{ echo "Missing python module yaml or json" >&2 ; exit 1 ; }
+
+	# check for existing config-file
+	local readonly CFG="$(dirname $BASH_SOURCE)/$1.coreos-ct"
+	if [ ! -e "$CFG" ] ; then 
+		printf "missing Meta-Config for coreos-ct %s.\n" "$CFG"
+		return 1
+	fi
+
+	# check that DNS entry exists and returns an IP adress
+	# NB: We support only static IP configs!
+	NEW_HOSTNAME="$1"
+	NEW_FQDN="$NEW_HOSTNAME.intranet.nafets.de"
+	NEW_IP=$(dig +short $NEW_FQDN)
+        rc=$?
+        if [ $rc -ne 0 ]; then
+                printf "dig for %s returns %s. Aborting.\n" "$NEW_FQDN" "$rc"
+		return 1
+	elif [ -z "$NEW_IP" ] ; then
+                printf "Cannot get IP for FQDN %s. Aborting.\n" "$NEW_FQDN"
+		return 1
+        fi
+
+	CFG_IGN=$(create_coreos-ct_config "$1" "HOSTNAME FQDN IP")
+        rc=$? ; if [ $rc -ne 0 ]; then
+		return $rc
+	fi
+
+	echo "About to install CoreOS for $1"
+	echo "Root-Device: $2"
+	echo "Ignition Config File: $CFG_IGN"
+	echo "Warning: All data on $2 will be DELETED!"
+	read -p "Press Enter to Continue, use Ctrl-C to break."
+
+	# instead of executing core-os install we do it our own
+	#       because coreos-install cannot handle LVM volumes as disk and create
+	#       partitions on it.
+	# $CACHEDIR/coreos-install -o xen -C stable \
+	#       -d "$2" \
+	#       -c ~/tools/install/coreos/$1.yaml
+
+	local readonly CACHEDIR=$(download_coreos)
+
+	bunzip2 --stdout \
+		<$CACHEDIR/coreos_production_xen_image.bin.bz2 \
+		>$2
+
+	MNTDIR=$(mktemp --tmpdir -d coreos-install.XXXXXXXX)
+	MNTNAME=$(lsblk -no NAME $2 | head -1)
+	if [ -z $MNTNAME ] ; then
+		echo "error identifying Disk with lsblk $2" >&2
+		exit 1
+	fi
+
+	# Mount OEM partitiona and copy ignition file on it
+	kpartx -sa /dev/mapper/$MNTNAME || { echo "Error in kpartx" >&2 ; exit 1 ; }
+	OEMDEV=$(blkid -t "LABEL=OEM" -o device /dev/mapper/${MNTNAME}*)
+	if [ -z $OEMDEV ] ; then
+		echo "error identifying OEM-Disk with blkid on /dev/mapper/$MNT NAME" >&2
+		exit 1
+	fi
+	mount $OEMDEV $MNTDIR || \
+		{ echo "Could not mount $OEMDEV on $MNTDIR" >&2; exit 1 ; }
+
+	cp "$CFG_IGN" $MNTDIR/coreos-install.json
+	echo 'set linux_append="$linux_append coreos.config.url=oem:///coreos-install.json"' >> "$MNTDIR/grub.cfg"
+
+	umount $MNTDIR
+	kpartx -d /dev/mapper/$MNTNAME
+
+	# Mount root partition and copy SSL private files it
+	kpartx -sa /dev/mapper/$MNTNAME || { echo "Error in kpartx" >&2 ; exit 1 ; }
+	ROOTDEV=$(blkid -t "LABEL=ROOT" -o device /dev/mapper/${MNTNAME}*)
+	if [ -z $ROOTDEV ] ; then
+		echo "error identifying Root-Disk with blkid on /dev/mapper/$MNTNAME" >&2
+		exit 1
+	fi
+	mount $ROOTDEV $MNTDIR || \
+		{ echo "Could not mount $ROOTDEV on $MNTDIR" >&2; exit 1 ; }
+		
+	add_nafets_files "$1" "$MNTDIR"
+
+	umount $MNTDIR
+	kpartx -d /dev/mapper/$MNTNAME
+	
+	return 0
+}
+
+##### Install to USB-Stick ###################################################
+# based on info from
+# http://www.zdnet.de/41559191/multiboot-ueber-usb-nur-ein-stick-fuer-windows-und-linux/2/
+# http://phoenixlzx.github.io/MinoriWiki/page/archlinux-on-loopback/
+# AUR package mkinitcpio-loop-subdir 0.0.1-1
+function do_install_usb () {
+	# Parameter
+	#  1 - Hostname
+	#  2 - Device of USB Stick (e.g. /dev/sdb)
+
+	if [ $# -lt 2 ] ; then
+		printf "Internal Error: expected 2 Parms\n"
+		return 1
+	fi
+
+	if [ ${2/\/dev\/*/\/dev\/} != "/dev/" ] ; then # dev does not begin with "/dev/"
+		printf "Error: Device must start with /dev/\n"
+		return 1
+	fi
+	raw_dev=${2#/dev/}
+
+	if [ ! -b /dev/$raw_dev ] ; then # Device does not exist
+		printf "Device /dev/%s does not exist. Aborting.\n" "$raw_dev"
+		return 1
+	fi
+
+	type=$(lsblk -o type --noheading /dev/$raw_dev | head -1)
+	if [ $type != "disk" ] ; then	# No disk device
+		printf "Device /dev/%s is no disk (type %s). Cowardly aborting.\n" \
+			"$raw_dev" "$type"
+		return 1
+	fi
+
+	if [ $(cat /sys/class/block/$raw_dev/removable) != "1" ] ; then 
+		# no removable device
+		printf "device %s is not removable. Cowardly Aborting.\n" "$raw_dev"
+		return 1
+	fi
+
+	echo "About to install Arch Linux on USB ($1)"
+	echo "Root-Device: $2"
+	echo "Warning: MBR and data in /arch/boot of $2 will be DELETED!"
+	read -p "Press Enter to Continue, use Ctrl-C to break."
+
+	mount /dev/${raw_dev}1 /mnt
+	if [ $? -ne 0 ] ; then return 1; fi
+	test -d /mnt/arch || mkdir /mnt/arch  
+	test -e /mnt/arch/grub && ( rm -rf /mnt/arch/grub || return 1 )  
+	mkdir /mnt/arch/grub || return 1
+
+	# create new Root device
+	inst_dev=/mnt/arch/rootfs
+	if [ ! -e $inst_dev ]  ; then
+		inst_size=4095 	# max size on FAT32 is 4GB - 1 sect	
+		printf "Creating Bootdevice %s (size=%s MB)\n" "$inst_dev" "$inst_size"
+		fallocate -l ${inst_size}M $inst_dev
+		if [ $? -ne 0 ] ; then
+			printf "Falling back to dd since fallocate is not working.\n" >&2
+			dd if=/dev/zero of=$inst_dev bs=1M count=$inst_size 
+			if [ $? -ne 0 ] ; then return 1; fi
+		fi
+	else
+		printf "Reusing existing Bootdevice %s and reformatting it\n" "$inst_dev"
+		# delete superblock to avoid warning when creating the new filesystem
+		dd if=/dev/zero of=/mnt/arch/rootfs bs=1k count=4 conv=notrunc
+	fi
+		
+	mkfs.ext4 -O "^has_journal" /mnt/arch/rootfs
+	if [ $? -ne 0 ] ; then
+		printf "Error creating Filesystem\n"
+		return 1;
+	fi
+
+	test -d /mnt.root || mkdir /mnt.root		
+	mount /mnt/arch/rootfs /mnt.root
+	if [ $? -ne 0 ] ; then
+		printf "Error mounting /mnt/arch/rootfs on /mnt.root\n"
+		return 1
+	fi
+
+	mkdir -p /mnt.root/boot/grub2/grub	
+	mount --bind /mnt/arch/grub /mnt.root/boot/grub2/grub
+	if [ $? -ne 0 ] ; then
+		printf "Error mounting /mnt/arch/boot\n"
+		return 1
+	fi
+	
+	#@TODO: gather UUID of USB from runnung system
+	#@TODO: check why modprobe.conf does not include hook "loop"
+	#@TODO: include vfat driver in initcpio
+	mkdir -p /mnt.root/etc/grub.d
+	cat >/mnt.root/etc/grub.d/10_linuxusb_nafetsde <<-"EOF"
+		cat <<-"EOF_LINUXUSB"
+			menuentry 'Arch Linux USB' --class arch --class gnu-linux --class gnu --class os $menuentry_id_option 'gnulinux-simple-usb' {
+				load_video
+				set gfxpayload=keep
+				insmod gzio
+				insmod ext2
+				search --no-floppy --fs-uuid --set=usbroot 56D1-E22B
+				loopback loop ($usbroot)/arch/rootfs
+				echo	'Loading Linux linux ...'
+				linux	(loop)/boot/vmlinuz-linux root=/dev/disk/by-uuid/56D1-E22B@arch/rootfs rw quiet
+				echo	'Loading initial ramdisk ...'
+				initrd  (loop)/boot/initramfs-linux.img
+			}		
+			EOF_LINUXUSB
+		EOF
+	chmod +x /mnt.root/etc/grub.d/10_linuxusb_nafetsde
+	
+	install_arch_ondir "$1" "/mnt.root" "$3" "usb" "/dev/$raw_dev"
+
+    umount --recursive /mnt.root
+    rmdir /mnt.root
+    umount --recursive /mnt
+}
+
+
+##### main ####################################################################
+if [ $# -lt 1 ]; then
+	usage "Got $# arguments, minimum 1 expected"
+else
+	#detect xen special handling
+	case "$1" in 
+		*xen1* | *Xen1* )
+			extrapkg="grub efibootmgr"
+			bootdev="/dev/disk/by-partlabel/xen1-boot"
+			rootdev=${2:-/dev/disk/by-partlabel/xen1-sys}
+			itype="kvm"
+			mtype="xen"
+			;;
+		*xen2* | *Xen2* )
+			extrapkg="grub efibootmgr"
+			bootdev="/dev/disk/by-partlabel/xen2-boot"
+			rootdev=${2:-/dev/disk/by-partlabel/xen2-sys}
+			itype="kvm"
+			mtype="xen"
+			;;
+		vKube | vKubeWrk* | vKubeEdge* )
+			rootdev=${2:-/dev/vg-sys/$1-sys}
+			mtype="coreos"
+			;;
+		vKube* )
+			rootdev=${2:-/dev/vg-sys/$1-sys}
+			mtype="coreos-ct"
+			;;
+		vKvm* )
+			if [ ! -z "$2" ] ; then
+				rootdev="$2"
+			elif [ -b "/dev/vg-sys/$1-sys" ] ; then
+				rootdev="/dev/vg-sys/$1-sys"
+			else
+				rootdev="/var/lib/libvirt/images/$1.raw"
+			fi
+			itype="${1//vKvm/}"
+			if [ "$itype" != "Test" ] ; then
+				itype="${itype//Test/}"
+			fi
+			mtype="kvm"
+			;;
+		usbArch )
+			rootdev=$2 # no default
+			extrapkg="mkinitcpio-addon-rootloop grub efibootmgr" # to speed up
+			mtype="usb"
+			;;
+		* )
+			rootdev=${2:-/dev/vg-sys/$1-sys}
+			extrapkg=""
+			bootdev=""
+			mtype="arch"
+	esac
+
+	if [ "$mtype" != "kvm" ] && [ ! -b $rootdev ]; then
+		usage "$rootdev is not a Blockdevice"
+	elif [ "$mtype" == "coreos-ct" ]; then # Normal Core-OS machine
+		do_install_coreos-ct $1 $rootdev
+	elif [ "$mtype" == "coreos" ]; then # Normal Core-OS machine
+		do_install_coreos $1 $rootdev
+	elif [ "$mtype" == "xen" ]; then # Physical Arch machine
+		do_install $1 $rootdev "$extrapkg" $bootdev 1 $itype
+	elif [ "$mtype" == "arch" ]; then # Normal Arch Machine
+		do_install $1 $rootdev "$extrapkg" $bootdev
+	elif [ "$mtype" == "kvm" ]; then # KVM Arch Machine
+		do_install_kvm "$1" "$rootdev" "$extrapkg" $itype
+	elif [ "$mtype" == "usb" ] ; then # USB Stick
+		do_install_usb "$1" "$rootdev" "$extrapkg"
+
+	else # Unknown Machine Type
+		usage "Internal Error: Invalid system type $mtype"
+	fi
+fi
