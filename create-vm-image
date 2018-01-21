@@ -117,7 +117,7 @@ function install_arch_ondir () {
 #    2 - mounted_rootdir
 #    3 - extra packages to install [optional]
 #    4 - machine type [default=xen]
-#    5 - bootdevice to install bootloader (if machtype=kvm)
+#    5 - bootdevice to install bootloader (if machtype=kvm or phys)
 #    6 - install type - start install-<type> script after boot
 
 machtype=${4-xen}
@@ -135,7 +135,7 @@ case $machtype in
 	phys)
 		newmods="xen-blkfront xen-fbfront xen-netfront xen-kbdfront" # XEN drivers
 		newmods="$newmods ehci_pci xhci_pci ahci"					 # HW drivers
-		machboot="grubcfg grub2-efi"
+		machboot="grub2 grubcfg grub2-efi"
 		;;
 	usb)
 		# grub2-efi does not work yet so we disable it.
@@ -206,10 +206,16 @@ for f in $machboot ; do case "$f" in
 		;;
 	grub2)
 		printf "Installing Grub2\n"
+		if [ -z "$5" ] ; then
+			printf "Internal error: Missing parameter 5 (bootdevice).\n"
+			return 1
+		fi
 		arch-chroot $2 <<-EOF
 			pacman -S --needed --noconfirm grub
 			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
-			grub-install --boot-directory=/boot/grub2 $5
+			grub-install \\
+				--target=i386-pc \\
+				--boot-directory=/boot/grub2 $5
 			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
 			grub-mkconfig >/boot/grub2/grub/grub.cfg
 			rc=\$? ; if [ \$rc -ne 0 ] ; then exit \$rc; fi
