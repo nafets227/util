@@ -19,18 +19,6 @@ function usage() {
     echo "$0 Aborted."
 }
 
-##### ltrim #####
-function ltrim {
-	if [ $# -ne 1 ] ; then
-		# Empty String results in empty string
-		return
-	fi
-
-	# remove leading blanks
-	printf "%s\n" "${1#"${1%%[![:space:]]*}"}"
-	}
-
-		
 ##### Install to USB-Stick ###################################################
 # based on info from
 # http://www.zdnet.de/41559191/multiboot-ueber-usb-nur-ein-stick-fuer-windows-und-linux/2/
@@ -149,6 +137,12 @@ function inst-arch_do_usb () {
 
 
 ##### main ####################################################################
+. $(dirname $BASH_SOURCE)/util-functions.sh
+if [ $? -ne 0 ] ; then 
+	printf "util-functions.sh not found. Aborting.\n"
+	exit 1
+fi
+
 . $(dirname $BASH_SOURCE)/install-functions.sh
 if [ $? -ne 0 ] ; then 
 	printf "install-functions.sh not found. Aborting.\n"
