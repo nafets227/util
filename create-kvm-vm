@@ -164,9 +164,9 @@ function getDefaultID() {
 	case $vmname in
 		vDom   ) id="01" ;;
 		#Octopus)id="03" ;; # SATIP HW appliance, save the ID here
-		xen1 | vXen1 | kvm1 | vKvm1 )
+		xen1 | vXen1 | kvm1 | vKvm1 | vPhys1 )
 		         id="05" ;;
-		xen2 | vXen2 | kvm2 | vKvm2 )
+		xen2 | vXen2 | kvm2 | vKvm2 | vPhys2 )
 		         id="06" ;;
 
 		vVdr   ) id="10" ;;
