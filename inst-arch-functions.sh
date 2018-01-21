@@ -272,55 +272,6 @@ function inst-arch_do_kvm () {
 	return $rc
 }
 
-##### inst-coreos_download #########################################################
-function inst-coreos_download {
-	local readonly BASEURL="https://stable.release.core-os.net/amd64-usr"
-	local readonly CACHEBAS="/var/cache/coreos"
-
-	if [ -e $CACHEBAS/current/version.txt ] ; then
-		CACHE_VERSION=$( \
-			gawk --field-separator '=' '/COREOS_VERSION=/ { print $2}' \
-		       	< $CACHEBAS/current/version.txt)
-	else
-		CACHE_VERSION=""
-	fi
-	INET_VERSION=$(curl -L $BASEURL/current/version.txt | \
-		gawk --field-separator '=' '/COREOS_VERSION=/ { print $2}' )
-
-	if [ "$INET_VERSION" != "$CACHE_VERSION" ]; then
-		printf  "Downloading CoreOS Version %s ... \n" "$INET_VERSION" >&2
-		##### Now Download the newer version ##################################
-		local filelist="coreos_production_xen.README"
-		filelist="$filelist,coreos_production_xen_image.bin.bz2"
-		filelist="$filelist,coreos_production_xen_image.bin.bz2.sig"
-		filelist="$filelist,coreos_production_xen_pvgrub.cfg"
-		filelist="$filelist,coreos_production_xen_pygrub.cfg"
-		filelist="$filelist,version.txt"
-		filelist="$filelist,version.txt.sig"
-
-		mkdir -p $CACHEBAS/$INET_VERSION >/dev/null
-		curl -# -L -o "$CACHEBAS/$INET_VERSION/#1" \
-			"$BASEURL/$INET_VERSION/{$filelist}" >&2
-		rc=$?; if [ $rc -ne 0 ]; then
-			printf "Error %s downloading CoreOS from %s to %s\n." \
-				"$rc" \
-				"$BASEURL/$INET_VERSION" \
-			       	"$CACHEBAS/$INET_VERSION" >&2
-			return 1
-		fi
-		rm $CACHEBAS/current >/dev/null
-		ln -s $INET_VERSION $CACHEBAS/current >/dev/null
-		if [ ! -z "$CACHE_VERION" ] ; then
-			rm -rf $CACHEBAS/$CACHE_VERSION >/dev/null # delete old version 
-		fi
-	else
-		printf  "Reusing cached CoreOS Version %s. \n" "$CACHE_VERSION" >&2
-	fi
-
-	printf "%s\n" "$CACHEBAS/current"
-	return 0
-}
-
 ##### main ####################################################################
 
 # do nothing
