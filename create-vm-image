@@ -143,24 +143,9 @@ if [ $? -ne 0 ] ; then
 	exit 1
 fi
 
-. $(dirname $BASH_SOURCE)/install-functions.sh
-if [ $? -ne 0 ] ; then 
-	printf "install-functions.sh not found. Aborting.\n"
-	exit 1
-fi
-
-. $(dirname $BASH_SOURCE)/inst-arch-functions.sh
-if [ $? -ne 0 ] ; then 
-	printf "inst-arch-functions.sh not found. Aborting.\n"
-	exit 1
-fi
-
-. $(dirname $BASH_SOURCE)/inst-coreos-functions.sh
-if [ $? -ne 0 ] ; then 
-	printf "inst-coreos-functions.sh not found. Aborting.\n"
-	exit 1
-fi
-
+util_loadfunc-or-exit install-functions.sh
+util_loadfunc-or-exit inst-arch-functions.sh
+util_loadfunc-or-exit inst-coreos-functions.sh
 
 if [ $# -lt 1 ]; then
 	usage "Got $# arguments, minimum 1 expected"
