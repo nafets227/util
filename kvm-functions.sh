@@ -82,6 +82,9 @@ function kvm_parseParm () {
 			--dry-run )
 				prm_dryrun="${value:-1}"
 				;;
+			--efi )
+				prm_efi="${value:-1}"
+				;;
 			*)
 				printf "Error: unknown Parameter %s with value %s\n" \
 					"$parm" "$value"
@@ -236,6 +239,7 @@ function kvm_create-vm () {
 	local prm_dryrun="0"
 	local prm_virt="kvm"
 	local prm_auto="1"
+	local prm_efi="0"
 	local prm_id
 	local prm_disk
 	local prm_disk2
@@ -243,11 +247,11 @@ function kvm_create-vm () {
 	local prm_os
 	local prm_sound
 	local vmname
-	local netdev=$(getNetworkDevice)
+	local netdev=$(kvm_getNetworkDevice)
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
 	# Parse Parameters
-	parseParm "$@"
+	kvm_parseParm "$@"
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
 	# Calculate Domain ID to be used as unique number where needed
@@ -280,11 +284,14 @@ function kvm_create-vm () {
 	fi
 
 	# Tell user what we do
+	local prefix_dryrun=""
+	[ "$prm_dryrun" -ne 0 ] || prefix_dryrun="Dryrun-"
 	printf "%s: %sInstalling machine %s (ID=%s)\n" \
 		"$(basename $BASH_SOURCE .sh)" \
-		"${prm_dryrun+Dryrun-}" \
+		"$prefix_dryrun" \
 		"$vmname" \
 		"$prm_id"
+	printf "\tefi BIOS %s\n" "$prm_efi"
 	printf "\tOS %s\n" "${prm_os-<default>}"
 	printf "\tmemory %s\n" "$prm_mem"
 	printf "\tcpu %s\n" "$prm_cpu"
@@ -337,6 +344,11 @@ function kvm_create-vm () {
 			--sound $prm_sound
 			"
 	fi
+	if [ "$prm_efi" == "1" ] ; then 
+		virt_prms="$virt_prms
+			--boot loader=/usr/share/ovmf/x64/OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/usr/share/ovmf/x64/OVMF_VARS.fd,loader_secure=no
+			"
+	fi
 	
 	# @TODO ostype
 	# @TODO memory balloning for hot-plug and unplug
@@ -368,28 +380,35 @@ function kvm_create-vm () {
 # Parameters:
 # 1 - machinename [mandatory]
 function kvm_delete-vm {
-	local domstate=$(virsh dominfo $vmname 2>/dev/null)
+	if [ -z "$1" ] ; then
+		printf "Error: no machine name supplied\n" >&2
+		return 1
+	fi
+	vmname="$1"
 	
-	if [ -z "$domstate" ] ; then
+	local domstate=$(virsh domstate $vmname 2>/dev/null)
+
+	if [ -z "$domstate" ] ||
+	   [ "$domstate" == " " ] ; then
 		# Domain is not existing
 		return 0
-	else
-		# delete any existing machine (=domain) with same name
-		local state="$(sed -n -e 's/State: *//p' <<<$domstate)"
+	elif [ "$domstate" == "running" ] ||
+	     [ "$domstate" == "idle" ] ; then
 		virsh shutdown "$vmname"
 		virsh destroy "$vmname"
-		virsh undefine "$vmname"
-		#@TODO react on state of VM
-		#case $state in
-		#	"running" | "idle" )
-		#	"paused" | "pmsuspended" )
-		#	"in shutdown"
-		#	"shut off" | "crashed" )
-		#	* )
-		#		printf "Unknown State \"%s\" of existing machine %s.\n" \
-		#			" $state" "$vmname"
-		#		exit 1
-		#esac
+		virsh undefine --nvram "$vmname"
+	elif [ "$domstate" == "paused" ] ||
+	     [ "$domstate" == "pmsuspended" ] ||
+	     [ "$domstate" == "in shutdown" ] ; then
+		virsh destroy "$vmname"
+		virsh undefine --nvram "$vmname"
+	elif [ "$domstate" == "shut off" ] ||
+	     [ "$domstate" == "crashed" ] ; then
+		virsh undefine --nvram "$vmname"
+	else
+		printf "Unknown State \"%s\" of existing machine %s.\n" \
+			" $state" "$vmname" >&2
+		return 1
 	fi
    
 }
