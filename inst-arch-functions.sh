@@ -7,6 +7,256 @@
 # (C) 2014-2018 Stefan Schallenberg
 #
 
+#### Setup Filesystems #######################################################
+function inst-arch_init() {
+	# Parameters:
+	#    1 - hostname
+	#    2 - rootdev
+	#    3 - boot device [optional]
+	#    4 - boot mount point [options, default /boot/efi]
+	local name="$1"
+	local rootdev="$2"
+	local bootdev="$3"
+	local bootmnt="${4-/boot/efi}"
+	local new_root
+
+	printf "About to install Arch Linux for %s\n" "$name" >&2
+	if [ -z "$bootdev" ]; then
+		printf "Root-Device: %s\n" "$rootdev" >&2
+		printf "Warning: All data on %s will be DELETED!\n" \
+			"$rootdev" >&2
+	else
+		printf "Root-Device: %s, Boot-Device: %s on %s\n" \
+			"$rootdev" "$bootdev" "$bootmnt" >&2
+		printf "Warning: All data on %s and %s will be DELETED!\n" \
+			"$rootdev" "$bootdev" >&2
+	fi
+	read -p "Press Enter to Continue, use Ctrl-C to break."
+
+	#install needed utilities
+	pacman -S --needed --noconfirm arch-install-scripts dosfstools >&2
+
+	# create tempdir to temporary mount the filesystems
+	new_root=$(mktemp --directory --tmpdir inst-arch.XXXXXXXXXX)
+	[ $? -ne 0 ] && return 1
+
+	# Important: print new_root now to let the caller do cleanup with
+	# the funtion inst-arch_finalize
+	printf "%s\n" "$new_root"
+
+	# Create root Filesystems and mount it
+	mkfs.ext4 $rootdev >&2 || return 1
+	mount $rootdev $new_root >&2 || return 1
+
+	# create boot filesystem and mount (if any)
+	if [ ! -z "$bootdev" ]; then
+		mkfs.fat -F32 "$bootdev" >&2 || return 1
+		mkdir -p $new_root$bootmnt >&2 || return 1
+		mount $bootdev $new_root$bootmnt >&2 || return 1
+	fi
+
+	return 0
+}
+
+#### Tear down filesystems ###################################################
+function inst-arch_finalize {
+	# Parameters:
+	#    1 - new_root
+	local new_root="$1"
+
+	if [ ! -d "$new_root" ] ; then
+		printf "%s: Error new_root %s is no directory\n" \
+			"$FUNCNAME" "$new_root" >&2
+		return 1
+	fi
+
+	# From here on we do not do any error handling.
+	# We just do our best to cleanup things.
+
+	arch-chroot $new_root <<-EOF
+		passwd -e root
+	EOF
+
+	umount --recursive --detach-loop "$new_root"
+
+	return 0
+}
+
+##### Install Arch Linux on a new filesystem #################################
+function inst-arch_baseos {
+	# Parameters:
+	#    1 - hostname
+	#    2 - new_root
+	#    3 - additional package [optionsal]
+	#    4 - additional Modules in initrd [optional]
+	local name="$1"
+	local new_root="$2"
+	local extrapkg="$3"
+	local extramod="$4"
+
+	if [ ! -d "$new_root" ] ; then
+		printf "%s: Error new_root %s is no directory\n" \
+			"$FUNCNAME" "$new_root" >&2
+		return 1
+	fi
+
+	printf "Installing Arch Linux on %s. \n\tExtra Packages: %s\n\tExtra Modules: %s\n" \
+		"$name" "$extrapkg" "$extramod" >&2
+
+	#Bootstrap the new system
+	pacstrap -c -d $new_root base openssh $extrapkg || return 1
+	genfstab -U -p $new_root >$new_root/etc/fstab || return 1
+
+	# Now include the needed modules in initcpio
+	if [ ! -z "$extramod" ] ; then
+		sed -i -re \
+			"s/(MODULES=[\\(\"])(.*)([\\)\"]\$)/\\1\\2$extramod\\3/" \
+			$new_root/etc/mkinitcpio.conf
+	fi
+
+	# set Hostname
+	printf "%s\n" "$name" >$new_root/etc/hostname
+
+	# Now Set the system to German language
+	# for german use: echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+	printf "LANG=en_DK.UTF-8" > $new_root/etc/locale.conf
+	echo "KEYMAP=de-latin1-nodeadkeys"  > $new_root/etc/vconsole.conf
+	test -e $new_root/etc/localtime && rm $new_root/etc/localtime
+	ln -s /usr/share/zoneinfo/Europe/Berlin $new_root/etc/localtime
+	cat >>$new_root/etc/locale.gen <<-EOF
+
+		# by $OURSELVES
+		de_DE.UTF-8 UTF-8
+		en_DK.UTF-8 UTF-8
+		EOF
+
+	#Now chroot into the future system
+	arch-chroot $new_root <<-EOF || return 1
+		systemctl enable sshd.service
+
+		locale-gen
+
+		mkinitcpio -p linux
+
+		#Root Passwort aendern
+		printf "Forst2000\nForst2000\n" | passwd
+		EOF
+
+	return 0
+
+}
+
+##### Install Grub Config File (deprecated, used to boot VM from XEN #########
+function inst-arch_bootmgr-grubcfg {
+	# Parameters:
+	#    1 - new_root
+	local new_root="$1"
+
+	printf "Installing GrubCFG on %s\n" "$new_root" >&2
+
+	if [ ! -d "$new_root" ] ; then
+		printf "%s: Error new_root %s is no directory\n" \
+			"$FUNCNAME" "$new_root" >&2
+		return 1
+	fi
+
+	mkdir -p $new_root/boot/grub 2>/dev/null
+	cat >$new_root/boot/grub/grub.cfg <<-"EOFGRUB" || return 1
+		menuentry 'Arch Linux for XEN pygrub' {
+		    set root='hd0,msdos1'
+		    echo    'Loading Linux core repo kernel ...'
+		    linux   /boot/vmlinuz-linux root=/dev/xvda1 ro
+		    echo    'Loading initial ramdisk ...'
+		    initrd  /boot/initramfs-linux.img
+		}
+		EOFGRUB
+
+	return 0
+}
+
+##### Install Grub for efi ###################################################
+function inst-arch_bootmgr-grubefi {
+	# Parameters:
+	#    1 - new_root
+	local new_root="$1"
+
+	printf "Installing Grub-EFI on %s\n" "$new_root" >&2
+
+	if [ ! -d "$new_root" ] ; then
+		printf "%s: Error new_root %s is no directory\n" \
+			"$FUNCNAME" "$new_root" >&2
+		return 1
+	fi
+
+	arch-chroot $new_root <<-"EOFGRUB" || return 1
+		pacman -S --needed --noconfirm grub efibootmgr || exit 1
+		grub-install -v \
+			--target=x86_64-efi \
+			--boot-directory=/boot/grub2 \
+			--efi-directory=/boot/efi/ \
+			--no-bootsector \
+			--no-nvram \
+			|| exit 1
+		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
+		EOFGRUB
+
+	# Bugfix EFI buggy BIOS - will be redone by systemd ervice
+	# nafetsde-efiboot on each shutdown
+	mkdir -p $new_root/boot/efi/EFI/BOOT 2>/dev/null
+	cp -a	$new_root/boot/efi/EFI/arch/grubx64.efi \
+		$new_root/boot/efi/EFI/BOOT/BOOTx64.EFI \
+		|| return 1
+
+	return 0
+}
+
+##### Install Grub for efi ###################################################
+function inst-arch_bootmgr-grubraw {
+	# Parameters:
+	#    1 - new_root
+	#    2 - rawdev [optional, autoprobed to device of new_root]
+	local new_root="$1"
+	local rawdev="$2"
+
+
+	if [ ! -d "$new_root" ] ; then
+		printf "%s: Error new_root %s is no directory\n" \
+			"$FUNCNAME" "$new_root" >&2
+		return 1
+	fi
+
+	if [ -z "$rawdev" ] ; then
+		rawdev=$(cat /proc/mounts | grep "$new_root " | cut -d" " -f 1)
+		printf "Autoprobed Raw Device to %s\n" "$rawdev" >&2
+	fi
+
+	if [ ! -b "$rawdev" ] ; then
+		printf "Raw Device %s is no block device.\n" "$rawdev" >&2
+		return 1
+	fi
+
+	printf "Installing Grub-Raw on %s (%s)\n" "$new_root" "$rawdev" >&2
+
+	arch-chroot $new_root <<-EOF || return 1
+		pacman -S --needed --noconfirm grub || exit 1
+		grub-install \\
+			--target=i386-pc \\
+			--boot-directory=/boot/grub2 \\
+			$rawdev \\
+			|| exit 1
+		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
+	EOF
+
+	return 0
+}
+
+##############################################################################
+##### Compatibility function #################################################
+##### these functions are deprecated but still alive to let              #####
+##### scripts using it not end in error                                  #####
+##############################################################################
+
+
 #### Install Arch Linux on a mounted directory ###############################
 function inst-arch_ondir () {
 # Parameters: 

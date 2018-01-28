@@ -28,8 +28,8 @@ function install_nafets_files {
 		return 1
 	fi
 
-	# Exit on error
-	set -e
+	# on error return 1
+	trap "trap '' ERR; return 1" ERR
 
 	# Copy SSL private files
 	if [ -d /data/ca/$name ]; then
@@ -55,6 +55,8 @@ function install_nafets_files {
 	# Copy local modified files to new machine
 	rsync -aHX --delete /root/tools/ $mount/root/tools --exclude=".svn"
 	printf "UPDATED subversion repository\n" >&2
+
+	trap '' ERR
 
 	return 0
 }
