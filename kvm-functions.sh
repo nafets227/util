@@ -285,7 +285,7 @@ function kvm_create-vm () {
 
 	# Tell user what we do
 	local prefix_dryrun=""
-	[ "$prm_dryrun" -ne 0 ] || prefix_dryrun="Dryrun-"
+	[ "$prm_dryrun" -ne 0 ] && prefix_dryrun="Dryrun-"
 	printf "%s: %sInstalling machine %s (ID=%s)\n" \
 		"$(basename $BASH_SOURCE .sh)" \
 		"$prefix_dryrun" \
