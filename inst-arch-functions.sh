@@ -22,12 +22,14 @@ function inst-arch_init() {
 
 	printf "About to install Arch Linux for %s\n" "$name" >&2
 	if [ -z "$bootdev" ]; then
-		printf "Root-Device: %s\n" "$rootdev" >&2
+		printf "Root-Device: %s (%s)\n" \
+		       	"$rootdev" "$(realpath $rootdev)" >&2
 		printf "Warning: All data on %s will be DELETED!\n" \
 			"$rootdev" >&2
 	else
-		printf "Root-Device: %s, Boot-Device: %s on %s\n" \
-			"$rootdev" "$bootdev" "$bootmnt" >&2
+		printf "Root-Device: %s (%s), Boot-Device: %s (%s) on %s\n" \
+			"$rootdev" "$(realpath $rootdev)" \
+			"$bootdev" "$(realpath $bootdev)" "$bootmnt" >&2
 		printf "Warning: All data on %s and %s will be DELETED!\n" \
 			"$rootdev" "$bootdev" >&2
 	fi
