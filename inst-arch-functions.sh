@@ -152,7 +152,7 @@ function inst-arch_bootmgr-grubcfg {
 	#    1 - new_root
 	local new_root="$1"
 
-	printf "Installing GrubCFG on %s\n" "$new_root" >&2
+	printf "Configuring Grub on %s\n" "$new_root" >&2
 
 	if [ ! -d "$new_root" ] ; then
 		printf "%s: Error new_root %s is no directory\n" \
@@ -160,6 +160,9 @@ function inst-arch_bootmgr-grubcfg {
 		return 1
 	fi
 
+	# Install grub.cfg for XEN booting.
+	# This is a minimum file to serve as input for pygrub during
+	# XEN loading of image.
 	mkdir -p $new_root/boot/grub 2>/dev/null
 	cat >$new_root/boot/grub/grub.cfg <<-"EOFGRUB" || return 1
 		menuentry 'Arch Linux for XEN pygrub' {
@@ -170,6 +173,28 @@ function inst-arch_bootmgr-grubcfg {
 		    initrd  /boot/initramfs-linux.img
 		}
 		EOFGRUB
+
+	# Install grubd2 Config for booting efi or raw.
+	# We insert parameters for console to be able to use it
+	# when starting as virtual machine.
+	mkdir -p $new_root/boot/grub2/grub 2>/dev/null
+        kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
+        sed_cmd="s:"
+        sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
+        sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":p"
+	sed -i .orig -e "$sed_cmd" $new_root/etc/default/grub
+	cat >>$new_root/etc/default/grub <<-"EOF"
+
+		## Serial console
+		GRUB_TERMINAL=serial
+		GRUB_SERIAL_COMMAND="serial --speed=38400 --unit=0 --word=8 --parity=no --stop=1"
+		EOF
+
+
+	arch-chroot $new_root <<-"EOFGRUB" || return 1
+		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
+		EOFGRUB
+
 
 	return 0
 }
@@ -190,14 +215,13 @@ function inst-arch_bootmgr-grubefi {
 
 	arch-chroot $new_root <<-"EOFGRUB" || return 1
 		pacman -S --needed --noconfirm grub efibootmgr || exit 1
-		grub-install -v \
+		grub-install \
 			--target=x86_64-efi \
 			--boot-directory=/boot/grub2 \
 			--efi-directory=/boot/efi/ \
 			--no-bootsector \
 			--no-nvram \
 			|| exit 1
-		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
 		EOFGRUB
 
 	# Bugfix EFI buggy BIOS - will be redone by systemd ervice
@@ -244,7 +268,6 @@ function inst-arch_bootmgr-grubraw {
 			--boot-directory=/boot/grub2 \\
 			$rawdev \\
 			|| exit 1
-		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
 	EOF
 
 	return 0
