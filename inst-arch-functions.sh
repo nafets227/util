@@ -144,16 +144,8 @@ function inst-arch_baseos {
 		printf "Forst2000\nForst2000\n" | passwd
 		EOF
 
-	return 0
-
-}
-
-##### Install Grub Config File (deprecated, used to boot VM from XEN #########
-function inst-arch_bootmgr-grubcfg {
-	# Parameters:
-	#    1 - new_root
-	local new_root="$1"
-
+	# Concfigure Grub for both XEN ( in /boot/grub/grub.cfg) and
+	# EFI or raw boot ( in /boot/grub2/grub/grub.cfg )
 	printf "Configuring Grub on %s\n" "$new_root" >&2
 
 	if [ ! -d "$new_root" ] ; then
@@ -166,7 +158,8 @@ function inst-arch_bootmgr-grubcfg {
 	# This is a minimum file to serve as input for pygrub during
 	# XEN loading of image.
 	mkdir -p $new_root/boot/grub 2>/dev/null
-	cat >$new_root/boot/grub/grub.cfg <<-"EOFGRUB" || return 1
+	cat >$new_root/boot/grub/grub.cfg <<-EOFGRUB || return 1
+		# by $OURSELVES
 		menuentry 'Arch Linux for XEN pygrub' {
 		    set root='hd0,msdos1'
 		    echo    'Loading Linux core repo kernel ...'
@@ -185,13 +178,13 @@ function inst-arch_bootmgr-grubcfg {
         sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
         sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":p"
 	sed -i .orig -e "$sed_cmd" $new_root/etc/default/grub
-	cat >>$new_root/etc/default/grub <<-"EOF"
+	cat >>$new_root/etc/default/grub <<-EOF
 
 		## Serial console
+		## by $OURSELVES
 		GRUB_TERMINAL=serial
 		GRUB_SERIAL_COMMAND="serial --speed=38400 --unit=0 --word=8 --parity=no --stop=1"
 		EOF
-
 
 	arch-chroot $new_root <<-"EOFGRUB" || return 1
 		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
