@@ -103,6 +103,19 @@ function install_setup_service () {
 
 }
 
+#### Install Nafets Standards ################################################
+function install_nafets_std {
+	# SSL Zertifikat der eigenen CA installieren.
+	install_ssl_ca
+	# Root logon in SSH erlauben
+	install_ssl_allow_root_pw
+
+}
 ##### Main ###################################################################
-# do nothing
+
+# Load Sub.Modules
+for f in $(dirname $BASH_SOURCE)/install/*.sh ; do
+	echo "Loading Module $f"
+	. $f
+done
 
