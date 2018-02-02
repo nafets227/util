@@ -12,10 +12,10 @@
 #### Install our special files on machine ####################################
 function install_nafets_files {
 	local readonly name="$1"
-	local readonly mount="$2"
+	local readonly mount="${2-$INSTALL_ROOT}"
 
-	if [ $# -ne 2 ] ; then
-		printf "Internal Error: %s got %s parms (exp=2)\n" \
+	if [ $# -ne 1 ] ; then
+		printf "Internal Error: %s got %s parms (exp=1+)\n" \
 			"$FUNCNAME" "$#" >&2
 		return 1
 	elif [ -z "$name" ] ; then

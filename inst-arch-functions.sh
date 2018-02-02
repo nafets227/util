@@ -18,7 +18,6 @@ function inst-arch_init() {
 	local rootdev="$2"
 	local bootdev="$3"
 	local bootmnt="${4-/boot/efi}"
-	local new_root
 
 	printf "About to install Arch Linux for %s\n" "$name" >&2
 	if [ -z "$bootdev" ]; then
@@ -39,22 +38,22 @@ function inst-arch_init() {
 	pacman -S --needed --noconfirm arch-install-scripts dosfstools >&2
 
 	# create tempdir to temporary mount the filesystems
-	new_root=$(mktemp --directory --tmpdir inst-arch.XXXXXXXXXX)
+	INSTALL_ROOT=$(mktemp --directory --tmpdir inst-arch.XXXXXXXXXX)
 	[ $? -ne 0 ] && return 1
 
-	# Important: print new_root now to let the caller do cleanup with
+	# Important: export INSTALL_ROOT now to let the caller do cleanup with
 	# the funtion inst-arch_finalize
-	printf "%s\n" "$new_root"
+	export INSTALL_ROOT
 
 	# Create root Filesystems and mount it
 	mkfs.ext4 $rootdev >&2 || return 1
-	mount $rootdev $new_root >&2 || return 1
+	mount $rootdev $INSTALL_ROOT >&2 || return 1
 
 	# create boot filesystem and mount (if any)
 	if [ ! -z "$bootdev" ]; then
 		mkfs.fat -F32 "$bootdev" >&2 || return 1
-		mkdir -p $new_root$bootmnt >&2 || return 1
-		mount $bootdev $new_root$bootmnt >&2 || return 1
+		mkdir -p $INSTALL_ROOT$bootmnt >&2 || return 1
+		mount $bootdev $INSTALL_ROOT$bootmnt >&2 || return 1
 	fi
 
 	return 0
@@ -62,24 +61,21 @@ function inst-arch_init() {
 
 #### Tear down filesystems ###################################################
 function inst-arch_finalize {
-	# Parameters:
-	#    1 - new_root
-	local new_root="$1"
-
-	if [ ! -d "$new_root" ] ; then
-		printf "%s: Error new_root %s is no directory\n" \
-			"$FUNCNAME" "$new_root" >&2
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
 	# From here on we do not do any error handling.
 	# We just do our best to cleanup things.
 
-	arch-chroot $new_root <<-EOF
+	arch-chroot $INSTALL_ROOT <<-EOF
 		passwd -e root
 	EOF
 
-	umount --recursive --detach-loop "$new_root"
+	umount --recursive --detach-loop "$INSTALL_ROOT"
+	unset INSTALL_ROOT
 
 	return 0
 }
@@ -88,44 +84,42 @@ function inst-arch_finalize {
 function inst-arch_baseos {
 	# Parameters:
 	#    1 - hostname
-	#    2 - new_root
 	#    3 - additional package [optionsal]
 	#    4 - additional Modules in initrd [optional]
 	local name="$1"
-	local new_root="$2"
-	local extrapkg="$3"
-	local extramod="$4"
+	local extrapkg="$2"
+	local extramod="$3"
 
-	if [ ! -d "$new_root" ] ; then
-		printf "%s: Error new_root %s is no directory\n" \
-			"$FUNCNAME" "$new_root" >&2
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
-	printf "Installing Arch Linux on %s. \n\tExtra Packages: %s\n\tExtra Modules: %s\n" \
-		"$name" "$extrapkg" "$extramod" >&2
+	printf "Installing Arch Linux on %s for %s. \n\tExtra Packages: %s\n\tExtra Modules: %s\n" \
+		"$INSTALL_ROOT" "$name" "$extrapkg" "$extramod" >&2
 
 	#Bootstrap the new system
-	pacstrap -c -d $new_root base openssh $extrapkg || return 1
-	genfstab -U -p $new_root >$new_root/etc/fstab || return 1
+	pacstrap -c -d $INSTALL_ROOT base openssh $extrapkg || return 1
+	genfstab -U -p $INSTALL_ROOT >$INSTALL_ROOT/etc/fstab || return 1
 
 	# Now include the needed modules in initcpio
 	if [ ! -z "$extramod" ] ; then
 		sed -i -re \
 			"s/(MODULES=[\\(\"])(.*)([\\)\"]\$)/\\1\\2$extramod\\3/" \
-			$new_root/etc/mkinitcpio.conf
+			$INSTALL_ROOT/etc/mkinitcpio.conf
 	fi
 
 	# set Hostname
-	printf "%s\n" "$name" >$new_root/etc/hostname
+	printf "%s\n" "$name" >$INSTALL_ROOT/etc/hostname
 
 	# Now Set the system to German language
 	# for german use: echo "LANG=de_DE.UTF-8" > /etc/locale.conf
-	printf "LANG=en_DK.UTF-8" > $new_root/etc/locale.conf
-	echo "KEYMAP=de-latin1-nodeadkeys"  > $new_root/etc/vconsole.conf
-	test -e $new_root/etc/localtime && rm $new_root/etc/localtime
-	ln -s /usr/share/zoneinfo/Europe/Berlin $new_root/etc/localtime
-	cat >>$new_root/etc/locale.gen <<-EOF
+	printf "LANG=en_DK.UTF-8" > $INSTALL_ROOT/etc/locale.conf
+	echo "KEYMAP=de-latin1-nodeadkeys"  > $INSTALL_ROOT/etc/vconsole.conf
+	test -e $INSTALL_ROOT/etc/localtime && rm $INSTALL_ROOT/etc/localtime
+	ln -s /usr/share/zoneinfo/Europe/Berlin $INSTALL_ROOT/etc/localtime
+	cat >>$INSTALL_ROOT/etc/locale.gen <<-EOF
 
 		# by $OURSELVES
 		de_DE.UTF-8 UTF-8
@@ -133,7 +127,7 @@ function inst-arch_baseos {
 		EOF
 
 	#Now chroot into the future system
-	arch-chroot $new_root <<-EOF || return 1
+	arch-chroot $INSTALL_ROOT <<-EOF || return 1
 		systemctl enable sshd.service
 
 		locale-gen
@@ -146,19 +140,13 @@ function inst-arch_baseos {
 
 	# Concfigure Grub for both XEN ( in /boot/grub/grub.cfg) and
 	# EFI or raw boot ( in /boot/grub2/grub/grub.cfg )
-	printf "Configuring Grub on %s\n" "$new_root" >&2
-
-	if [ ! -d "$new_root" ] ; then
-		printf "%s: Error new_root %s is no directory\n" \
-			"$FUNCNAME" "$new_root" >&2
-		return 1
-	fi
+	printf "Configuring Grub on %s\n" "$INSTALL_ROOT" >&2
 
 	# Install grub.cfg for XEN booting.
 	# This is a minimum file to serve as input for pygrub during
 	# XEN loading of image.
-	mkdir -p $new_root/boot/grub 2>/dev/null
-	cat >$new_root/boot/grub/grub.cfg <<-EOFGRUB || return 1
+	mkdir -p $INSTALL_ROOT/boot/grub 2>/dev/null
+	cat >$INSTALL_ROOT/boot/grub/grub.cfg <<-EOFGRUB || return 1
 		# by $OURSELVES
 		menuentry 'Arch Linux for XEN pygrub' {
 		    set root='hd0,msdos1'
@@ -169,16 +157,16 @@ function inst-arch_baseos {
 		}
 		EOFGRUB
 
-	# Install grubd2 Config for booting efi or raw.
+	# Install grub2 Config for booting efi or raw.
 	# We insert parameters for console to be able to use it
 	# when starting as virtual machine.
-	mkdir -p $new_root/boot/grub2/grub 2>/dev/null
+	mkdir -p $INSTALL_ROOT/boot/grub2/grub 2>/dev/null
         kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
         sed_cmd="s:"
         sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
         sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":p"
-	sed -i .orig -e "$sed_cmd" $new_root/etc/default/grub
-	cat >>$new_root/etc/default/grub <<-EOF
+	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub
+	cat >>$INSTALL_ROOT/etc/default/grub <<-EOF
 
 		## Serial console
 		## by $OURSELVES
@@ -186,7 +174,7 @@ function inst-arch_baseos {
 		GRUB_SERIAL_COMMAND="serial --speed=38400 --unit=0 --word=8 --parity=no --stop=1"
 		EOF
 
-	arch-chroot $new_root <<-"EOFGRUB" || return 1
+	arch-chroot $INSTALL_ROOT <<-"EOFGRUB" || return 1
 		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
 		EOFGRUB
 
@@ -196,19 +184,15 @@ function inst-arch_baseos {
 
 ##### Install Grub for efi ###################################################
 function inst-arch_bootmgr-grubefi {
-	# Parameters:
-	#    1 - new_root
-	local new_root="$1"
-
-	printf "Installing Grub-EFI on %s\n" "$new_root" >&2
-
-	if [ ! -d "$new_root" ] ; then
-		printf "%s: Error new_root %s is no directory\n" \
-			"$FUNCNAME" "$new_root" >&2
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
-	arch-chroot $new_root <<-"EOFGRUB" || return 1
+	printf "Installing Grub-EFI on %s\n" "$INSTALL_ROOT" >&2
+
+	arch-chroot $INSTALL_ROOT <<-"EOFGRUB" || return 1
 		pacman -S --needed --noconfirm grub efibootmgr || exit 1
 		grub-install \
 			--target=x86_64-efi \
@@ -221,9 +205,9 @@ function inst-arch_bootmgr-grubefi {
 
 	# Bugfix EFI buggy BIOS - will be redone by systemd ervice
 	# nafetsde-efiboot on each shutdown
-	mkdir -p $new_root/boot/efi/EFI/BOOT 2>/dev/null
-	cp -a	$new_root/boot/efi/EFI/arch/grubx64.efi \
-		$new_root/boot/efi/EFI/BOOT/BOOTx64.EFI \
+	mkdir -p $INSTALL_ROOT/boot/efi/EFI/BOOT 2>/dev/null
+	cp -a	$INSTALL_ROOT/boot/efi/EFI/arch/grubx64.efi \
+		$INSTALL_ROOT/boot/efi/EFI/BOOT/BOOTx64.EFI \
 		|| return 1
 
 	return 0
@@ -232,20 +216,19 @@ function inst-arch_bootmgr-grubefi {
 ##### Install Grub for efi ###################################################
 function inst-arch_bootmgr-grubraw {
 	# Parameters:
-	#    1 - new_root
-	#    2 - rawdev [optional, autoprobed to device of new_root]
-	local new_root="$1"
-	local rawdev="$2"
+	#    1 - rawdev [optional, autoprobed to device of INSTALL_ROOT]
+	local rawdev="$1"
 
-
-	if [ ! -d "$new_root" ] ; then
-		printf "%s: Error new_root %s is no directory\n" \
-			"$FUNCNAME" "$new_root" >&2
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
 	if [ -z "$rawdev" ] ; then
-		rawdev=$(cat /proc/mounts | grep "$new_root " | cut -d" " -f 1)
+		rawdev=$(cat /proc/mounts \
+		       | grep "$INSTALL_ROOT " \
+		       | cut -d" " -f 1)
 		printf "Autoprobed Raw Device to %s\n" "$rawdev" >&2
 	fi
 
@@ -254,9 +237,9 @@ function inst-arch_bootmgr-grubraw {
 		return 1
 	fi
 
-	printf "Installing Grub-Raw on %s (%s)\n" "$new_root" "$rawdev" >&2
+	printf "Installing Grub-Raw on %s (%s)\n" "$INSTALL_ROOT" "$rawdev" >&2
 
-	arch-chroot $new_root <<-EOF || return 1
+	arch-chroot $INSTALL_ROOT <<-EOF || return 1
 		pacman -S --needed --noconfirm grub || exit 1
 		grub-install \\
 			--target=i386-pc \\
