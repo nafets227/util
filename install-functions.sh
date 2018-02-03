@@ -10,37 +10,45 @@
 
 
 #### Install our special files on machine ####################################
-function install_nafets_files {
-	local readonly name="$1"
-	local readonly mount="${2-$INSTALL_ROOT}"
+function install_ssl-private-keys {
+	hostname=$(cat $INSTALL_ROOT/etc/hostname)
 
-	if [ $# -ne 1 ] ; then
-		printf "Internal Error: %s got %s parms (exp=1+)\n" \
-			"$FUNCNAME" "$#" >&2
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
-	elif [ -z "$name" ] ; then
-		printf "Internal Error: Parm1 is null in %s \n" \
-			"$FUNCNAME" >&2
-		return 1
-	elif [ ! -d "$mount" ] ; then
-		printf "Internal Error: Directory %s does not exist in %s \n" \
-			"$mount" "$FUNCNAME" >&2
-		return 1
+	elif [ ! -r $INSTALL_ROOT/etc/hostname ] ; then
+		printf "%s: Error hostname not set in %s\n" \
+			"$FUNCNAME" "$INSTALL_ROOT/etc/hostname" >&2
+	elif [ -z "$hostname" ] ; then
+		printf "%s: Error hostname empty in %s\n" \
+			"$FUNCNAME" "$INSTALL_ROOT/etc/hostname" >&2
 	fi
 
-	# on error return 1
-	trap "trap '' ERR; return 1" ERR
-
+	#----- Real Work -----------------------------------------------------
+	hostname=$(cat $INSTALL_ROOT/etc/hostname)
 	# Copy SSL private files
-	if [ -d /data/ca/$name ]; then
-		mkdir -p $mount/root/ssl.private
-		cp -L  /data/ca/$name/* $mount/root/ssl.private/
-		chown -R root:root $mount/root/ssl.private
-		chmod -R 400 $mount/root/ssl.private
-		printf "INSTALLED SSL Files\n" >&2
+	if [ -d /data/ca/$hostname/ ]; then
+		mkdir -p $INSTALL_ROOT/root/ssl.private &&
+		cp -L  /data/ca/$hostname/* $INSTALL_ROOT/root/ssl.private/ &&
+		chown -R root:root $INSTALL_ROOT/root/ssl.private &&
+		chmod -R 400 $INSTALL_ROOT/root/ssl.private
+		rc=$?
+	else
+		empty=yes
+		rc=0
 	fi
 
-	trap '' ERR
+	#----- Closing  ------------------------------------------------------
+	if [ $rc != "0" ] ; then
+		printf "Error installing private SSL Keys\n"
+		return 1
+	elif [ ! -z $empty ] ; then
+		printf "Warning: No private SSL Keys found.\n"
+	else
+		printf "Private SSL Keys installed.\n"
+	fi
 
 	return 0
 }
@@ -161,6 +169,7 @@ function install_nafets-std {
 #	install_ssl_ca
 	# Root logon in SSH erlauben
 	install_allow-root-pw && 
+	install_ssl-private-keys &&
 	install_ease-of-use
 
 	return $?
