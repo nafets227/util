@@ -103,14 +103,85 @@ function install_setup_service () {
 
 }
 
-#### Install Nafets Standards ################################################
-function install_nafets_std {
-	# SSL Zertifikat der eigenen CA installieren.
-	install_ssl_ca
-	# Root logon in SSH erlauben
-	install_ssl_allow_root_pw
 
+##### install_ssl_sshtrust ###################################################
+function install_allow-root-pw {
+
+ 	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	elif fgrep "nafets.de" $INSTALL_ROOT/etc/ssh/sshd_config >/dev/null ; then
+		# avoid to add this configuration a second time
+		printf "Setting up SSH Root Access with Password skipped.\n"
+		return 0
+	fi
+ 	
+	#----- Real Work -----------------------------------------------------
+	cat >>$INSTALL_ROOT/etc/ssh/sshd_config <<-"EOF"
+
+		# SSH config modification
+		# nafets.de by util/install-functions.sh
+		PermitRootLogin yes
+		EOF
+
+	#----- Closing  ------------------------------------------------------
+	printf "Setting up SSH Root Access with Password completed.\n"
+
+	return 0
 }
+
+
+##### install_easeofuse ######################################################
+function install_ease-of-use {
+ 	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
+
+	#----- Real Work -----------------------------------------------------
+	cat >$INSTALL_ROOT/etc/profile.d/nafets_de.sh <<-"EOF"
+		#!/bin/sh
+		#
+		# (C) 2014-2018 Stefan Schallenberg
+
+		test "$BASH" || return
+
+		export LS_OPTIONS='--color=auto'
+		alias l='ls $LS_OPTIONS -la'
+		eval "`dircolors`"
+		export EDITOR="vim"
+		EOF
+	chmod 755 $INSTALL_ROOT/etc/profile.d/nafets_de.sh
+
+	# Enable Syntax highlighting in vim
+	arch-chroot $INSTALL_ROOT <<-"EOF"
+		pacman -S --needed --noconfirm vim vim-systemd
+		EOF
+
+	fgrep "syntax enable" $INSTALL_ROOT/etc/vimrc >/dev/null || \
+		printf "syntax enable\n" >>$INSTALL_ROOT/etc/vimrc
+
+	#----- Closing  ------------------------------------------------------
+	printf "Setting up Environment completed.\n"
+
+	return 0
+}
+
+#### Install Nafets Standards ################################################
+function install_nafets-std {
+	# SSL Zertifikat der eigenen CA installieren.
+#	install_ssl_ca
+	# Root logon in SSH erlauben
+	install_allow-root-pw && 
+	install_ease-of-use
+
+	return $?
+}
+
 ##### Main ###################################################################
 
 # Load Sub.Modules
