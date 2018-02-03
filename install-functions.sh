@@ -40,22 +40,6 @@ function install_nafets_files {
 		printf "INSTALLED SSL Files\n" >&2
 	fi
 
-	#Get SubVersion Repository
-	svn checkout \
-		--username root@$name \
-		--password "" \
-		--non-interactive \
-		--quiet \
-		--config-dir $mount/root/.subversion \
-	        --config-option servers:global:store-plaintext-passwords=yes \
-	        svn://svn.intranet.nafets.de/tools/trunk \
-		$mount/root/tools
-	printf "INSTALLED subversion repository\n" >&2
-
-	# Copy local modified files to new machine
-	rsync -aHX --delete /root/tools/ $mount/root/tools --exclude=".svn"
-	printf "UPDATED subversion repository\n" >&2
-
 	trap '' ERR
 
 	return 0
