@@ -7,12 +7,14 @@
 function install-net_br {
 	br_name=${1:-br0}
 
+	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
+	#----- Real Work -----------------------------------------------------
 	cat >$INSTALL_ROOT/etc/systemd/network/nafetsde-$br_name.netdev <<-EOF
 		[NetDev]
 		Name=$br_name
@@ -21,6 +23,7 @@ function install-net_br {
 
 	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service
 
+	#----- Closing  ------------------------------------------------------
 	if [ $? -eq 0 ] ; then
 		printf "Setup of bridge %s completed\n" "$br_name" >&2
 		return 0
@@ -67,7 +70,12 @@ function install-net_vlan {
 	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service
 
 	#----- Closing  ------------------------------------------------------
-	printf "Setup of vlan %s completed\n" "$vlan_name" >&2
+	printf "Setup of vlan %s " "$vlan_name" >&2
+	if [ ! -z $virt ] ; then
+		printf "[Virt=%s] " "$virt"
+	fi
+	printf "completed.\n"
+
 	return 0
 }
 
@@ -77,6 +85,7 @@ function install-net_static {
 	local iface=${2:-eth0}
 	local virt=${3:-""}
 	
+	#----- Input checks --------------------------------------------------
 	if [ $# -lt 1 ]; then
 		printf "Internal Error: %s got %s parms (exp=1++)\n" \
                         "$FUNCNAME" "$#" >&2
@@ -87,6 +96,7 @@ function install-net_static {
                 return 1
         fi
 
+	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
 		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface.network"
 	else
@@ -135,7 +145,7 @@ function install-net_static {
 	fi
 	ln -s /run/systemd/resolve/resolv.conf $INSTALL_ROOT/etc/resolv.conf
 
-	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service systems-resolved.service
+	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service systemd-resolved.service
 	local ntp_info
 
 #	if [ "$ipaddr" != "192.168.108.1" ]; then
@@ -150,8 +160,13 @@ function install-net_static {
 #		ntp_info="without Ntp"
 #	fi
 
-	printf "Setting up network [Static %s on %s] completed.\n" \
+	#----- Closing  ------------------------------------------------------
+	printf "Setting up network [Static %s on %s" \
 		"$ipaddr" "$iface"
+	if [ ! -z $virt ] ; then
+		printf " Virt=%s" "$virt"
+	fi
+	printf "] completed.\n"
 
 	return 0
 }
@@ -178,6 +193,7 @@ function install-net_switch {
                 return 1
         fi
 
+	#----- Real Work -----------------------------------------------------
 	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-switch.network"
 	cat >$cfgfile <<-EOF
 		[Match]
@@ -205,6 +221,7 @@ function install-net_switch {
 
 	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service 
 
+	#----- Closing  ------------------------------------------------------
 	printf "Setting up Network [Switch-Device %s] completed.\n" \
 		"$iface"
 
@@ -310,62 +327,3 @@ function install-net_switch {
 #printf "]\n"
 #}
 
-
-
-##### install_net_openvswitch ( iface ) ######################################
-function install-net_openvswitch {
-
-$PACMAN_CMD openvswitch
-
-systemctl enable ovsdb-server ovs-vswitchd
-systemctl start ovsdb-server ovs-vswitchd
-
-ovs-vsctl br-exists br0 || ovs-vsctl add-br br0
-
-#add existing network card if parm 1 is set
-if [ $# -ge 1 ]; then
-    ovs-vsctl add-port br0 $1
-fi
-
-if [ -f /etc/xen/xl.conf ]; then 
-    grep -G "^vif.default.script" </etc/xen/xl.conf >/dev/null || \
-        cat >>/etc/xen/xl.conf <<EOF
-
-#Modification Stefan Schallenberg
-vif.default.script="vif-openvswitch"
-
-EOF
-    xen_info="XEN enabled"
-else
-    xen_info="XEN disabled"
-fi
-
-echo "Setting up OpenVSwitch ($xen_info) completed."
-}
-
-##### install_net_ovs_local ##################################################
-function install-net_ovs_local {
-
-if [ $# -ne 1 ]; then
-    echo "$0 install_net_static ERROR: Parameter Missing"
-    return -1
-    fi
-
-ovs-vsctl add-port br0 $1 -- set interface $1 type=internal
-
-echo "Setting up OpenVSwitch local interface $1 completed."
-}
-##### install_net_check ######################################################
-function install-net_check {
-	if [ ! -z "$1" ] ; then
-		/usr/lib/systemd/systemd-networkd-wait-online -i $1 
-	else
-		/usr/lib/systemd/systemd-networkd-wait-online 
-	fi
-	ping -c 5 www.ibm.com >/dev/null
-	if [ $? -ne 0 ]; then
-	    return -1
-	else
-	    return 0
-	fi
-}
