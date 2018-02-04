@@ -34,7 +34,7 @@ function install-net_br {
 }
 
 ##### install_net_vlan #######################################################
-function install-net_vlan {
+function install-net_macvlan {
 	vlan_name=${1:-macvlan0}
 	virt="$2"
 
@@ -70,7 +70,7 @@ function install-net_vlan {
 	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service
 
 	#----- Closing  ------------------------------------------------------
-	printf "Setup of vlan %s " "$vlan_name" >&2
+	printf "Setup of macvlan %s " "$vlan_name" >&2
 	if [ ! -z $virt ] ; then
 		printf "[Virt=%s] " "$virt"
 	fi
@@ -79,11 +79,45 @@ function install-net_vlan {
 	return 0
 }
 
+##### install_net_vlan #######################################################
+function install-net_vlan {
+	vlan_name="$1"
+	vlan_id="$2"
+
+	#----- Input checks --------------------------------------------------
+	if [ $# -ne 2 ] ; then
+                printf "Internal Error: %s got %s parms (exp=2)\n" \
+                        "$FUNCNAME" "$#" >&2
+                return 1
+        elif [ ! -d "$INSTALL_ROOT" ] ; then
+                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+                        "$FUNCNAME" "$INSTALL_ROOT" >&2
+                return 1
+        fi
+
+	#----- Real Work -----------------------------------------------------
+	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+	cat >$cfgfile <<-EOF
+		[NetDev]
+		Name=$vlan_name
+		Kind=vlan
+
+		[VLAN]
+		Id=$vlan_id
+		EOF
+
+	#----- Closing  ------------------------------------------------------
+	printf "Setting up vlan %s with ID %s completed.\n" \
+		"$vlan_name" "$vlan_id"
+
+	return 0
+}
 ##### install_net_static ( ipaddr, [ifache="eth0"], [virt=""] ################
 function install-net_static {
 	local ipaddr="$1"
 	local iface=${2:-eth0}
 	local virt=${3:-""}
+	local vlan=${4:-""}
 	
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 1 ]; then
@@ -123,19 +157,25 @@ function install-net_static {
 	for f in $ipaddr ; do
 		echo "Address=$f/24" >>$cfgfile
 	done
+	local primary_ip=${ipaddr%% *}
+	local ip_net=${primary_ip%.*}
 	cat >>$cfgfile <<-EOF
-		Gateway=192.168.108.250
-		DNS=192.168.108.1
-		DNS=192.168.108.250
-		NTP=192.168.108.1
+		Gateway=$ip_net.250
+		DNS=$ip_net.1
+		DNS=$ip_net.250
+		NTP=$ip_net.1
 		EOF
 	
+	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
+		echo "VLAN=$f" >>$cfgfile
+	done; fi
+
 	if [ ! -z $virt ] && [ $virt == "yes" ] ; then
 		cat >>$cfgfile <<-EOF
 			Domains=test.nafets.de dom.nafets.de intranet.nafets.de
 			EOF
 	else
-		    cat >>$cfgfile <<-EOF
+		cat >>$cfgfile <<-EOF
 			Domains=dom.nafets.de intranet.nafets.de
 			EOF
 	fi
@@ -148,23 +188,14 @@ function install-net_static {
 	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service systemd-resolved.service
 	local ntp_info
 
-#	if [ "$ipaddr" != "192.168.108.1" ]; then
-#		mkdir -p /etc/systemd/system/systemd-timesyncd.service.d
-#		echo -e "[Unit]\nConditionVirtualization=" \
-#			> /etc/systemd/system/systemd-timesyncd.service.d/allow_virt.conf
-#		systemctl daemon-reload
-#		systemctl enable systemd-timesyncd.service
-#		systemctl reload-or-restart systemd-timesyncd.service
-#		ntp_info="with Ntp"
-#	else
-#		ntp_info="without Ntp"
-#	fi
-
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up network [Static %s on %s" \
 		"$ipaddr" "$iface"
 	if [ ! -z $virt ] ; then
 		printf " Virt=%s" "$virt"
+	fi
+	if [ ! -z $vlan ] ; then
+		printf " VLANs=%s" "$vlan"
 	fi
 	printf "] completed.\n"
 
