@@ -115,13 +115,15 @@ function install-net_vlan {
 ##### install_net_static ( ipaddr, [ifache="eth0"], [virt=""] ################
 function install-net_static {
 	local ipaddr="$1"
-	local iface=${2:-eth0}
-	local virt=${3:-""}
-	local vlan=${4:-""}
-	
+	local iface="$2"
+	local virt="${3:-""}"
+	local vlan="${4:-""}"
+	local macvlan="${5:-""}"
+	local bridge="${6:-""}"
+
 	#----- Input checks --------------------------------------------------
-	if [ $# -lt 1 ]; then
-		printf "Internal Error: %s got %s parms (exp=1++)\n" \
+	if [ $# -lt 2 ]; then
+		printf "Internal Error: %s got %s parms (exp=2++)\n" \
                         "$FUNCNAME" "$#" >&2
 		return 1
         elif [ ! -d "$INSTALL_ROOT" ] ; then
@@ -154,31 +156,49 @@ function install-net_static {
 		Description="Static IP Adress in nafets.de"
 		DHCP=none
 		EOF
-	for f in $ipaddr ; do
-		echo "Address=$f/24" >>$cfgfile
-	done
-	local primary_ip=${ipaddr%% *}
-	local ip_net=${primary_ip%.*}
-	cat >>$cfgfile <<-EOF
-		Gateway=$ip_net.250
-		DNS=$ip_net.1
-		DNS=$ip_net.250
-		NTP=$ip_net.1
-		EOF
-	
-	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
-		echo "VLAN=$f" >>$cfgfile
-	done; fi
-
-	if [ ! -z $virt ] && [ $virt == "yes" ] ; then
+	if [ ! -z "$ipaddr" ] ; then
+		for f in $ipaddr ; do
+			echo "Address=$f/24" >>$cfgfile
+		done
+		local primary_ip=${ipaddr%% *}
+		local ip_net=${primary_ip%.*}
+		local dom="dom.nafets.de intranet.nafets.de"
+		# @TODO: Find a better way to detect if we have a test machine
+		if [ ! -z $virt ] && [ $virt == "yes" ] ; then
+			local dom="test.nafets.de $dom"
+		fi
+		# @TODO: Find a better way to detect if we need a default route
+		if [ "$ip_net" == "192.168.108" ] ; then
+			cat >>$cfgfile <<-EOF
+				Gateway=$ip_net.250
+				EOF
+		fi
 		cat >>$cfgfile <<-EOF
-			Domains=test.nafets.de dom.nafets.de intranet.nafets.de
-			EOF
-	else
-		cat >>$cfgfile <<-EOF
-			Domains=dom.nafets.de intranet.nafets.de
+			DNS=$ip_net.1
+			DNS=$ip_net.250
+			NTP=$ip_net.1
+			Domains=$dom
 			EOF
 	fi
+	
+	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
+		cat >>$cfgfile <<-EOF
+			VLAN=$f
+			EOF
+	done; fi
+
+	if [ ! -z $bridge ] ; then for f in $bridge ; do
+		cat >>$cfgfile <<-EOF
+			Bridge=$f
+		EOF
+	done; fi
+
+	if [ ! -z "$macvlan" ] ; then for f in $macvlan ; do
+		cat >>$cfgfile <<-EOF
+			MACVLAN=$f
+			EOF
+	done; fi
+
 
 	if [ -f $INSTALL_ROOT/etc/resolv.conf ] || [ -l $INSTALL_ROOT/etc/resolv.conf ]; then
 	    rm $INSTALL_ROOT/etc/resolv.conf
@@ -189,72 +209,20 @@ function install-net_static {
 	local ntp_info
 
 	#----- Closing  ------------------------------------------------------
-	printf "Setting up network [Static %s on %s" \
+	printf "Setting up network [Static %s on %s] completed.\n" \
 		"$ipaddr" "$iface"
 	if [ ! -z $virt ] ; then
-		printf " Virt=%s" "$virt"
+		printf "\tVirt=%s\n" "$virt"
 	fi
 	if [ ! -z $vlan ] ; then
-		printf " VLANs=%s" "$vlan"
+		printf "\tVLANs=%s\n" "$vlan"
 	fi
-	printf "] completed.\n"
-
-	return 0
-}
-
-##### install_net_switch ( [ifache="eth0"] ) #################################
-function install-net_switch {
-	iface=${1:-eth0}
-	bridge=$2
-	macvlan="$3"
-
-	#----- Input checks --------------------------------------------------
-	if [ $# -ne 3 ] ; then
-                printf "Internal Error: %s got %s parms (exp=3)\n" \
-                        "$FUNCNAME" "$#" >&2
-                return 1
-        elif [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
-	elif [ -z "$bridge" ] && [ -r "$macvlan" ] ; then
-		printf "%s: " "$FUNCNAME" >&2
-		printf "Either bridge (\$2) or macvlan (\$3) must be given\n" \
-			>&2
-                return 1
-        fi
-
-	#----- Real Work -----------------------------------------------------
-	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-switch.network"
-	cat >$cfgfile <<-EOF
-		[Match]
-		Name=$iface
-
-		[Network]
-		Description="Set Link up for openvswitch, no IP Adress"
-		DHCP=none
-		EOF
 	if [ ! -z $bridge ] ; then
-		cat >>$cfgfile <<-EOF
-			[Network]
-			Bridge=$bridge
-		EOF
-	elif [ ! -z "$macvlan" ] ; then
-		cat >>$cfgfile <<-EOF
-			[Network]
-		EOF
-		for f in $macvlan ; do
-			cat >>$cfgfile <<-EOF
-				MACVLAN=$f
-			EOF
-		done
+		printf "\tBridges=%s\n" "$bridge"
 	fi
-
-	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service 
-
-	#----- Closing  ------------------------------------------------------
-	printf "Setting up Network [Switch-Device %s] completed.\n" \
-		"$iface"
+	if [ ! -z $macvlan ] ; then
+		printf "\tVMACVLANs=%s\n" "$macvlan"
+	fi
 
 	return 0
 }
