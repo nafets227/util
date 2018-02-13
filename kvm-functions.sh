@@ -85,6 +85,15 @@ function kvm_parseParm () {
 			--efi )
 				prm_efi="${value:-1}"
 				;;
+			--net )
+				prm_net="${value:-$(kvm_getDefaultNetBackend)}"
+				;;
+			--net2 )
+				prm_net2="${value:-$(kvm_getDefaultNetBackend)}"
+				;;
+			--net3 )
+				prm_net3="${value:-$(kvm_getDefaultNetBackend)}"
+				;;
 			*)
 				printf "Error: unknown Parameter %s with value %s\n" \
 					"$parm" "$value"
@@ -136,10 +145,10 @@ function kvm_getDefaultDisk2 () {
 	fi
 }
 
-##### getNetworkDevice #######################################################
-# choose Network Device
+##### getDefaultNetBackend ###################################################
+# choose Default Backend Network Device
 # we use the first non-loopback device of "IP link show"
-function kvm_getNetworkDevice () {
+function kvm_getDefaultNetBackend () {
 	ifaces="$(ip link show | sed -n -e 's/\([0-9]\+: \)\([^:]\+\).*/\2/p')"
 	rc=$? ; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	
@@ -231,6 +240,9 @@ function kvm_getDefaultOS () {
 #   --replace replace existing VMs [default=no]
 #   --auto [default=1] auto-start VM at boot
 #   --dry-run done really execute anything.
+#   --net <backend> [optional, autodetected]
+#   --net2 <backend> [optional, default=empty]
+#   --net3 <backend> [optional, default=empty]
 function kvm_create-vm () {
 	# Set Default values
 	local prm_mem="768"
@@ -247,7 +259,9 @@ function kvm_create-vm () {
 	local prm_os
 	local prm_sound
 	local vmname
-	local netdev=$(kvm_getNetworkDevice)
+	local prm_net="$(kvm_getDefaultNetBackend)"
+	local prm_net2
+	local prm_net3
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
 	# Parse Parameters
@@ -292,16 +306,18 @@ function kvm_create-vm () {
 		"$vmname" \
 		"$prm_id"
 	printf "\tefi BIOS %s\n" "$prm_efi"
-	printf "\tOS %s\n" "${prm_os-<default>}"
+	printf "\tOS %s\n" "${prm_os:-<default>}"
 	printf "\tmemory %s\n" "$prm_mem"
 	printf "\tcpu %s\n" "$prm_cpu"
 	printf "\tboot+root-disk %s\n" "$prm_disk"
-	printf "\tdisk2: %s\n" "${prm_disk2-<none>}"
-	printf "\tdisk3: %s\n" "${prm_disk3-<none>}"
-	printf "\tnetwork %s\n" "$netdev"
+	printf "\tdisk2: %s\n" "${prm_disk2:-<none>}"
+	printf "\tdisk3: %s\n" "${prm_disk3:-<none>}"
+	printf "\tnet %s\n" "$prm_net"
+	printf "\tnet2 %s\n" "${prm_net2:-<none>}"
+	printf "\tnet3 %s\n" "${prm_net3:-<none>}"
 	printf "\tVirtualisation: %s\n" "$prm_virt"
 	printf "\tAutoStart: %s\n" "$prm_auto"
-	printf "\tSound: %s\n" "${prm_sound-<none>}"
+	printf "\tSound: %s\n" "${prm_sound:-<none>}"
 
 	# Action !
 	local virt_prms="
@@ -312,7 +328,6 @@ function kvm_create-vm () {
 		--cpu host
 		--import
 		--disk $prm_disk,format=raw,bus=virtio
-		--network type=direct,source=$netdev,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
 		--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
 		--video virtio
 		--events on_crash=restart
@@ -347,6 +362,21 @@ function kvm_create-vm () {
 	if [ "$prm_efi" == "1" ] ; then 
 		virt_prms="$virt_prms
 			--boot loader=/usr/share/ovmf/x64/OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/usr/share/ovmf/x64/OVMF_VARS.fd,loader_secure=no
+			"
+	fi
+	if [ ! -z "$prm_net" ] ; then
+		virt_prms="$virt_prms
+			--network type=direct,source=$prm_net,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
+			"
+	fi
+	if [ ! -z "$prm_net2" ] ; then
+		virt_prms="$virt_prms
+			--network type=direct,source=$prm_net2,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6D:$prm_id
+			"
+	fi
+	if [ ! -z "$prm_net3" ] ; then
+		virt_prms="$virt_prms
+			--network type=direct,source=$prm_net3,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6E:$prm_id
 			"
 	fi
 	

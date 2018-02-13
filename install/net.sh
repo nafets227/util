@@ -33,7 +33,7 @@ function install-net_br {
 	fi
 }
 
-##### install_net_vlan #######################################################
+##### install_net_macvlan ####################################################
 function install-net_macvlan {
 	vlan_name=${1:-macvlan0}
 	virt="$2"
@@ -50,7 +50,11 @@ function install-net_macvlan {
         fi
 
 	#----- Real Work -----------------------------------------------------
-	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+	if [ -z $virt ] ; then
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+	else
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
+	fi
 	cat >$cfgfile <<-EOF
 		[NetDev]
 		Name=$vlan_name
@@ -78,11 +82,10 @@ function install-net_macvlan {
 
 	return 0
 }
-
 ##### install_net_vlan #######################################################
-function install-net_vlan {
-	vlan_name="$1"
-	vlan_id="$2"
+function install-net_ipvlan {
+	vlan_name=${1:-ipvlan0}
+	virt="$2"
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -ne 2 ] ; then
@@ -96,7 +99,63 @@ function install-net_vlan {
         fi
 
 	#----- Real Work -----------------------------------------------------
-	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+	if [ -z $virt ] ; then
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+	else
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
+	fi
+	cat >$cfgfile <<-EOF
+		[NetDev]
+		Name=$vlan_name
+		Kind=ipvlan
+
+		[IPVLAN]
+		Mode=L2
+		Flags=bridge
+		EOF
+
+	if [ ! -z $virt ] ; then
+	    cat >>$cfgfile <<-EOF
+		[Match]
+		Virtualization=$virt
+		EOF
+	fi
+
+	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service
+
+	#----- Closing  ------------------------------------------------------
+	printf "Setup of ipvlan %s " "$vlan_name" >&2
+	if [ ! -z $virt ] ; then
+		printf "[Virt=%s] " "$virt"
+	fi
+	printf "completed.\n"
+
+	return 0
+}
+
+##### install_net_vlan #######################################################
+function install-net_vlan {
+	vlan_name="$1"
+	vlan_id="$2"
+	virt="$3"
+
+	#----- Input checks --------------------------------------------------
+	if [ $# -lt 2 ] ; then
+                printf "Internal Error: %s got %s parms (exp=2+)\n" \
+                        "$FUNCNAME" "$#" >&2
+                return 1
+        elif [ ! -d "$INSTALL_ROOT" ] ; then
+                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+                        "$FUNCNAME" "$INSTALL_ROOT" >&2
+                return 1
+        fi
+
+	#----- Real Work -----------------------------------------------------
+	if [ -z $virt ] ; then
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+	else
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
+	fi
 	cat >$cfgfile <<-EOF
 		[NetDev]
 		Name=$vlan_name
@@ -106,9 +165,19 @@ function install-net_vlan {
 		Id=$vlan_id
 		EOF
 
+	if [ ! -z $virt ] ; then
+	    cat >>$cfgfile <<-EOF
+		[Match]
+		Virtualization=$virt
+		EOF
+	fi
 	#----- Closing  ------------------------------------------------------
-	printf "Setting up vlan %s with ID %s completed.\n" \
+	printf "Setting up vlan %s with ID %s " \
 		"$vlan_name" "$vlan_id"
+	if [ ! -z $virt ] ; then
+		printf "[Virt=%s] " "$virt"
+	fi
+	printf "completed.\n"
 
 	return 0
 }
@@ -119,7 +188,8 @@ function install-net_static {
 	local virt="${3:-""}"
 	local vlan="${4:-""}"
 	local macvlan="${5:-""}"
-	local bridge="${6:-""}"
+	local ipvlan="${6:-""}"
+	local bridge="${7:-""}"
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
@@ -187,16 +257,22 @@ function install-net_static {
 			EOF
 	done; fi
 
-	if [ ! -z $bridge ] ; then for f in $bridge ; do
-		cat >>$cfgfile <<-EOF
-			Bridge=$f
-		EOF
-	done; fi
-
 	if [ ! -z "$macvlan" ] ; then for f in $macvlan ; do
 		cat >>$cfgfile <<-EOF
 			MACVLAN=$f
 			EOF
+	done; fi
+
+	if [ ! -z $ipvlan ] ; then for f in $ipvlan ; do
+		cat >>$cfgfile <<-EOF
+			IPVLAN=$f
+		EOF
+	done; fi
+
+	if [ ! -z $bridge ] ; then for f in $bridge ; do
+		cat >>$cfgfile <<-EOF
+			Bridge=$f
+		EOF
 	done; fi
 
 
@@ -210,18 +286,21 @@ function install-net_static {
 
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up network [Static %s on %s] completed.\n" \
-		"$ipaddr" "$iface"
-	if [ ! -z $virt ] ; then
+		"${ipaddr:="<noIP>"}" "$iface"
+	if [ ! -z "$virt" ] ; then
 		printf "\tVirt=%s\n" "$virt"
 	fi
-	if [ ! -z $vlan ] ; then
+	if [ ! -z "$vlan" ] ; then
 		printf "\tVLANs=%s\n" "$vlan"
 	fi
-	if [ ! -z $bridge ] ; then
-		printf "\tBridges=%s\n" "$bridge"
+	if [ ! -z "$macvlan" ] ; then
+		printf "\tMACVLANs=%s\n" "$macvlan"
 	fi
-	if [ ! -z $macvlan ] ; then
-		printf "\tVMACVLANs=%s\n" "$macvlan"
+	if [ ! -z "$ipvlan" ] ; then
+		printf "\tIPVLANs=%s\n" "$ipvlan"
+	fi
+	if [ ! -z "$bridge" ] ; then
+		printf "\tBridges=%s\n" "$bridge"
 	fi
 
 	return 0
