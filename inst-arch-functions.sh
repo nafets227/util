@@ -210,6 +210,24 @@ function inst-arch_bootmgr-grubefi {
 		$INSTALL_ROOT/boot/efi/EFI/BOOT/BOOTx64.EFI \
 		|| return 1
 
+	cat >$INSTALL_ROOT/etc/systemd/system/nafetsde-efiboot.service <<-"EOF" || return 1
+		# nafetsde-efiboot.service
+		#
+		# (C) 2015 Stefan Schallenberg
+		#
+		[Unit]
+		Description="efiboot Updates on Shutdown for Buggy EFI-BIOS"
+
+		[Service]
+		Type=oneshot
+		RemainAfterExit=yes
+		ExecStop=/usr/bin/cp -a /boot/efi/EFI/arch/grubx64.efi /boot/efi/EFI/BOOT/BOOTx64.EFI
+
+		[Install]
+		WantedBy=multi-user.target
+		EOF
+	systemctl --root=$INSTALL_ROOT enable nafetsde-efiboot.service
+
 	return 0
 }
 
