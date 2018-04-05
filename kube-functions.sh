@@ -83,7 +83,7 @@ function kube-install {
 	if [ ! -z "$envnames" ] ; then  for f in $envnames ; do
 		if [[ -v $f ]] ; then
 			eval "value=\$$f"
-			sed_parms="$sed_parms -e s/\${$f}/$value/"
+			sed_parms="$sed_parms -e 's/\${$f}/$value/'"
 		else
 			printf "%s: variable for envname %s not defined.\n" \
 				"$FUNCNAME" "$f"
@@ -136,7 +136,7 @@ function kube-install {
 	if [ ! -z "$(ls $confdir/*.yaml.template 2>/dev/null)" ] ; then
 		for f in $confdir/*.yaml.template ; do
 			printf "Loading Kubeconfig %s ... " "$(basename $f)"
-			sed $sed_parms <$f \
+			eval sed $sed_parms <$f \
 			| kubectl $kube_action -n $ns -f -
 		done
 	fi
