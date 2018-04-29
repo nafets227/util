@@ -237,18 +237,16 @@ function install-net_static {
 		if [ ! -z $virt ] && [ $virt == "yes" ] ; then
 			local dom="test.nafets.de $dom"
 		fi
-		# @TODO: Find a better way to detect if we need a default route
+		# @TODO: Find a better way to detect the main Interface
 		if [ "$ip_net" == "192.168.108" ] ; then
 			cat >>$cfgfile <<-EOF
 				Gateway=$ip_net.250
+				DNS=$ip_net.1
+				DNS=$ip_net.250
+				NTP=$ip_net.1
+				Domains=$dom
 				EOF
 		fi
-		cat >>$cfgfile <<-EOF
-			DNS=$ip_net.1
-			DNS=$ip_net.250
-			NTP=$ip_net.1
-			Domains=$dom
-			EOF
 	fi
 	
 	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
