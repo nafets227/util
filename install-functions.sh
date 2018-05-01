@@ -138,7 +138,7 @@ function install_nafets-std {
 	# SSL Zertifikat der eigenen CA installieren.
 #	install_ssl_ca
 	# Root logon in SSH erlauben
-	install_allow-root-pw && 
+	install-ssh_allow-root-pw && 
 	install_ssl-private-keys &&
 	install_ease-of-use
 

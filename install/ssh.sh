@@ -3,8 +3,8 @@
 # (C) 2015-2018 Stefan Schallenberg
 #
 
-##### install_ssl_sshtrust ###################################################
-function install_allow-root-pw {
+##### install-ssh_allow-root-pw #################################################
+function install-ssh_allow-root-pw {
 
  	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
@@ -31,8 +31,8 @@ function install_allow-root-pw {
 	return 0
 }
 
-##### install_ssl_sshtrust ###################################################
-function install_ssl_sshtrust {
+##### install-ssh_trust ######################################################
+function install-ssh_trust {
 
 if [ ! -f $(dirname $BASH_SOURCE)/../ssl/root_xen.id_rsa.pub ] ; then
     echo "$0 install_ssl_sshtrust ERROR: Missing $(dirname $BASH_SOURCE)/../ssl/root_xen.pub"
@@ -46,10 +46,10 @@ install -m 600 $(dirname $BASH_SOURCE)/../ssl/root_xen.id_rsa.pub /root/.ssh/aut
 echo "Setting up SSH Trust completed."
 }
 
-##### install_ssl_sshkey (                ###################################
-#####      user = root                    ###################################
+##### install-ssh_key (                    ###################################
+#####      user = root                     ###################################
 #####      fname = $user_$hostname.id_rsa )###################################
-function install_ssl_sshkey {
+function install-ssh_key {
 user=${1:-"root"}
 fname=${2:-"${user}_${HOSTNAME}.id_rsa"}
 homedir=$(getent passwd $user | cut -d: -f6)
