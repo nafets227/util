@@ -72,7 +72,8 @@ function install-ssh_allow-root-pw {
 function install-ssh_trust {
 	fname="$1"
 	user="${1:-root}"
-
+	[[ $fname = */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
+	
  	#----- Input checks --------------------------------------------------
 	if [ "$#" -lt "1" ] ; then
 		printf "Internal Error: %s got %s parms (exp=1+)\n" \
@@ -109,6 +110,7 @@ function install-ssh_trust {
 function install-ssh_key {
 	fname="$1"
 	user="${2:-root}"
+	[[ $fname = */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
 
 	homedir=$(cat $INSTALL_ROOT/etc/passwd | cut -d: -f6)
 	group=$(cat $INSTALL_ROOT/etc/passwd | cut -d: -f4)
