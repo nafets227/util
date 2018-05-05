@@ -112,10 +112,6 @@ function install-ssh_key {
 	user="${2:-root}"
 	[[ $fname = */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
 
-	homedir=$(cat $INSTALL_ROOT/etc/passwd | cut -d: -f6)
-	group=$(cat $INSTALL_ROOT/etc/passwd | cut -d: -f4)
-	userid=$(cat $INSTALL_ROOT/etc/passwd | cut -d: -f3)
-	
  	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
