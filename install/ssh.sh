@@ -118,7 +118,7 @@ function install-ssh_key {
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	elif [ ! -r "$fname" ] ; then
-		printf "%s: Error File %s does not exist or ist not readable.\n"
+		printf "%s: Error File %s does not exist or ist not readable.\n" \
 			"$FUNCNAME" "$fname" >&2
 		return 1
 	fi
