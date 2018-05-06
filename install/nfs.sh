@@ -3,54 +3,62 @@
 # (C) 2015-2018 Stefan Schallenberg
 #
 
-##### install_nfs ############################################################
-function install-nfs {
-$PACMAN_CMD nfs-utils
+##### install-nfs_server #####################################################
+function install-nfs_server {
+        #----- Input checks --------------------------------------------------
+        if [ ! -d "$INSTALL_ROOT" ] ; then
+                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+                        "$FUNCNAME" "$INSTALL_ROOT" >&2
+                return 1
+	elif [ -f $INSTALL_ROOT/etc/exports ] && \
+			fgrep "Standard NFS Setup in nafets.de" $INSTALL_ROOT/etc/exports >/dev/null ; then
+		printf "%s: Error NFS Setup was already done before (see /etc/exports).\n"
+		return 1
+        fi
 
-if [ ! -d /srv/nfs4 ]; then
-    mkdir -p /srv/nfs4
-fi
+        #----- Real Work -----------------------------------------------------
+	arch-chroot $INSTALL_ROOT <<-EOF
+		pacman -S --needed --noconfirm nfs-utils
+		EOF
+	if [ "$?" != "0" ] ; then return 1 ; fi
 
-if [ ! -f /etc/exports ] || \
-    ! fgrep "Standard NFS Setup in nafets.de" /etc/exports >/dev/null ; then
-    cat >>/etc/exports <<-EOF
-	# Standard NFS Setup in nafets.de
-	# (C) 2015 Stefan Schallenberg
+	if [ ! -d $INSTALL_ROOT/srv/nfs4 ]; then
+	    mkdir -p $INSTALL_ROOT/srv/nfs4 || return 1
+	fi
 
-	/srv/nfs4 192.168.108.0/24(rw,fsid=root,no_subtree_check,crossmnt,no_root_squash)
-	EOF
+	cat >>$INSTALL_ROOT/etc/exports <<-EOF 
+		# Standard NFS Setup in nafets.de
+		# (C) 2015-2018 Stefan Schallenberg
 
-    echo "Modifying idmapd.conf"
-    mv /etc/idmapd.conf /etc/idmapd.conf.backup
-    awk -f - /etc/idmapd.conf.backup >/etc/idmapd.conf  <<-"EOF"
-	BEGIN {global=0}
-	/\[Gneral\]/ { global=1; print; next }
-	/Domain/ { next }
-	/\[/ {
-	    if (global==1) {
-	        print "Domain = intranet.nafets.de"
-	        print ""
-	        global=2
-	        }
-	    }
-	{ print }
-	EOF
+		/srv/nfs4 192.168.108.0/24(rw,fsid=root,no_subtree_check,crossmnt,no_root_squash)
+		EOF
+	if [ "$?" != "0" ] ; then return 1 ; fi
 
-    systemctl enable rpcbind.service nfs-server.service
-    systemctl start rpcbind.service nfs-server.service
+	mv $INSTALL_ROOT/etc/idmapd.conf $INSTALL_ROOT/etc/idmapd.conf.backup || return 1
+	awk -f - $INSTALL_ROOT/etc/idmapd.conf.backup >$INSTALL_ROOT/etc/idmapd.conf  <<-"EOF"
+		BEGIN {global=0}
+		/\[Gneral\]/ { global=1; print; next }
+		/Domain/ { next }
+		/\[/ {
+		    if (global==1) {
+		        print "Domain = intranet.nafets.de"
+		        print ""
+		        global=2
+		        }
+		    }
+		{ print }
+		EOF
+	if [ "$?" != "0" ] ; then return 1 ; fi
 
-    echo "Setting up NFS completed."
-else
-    echo "Setting up NFS skipped."
-fi
+	systemctl --root=$INSTALL_ROOT enable rpcbind.service nfs-server.service || return 1
+	
+        #----- Closing  ------------------------------------------------------
+	printf "Setting up NFS Server completed.\n"
+
+	return 0
 }
 
-##### install_nfs_export ( <path-to-export> ) ###############################
-#function install_nfs_export {
-#	install_nfs_export2 "$1" "${1#/}" "$2"
-#}
-
-##### install-nfs_export ####################################################
+##### install-nfs_export #####################################################
 # Parameter:
 #     <Dir>        Real Directory to be exported (e.g. /data/myshare)
 #     <Share-Name> Name of the share visibile to clients (e.g. myshare)
@@ -58,48 +66,69 @@ fi
 #     [options]    either ro (default) or rw or a string of options to be
 #                  put as NFS options in /etc/exports
 function install-nfs_export {
+	path="$1"
+	exportname="$2"
+	options="$3"
 
-if [ $# -lt 2 ]; then
-    echo "$0 install_nfs_export2 ERROR: Parameter Missing"
-    return -1
-    fi
-case $3 in 
-    "" | "ro" )
-        exportopt="ro,no_subtree_check,nohide,no_root_squash"
-        ;;
-    "rw" )
-        exportopt="rw,subtree_check,nohide,no_root_squash"
-        ;;
-    * )
-        exportopt="$3"
-esac
+        #----- Input checks --------------------------------------------------
+	if [ $# -lt 2 ]; then
+		printf "%s: Internal Error: Got %s Parms (Exp=2+)\n" \
+			"$FUNCNAME" "$#" >&2
+		return 1
+	elif [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	elif fgrep "/srv/nfs4/$exportname" $INSTALL_ROOT/etc/exports >&/dev/null ; then
+		printf "%s: Error %s already exportet (see /etc/exports)\n" \
+			"$FUNCNAME" "$exportname" >&2
+		return 1
+	fi
 
+        #----- Real Work -----------------------------------------------------
+	case $options in 
+		"" | "ro" )
+			exportopt="ro,no_subtree_check,nohide,no_root_squash"
+			;;
+		"rw" )
+			exportopt="rw,subtree_check,nohide,no_root_squash"
+			;;
+		* )
+			exportopt="$3"
+	esac
 
-install_mount "$1" "/srv/nfs4/$2"  "none bind 0 0"
+	install-mount "$path" "/srv/nfs4/$exportname"  "none bind 0 0" || return 1
 
-fgrep "/srv/nfs4/$2" /etc/exports >&/dev/null
-if [ $? -eq 1 ]; then
-    cat >>/etc/exports <<-EOF
-	/srv/nfs4/$2 192.168.108.0/24($exportopt)
-	EOF
-    echo "Added NFS Export $2 from $1($exportopt)"
-else
-    echo "Skipped NFS Export $2"
-fi
+	cat >>$INSTALL_ROOT/etc/exports <<-EOF
+		/srv/nfs4/$exportname 192.168.108.0/24($exportopt)
+		EOF
 
+        #----- Closing  ------------------------------------------------------
+	printf "Added NFS Export %s from %s (%s)\n" \
+		"$exportname" "$path" "$exportopt"
+	
+	return 0
 }
 
-##### install_nfs_stdexports ################################################
-#function install-nfs_stdexports {
-#    install_nfs_export "/etc"
-#    install_nfs_export "/data"
-#    install_nfs_export "/home"
-#}
-
-##### install_nfs_client ####################################################
+##### install-nfs_client #####################################################
 function install-nfs_client {
-$PACMAN_CMD nfs-utils
 
-systemctl start rpcbind.service nfs-client.target remote-fs.target
-systemctl enable rpcbind.service nfs-client.target remote-fs.target
+        #----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
+
+        #----- Real Work -----------------------------------------------------
+	arch-chroot $INSTALL_ROOT <<-EOF
+		pacman -S --needed --noconfirm nfs-utils
+		EOF
+
+	systemctl --root=$INSTALL_ROOT enable rpcbind.service nfs-client.target remote-fs.target || return 1
+
+        #----- Closing  ------------------------------------------------------
+	printf "Setting up NFS Client completed.\n"
+
+	return 0
 }
