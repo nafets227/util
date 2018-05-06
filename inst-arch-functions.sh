@@ -269,6 +269,47 @@ function inst-arch_bootmgr-grubraw {
 	return 0
 }
 
+#### inst-arch_add_repo ######################################################
+function inst-arch_add_repo () {
+	local readonly PACCONF=$INSTALL_ROOT/etc/pacman.conf
+	repo="$1"
+	srv="$2"
+	sig="$3"
+
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	elif [ ! -w $PACCONF ] ; then
+		printf "%s: Error /etc/pacman.conf does not exist or ist not writable\n" \
+			"$FUNCNAME"  >&2
+		return 1
+	fi
+
+	#----- Real Work -----------------------------------------------------
+	printf "[%s]\n" "$repo" >>$PACCONF
+	if [ ! -z "$sig" ] ; then
+		printf "SigLevel = %s\n" "$sig" >>$PACCONF || return 1
+	fi
+	if [ -z "$srv" ] ; then
+		printf "Include = /etc/pacman.d/mirrorlist\n" \
+			>>$PACCONF || return 1
+	else
+		for f in $srv ; do
+			printf "Server = %s\n" "$f" >>$PACCONF || return 1
+		done
+	fi
+
+	#----- Closing -------------------------------------------------------
+	printf "Added ArchLinux Repo %s" >&2
+	[ -z "$sig" ] || printf " (SigLevel %s)" "$sig" >&2
+	[ -z "$srv" ] || printf " (Srv %s)" "$srv" >&2
+	printf "\n"
+
+	return 0
+}
+
 ##############################################################################
 ##### Compatibility function #################################################
 ##### these functions are deprecated but still alive to let              #####
