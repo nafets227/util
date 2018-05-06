@@ -71,8 +71,8 @@ function install-ssh_allow-root-pw {
 ##### install-ssh_trust ######################################################
 function install-ssh_trust {
 	fname="$1"
-	user="${1:-root}"
-	[[ $fname = */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
+	user="${2:-root}"
+	[[ $fname != */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
 	
  	#----- Input checks --------------------------------------------------
 	if [ "$#" -lt "1" ] ; then
@@ -110,7 +110,7 @@ function install-ssh_trust {
 function install-ssh_key {
 	fname="$1"
 	user="${2:-root}"
-	[[ $fname = */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
+	[[ $fname != */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
 
  	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
@@ -127,7 +127,9 @@ function install-ssh_key {
 	install-ssh_getUserData "$user" || return 1
 	
 	install -d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && 
-	install -u $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname $INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa
+	install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
+		$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa \
+		|| return 1
 	
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up SSH Key %s for %s completed.\n" "$fname" "$user" >&2
