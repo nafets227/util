@@ -68,6 +68,8 @@ function install-timer {
 		User=$user
 		EOF
 
+	systemctl --root=$INSTALL_ROOT enable ${name}.timer
+	
         #----- Closing  ------------------------------------------------------
 	printf "Timer %s to call %s as %s [%s, %s, %s] uccessfully setup.\n" \
 		"$name" "$script" "$user" \
