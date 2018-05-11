@@ -161,19 +161,20 @@ function inst-arch_baseos {
 	# We insert parameters for console to be able to use it
 	# when starting as virtual machine.
 	mkdir -p $INSTALL_ROOT/boot/grub2/grub 2>/dev/null
-        kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
+        # does not work when starting bare-metal: 
+	# kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
         sed_cmd="s:"
         sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
         sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":p"
 	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub
-	cat >>$INSTALL_ROOT/etc/default/grub <<-EOF
-
-		## Serial console
-		## by $OURSELVES
-		GRUB_TERMINAL=serial
-		GRUB_SERIAL_COMMAND="serial --speed=38400 --unit=0 --word=8 --parity=no --stop=1"
-		EOF
-
+	#cat >>$INSTALL_ROOT/etc/default/grub <<-EOF
+	#
+	#	## Serial console
+	#	## by $OURSELVES
+	#	GRUB_TERMINAL=serial
+	#	GRUB_SERIAL_COMMAND="serial --speed=38400 --unit=0 --word=8 --parity=no --stop=1"
+	#	EOF
+	#
 	arch-chroot $INSTALL_ROOT <<-"EOFGRUB" || return 1
 		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
 		EOFGRUB
