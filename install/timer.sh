@@ -49,7 +49,7 @@ function install-timer {
 	[ ! -z "$onBootSec" ] &&
 		printf "OnBootSec=%s\n" "$onBootSec" >>$FNTIMER
 	[ ! -z "$onUnitActiveSec" ] &&
-		printf "OnUnitActiveSet=%s\n" "$onUnitActiveSec" >>$FNTIMER
+		printf "OnUnitActiveSec=%s\n" "$onUnitActiveSec" >>$FNTIMER
 	[ ! -z "$onCalendar" ] &&
 		printf "OnCalendar=%s\n" "$onCalendar" >>$FNTIMER
 
