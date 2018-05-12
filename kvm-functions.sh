@@ -149,9 +149,15 @@ function kvm_getDefaultDisk2 () {
 # choose Default Backend Network Device
 # we use the first non-loopback device of "IP link show"
 function kvm_getDefaultNetBackend () {
+	printf "mcvProd\n"
+	return 0
+
+	# If mcvProd is not the default, re-enable the following code
+	# in order to identify the first non loopback device
+
 	ifaces="$(ip link show | sed -n -e 's/\([0-9]\+: \)\([^:]\+\).*/\2/p')"
 	rc=$? ; if [ "$rc" -ne 0 ] ; then return $rc; fi
-	
+
 	for ifc in $ifaces ; do
 		if [ "$ifc" == "lo" ] ; then #ignore loopback device
 			/bin/true
