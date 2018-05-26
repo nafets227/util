@@ -133,6 +133,25 @@ function install_ease-of-use {
 	return 0
 }
 
+##### Install Infos of scripts used to install ###############################
+function install_instinfo {
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
+
+	#----- Real Work -----------------------------------------------------
+	git log -n 1 >$INSTALL_ROOT/root/instinfo.gitrev
+	git diff HEAD >$INSTALL_ROOT/root/instinfo.gitdiff
+
+	#----- Closing  ------------------------------------------------------
+	printf "Noted script revision to /root/instinfo.*\n"
+
+	return 0
+}
+
 #### Install Nafets Standards ################################################
 function install_nafets-std {
 	# SSL Zertifikat der eigenen CA installieren.
@@ -140,7 +159,8 @@ function install_nafets-std {
 	# Root logon in SSH erlauben
 	install-ssh_allow-root-pw && 
 	install_ssl-private-keys &&
-	install_ease-of-use
+	install_ease-of-use && 
+	install_instinfo
 
 	return $?
 }
