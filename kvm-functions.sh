@@ -94,6 +94,9 @@ function kvm_parseParm () {
 			--net3 )
 				prm_net3="${value:-$(kvm_getDefaultNetBackend)}"
 				;;
+			--cpuhost )
+				prm_cpuhost="${value:-1}"
+				;;
 			*)
 				printf "Error: unknown Parameter %s with value %s\n" \
 					"$parm" "$value"
@@ -249,6 +252,7 @@ function kvm_getDefaultOS () {
 #   --net <backend> [optional, autodetected]
 #   --net2 <backend> [optional, default=empty]
 #   --net3 <backend> [optional, default=empty]
+#   --cpuhost allow access to host CPU, use only for nexted virtualization!
 function kvm_create-vm () {
 	# Set Default values
 	local prm_mem="768"
@@ -268,6 +272,7 @@ function kvm_create-vm () {
 	local prm_net="$(kvm_getDefaultNetBackend)"
 	local prm_net2
 	local prm_net3
+	local prm_cpuhost="0"
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
 	# Parse Parameters
@@ -314,7 +319,7 @@ function kvm_create-vm () {
 	printf "\tefi BIOS %s\n" "$prm_efi"
 	printf "\tOS %s\n" "${prm_os:-<default>}"
 	printf "\tmemory %s\n" "$prm_mem"
-	printf "\tcpu %s\n" "$prm_cpu"
+	printf "\tcpu %s (host=%s)\n" "$prm_cpu" "$prm_cpuhost"
 	printf "\tboot+root-disk %s\n" "$prm_disk"
 	printf "\tdisk2: %s\n" "${prm_disk2:-<none>}"
 	printf "\tdisk3: %s\n" "${prm_disk3:-<none>}"
@@ -331,7 +336,6 @@ function kvm_create-vm () {
 		--virt-type $prm_virt
 		--memory $prm_mem
 		--vcpus=$prm_cpu
-		--cpu host
 		--import
 		--disk $prm_disk,format=raw,bus=virtio
 		--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
@@ -385,7 +389,15 @@ function kvm_create-vm () {
 			--network type=direct,source=$prm_net3,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6E:$prm_id
 			"
 	fi
-	
+	if [ "$prm_cpuhost" == "1" ] ; then
+		virt_prms="$virt_prms
+			--cpu host-passthrough
+			"
+	else
+		virt_prms="$virt_prms
+			--cpu host
+			"
+	fi
 	# @TODO ostype
 	# @TODO memory balloning for hot-plug and unplug
 	local domstate=$(virsh dominfo $vmname 2>/dev/null)
