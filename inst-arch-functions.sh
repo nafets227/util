@@ -100,7 +100,7 @@ function inst-arch_baseos {
 		"$INSTALL_ROOT" "$name" "$extrapkg" "$extramod" >&2
 
 	#Bootstrap the new system
-	pacstrap -c -d $INSTALL_ROOT base openssh $extrapkg || return 1
+	pacstrap -c -d $INSTALL_ROOT base openssh grub $extrapkg || return 1
 	genfstab -U -p $INSTALL_ROOT >$INSTALL_ROOT/etc/fstab || return 1
 
 	# Now include the needed modules in initcpio
@@ -194,7 +194,7 @@ function inst-arch_bootmgr-grubefi {
 	printf "Installing Grub-EFI on %s\n" "$INSTALL_ROOT" >&2
 
 	arch-chroot $INSTALL_ROOT <<-"EOFGRUB" || return 1
-		pacman -S --needed --noconfirm grub efibootmgr || exit 1
+		pacman -S --needed --noconfirm efibootmgr || exit 1
 		grub-install \
 			--target=x86_64-efi \
 			--boot-directory=/boot/grub2 \
@@ -259,7 +259,6 @@ function inst-arch_bootmgr-grubraw {
 	printf "Installing Grub-Raw on %s (%s)\n" "$INSTALL_ROOT" "$rawdev" >&2
 
 	arch-chroot $INSTALL_ROOT <<-EOF || return 1
-		pacman -S --needed --noconfirm grub || exit 1
 		grub-install \\
 			--target=i386-pc \\
 			--boot-directory=/boot/grub2 \\
