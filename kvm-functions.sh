@@ -150,9 +150,15 @@ function kvm_getDefaultDisk2 () {
 
 ##### getDefaultNetBackend ###################################################
 # choose Default Backend Network Device
-# we use the first non-loopback device of "IP link show"
+# mcvTest for machine names *Test, mcvProd otherwise
 function kvm_getDefaultNetBackend () {
-	printf "mcvProd\n"
+	vmname="$1"
+	if [[ "$vmname" == *Test ]] ; then
+		printf "mcvTest\n"
+	else
+		printf "mcvProd\n"
+	fi
+
 	return 0
 
 	# If mcvProd is not the default, re-enable the following code
@@ -170,6 +176,20 @@ function kvm_getDefaultNetBackend () {
 		fi
 	done 
 	}
+
+##### getDefaultAuto #########################################################
+# set Default Auto-Start value
+# 0 for machine name *Test, 1 otherwise
+function kvm_getDefaultAuto () {
+	vmname="$1"
+	if [[ "$vmname" == *Test ]] ; then
+		printf "0\n"
+	else
+		printf "1\n"
+	fi
+
+	return 0
+}
 
 ##### getDefaultID ###########################################################
 # return a unique 8bit ID to be used in various places like MAC adr, VNC port
@@ -200,7 +220,7 @@ function kvm_getDefaultID() {
 		vKube1 ) id="21" ;;
 		vKube2 ) id="22" ;;
 		vKube3 ) id="23" ;;
-		
+		vDomTest ) id="31" ;;
 	esac
 
 	if [ -z "$id" ] ; then
@@ -260,8 +280,8 @@ function kvm_create-vm () {
 	local prm_replace="0"
 	local prm_dryrun="0"
 	local prm_virt="kvm"
-	local prm_auto="1"
 	local prm_efi="0"
+	local prm_auto
 	local prm_id
 	local prm_disk
 	local prm_disk2
@@ -269,7 +289,7 @@ function kvm_create-vm () {
 	local prm_os
 	local prm_sound
 	local vmname
-	local prm_net="$(kvm_getDefaultNetBackend)"
+	local prm_net
 	local prm_net2
 	local prm_net3
 	local prm_cpuhost="0"
@@ -305,6 +325,18 @@ function kvm_create-vm () {
 	# Auto-Detect OS if not given on commandline
 	if [ -z "$prm_os" ] ; then
 		prm_os=$(kvm_getDefaultOS $vmname)
+		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
+	fi
+
+	# Auto-Detect First network device if not given on commandline
+	if [ -z "$prm_net" ] ; then
+		prm_net="$(kvm_getDefaultNetBackend "$vmname")"
+		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
+	fi
+
+	# Auto-Detect Auto-start if not given on commandline
+	if [ -z "$prm_auto" ] ; then
+		prm_auto="$(kvm_getDefaultAuto "$vmname")"
 		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	fi
 
