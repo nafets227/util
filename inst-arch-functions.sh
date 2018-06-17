@@ -34,6 +34,73 @@ function inst-arch_init() {
 	fi
 	read -p "Press Enter to Continue, use Ctrl-C to break."
 
+	inst-arch_initinternal "$name" "$rootdev" "$bootdev" "$bootmnt" || return 1
+
+	return 0
+}
+
+#### Setup Filesystems for virtual machines (make partitions) ################
+function inst-arch_init-fulldisk () {
+	# Parameters:
+	#    1 - hostname
+	#    2 - device
+	local name="$1"
+	local diskdev="$2"
+
+	printf "About to install Arch Linux for %s\n" "$name" >&2
+	printf "Disk-Device: %s (%s)\n" \
+			"$diskdev" "$(realpath $diskdev)" >&2
+	printf "Warning: All data on %s will be DELETED!\n" \
+			"$diskdev" >&2
+	read -p "Press Enter to Continue, use Ctrl-C to break."
+
+	# Create partitions and root Filesystems and mount it
+	if [ ! -e "$diskdev" ] ; then
+		printf "Creating Disk-Devide %s (size=10G)\n" "$diskdev"
+		fallocate -l 10G $diskdev
+		if [ $? -ne 0 ] ; then
+			printf "Falling back to dd since fallocate is not working.\n" >&2
+			dd if=/dev/zero of=$diskdev count=0 bs=1 seek=10G || return 1
+		fi
+	else
+		wipefs --all $diskdev || return 1
+	fi
+
+	parted -s -- "$diskdev" mklabel gpt &&
+	parted -s -- "$diskdev" mkpart primary fat32 128M 256M &&
+	parted -s -- "$diskdev" set 1 esp on &&
+	parted -s -- "$diskdev" mkpart primary 384M 512M &&
+	parted -s -- "$diskdev" set 2 bios_grub on &&
+	parted -s -- "$diskdev" mkpart primary ext4 512M 100% \
+	|| return 1
+
+	parts=$(kpartx -asv "$(realpath "$diskdev")" | \
+		sed -n -e 's:^add map \([A-Za-z0-9\-]*\).*:\1:p') &&
+	part_efi=$(head -1 <<<$parts) &&
+	part_bios=$(head -2 <<<$parts | tail -1) &&
+	part_root=$(tail -1 <<<$parts) \
+	|| return 1
+
+	INSTALL_DEV=$(losetup | grep $diskdev | cut -d" " -f 1) \
+		&& test ! -z "$INSTALL_DEV" \
+		|| return 1
+	INSTALL_FINALIZE_CMD="kpartx -d $(realpath "$diskdev")"
+
+	inst-arch_initinternal "$name" "/dev/mapper/$part_root" \
+		"/dev/mapper/$part_efi" "/boot/efi" \
+		|| return 1
+
+	return 0
+}
+
+#### Internal helper for setting up Filesystems in any environment ###########
+#### (partition based or fulldisk) ###########################################
+function inst-arch_initinternal () {
+	local name="$1"
+	local rootdev="$2"
+	local bootdev="$3"
+	local bootmnt="$4"
+
 	#install needed utilities
 	pacman -S --needed --noconfirm arch-install-scripts dosfstools >&2
 
@@ -75,6 +142,11 @@ function inst-arch_finalize {
 	EOF
 
 	umount --recursive --detach-loop "$INSTALL_ROOT"
+
+	if [ ! -z "$INSTALL_FINALIZE_CMD" ] ; then
+		$INSTALL_FINALIZE_CMD
+	fi
+
 	unset INSTALL_ROOT
 
 	return 0
@@ -244,7 +316,10 @@ function inst-arch_bootmgr-grubraw {
 		return 1
 	fi
 
-	if [ -z "$rawdev" ] ; then
+	if [ -z "$rawdev" ] && [ ! -z "$INSTALL_DEV" ] ; then
+		rawdev="$INSTALL_DEV"
+		printf "Autoproved Raw Device to INSTALL_DEV=%s\n" "$rawdev" >&2
+	elif [ -z "$rawdev" ] ; then
 		rawdev=$(cat /proc/mounts \
 		       | grep "$INSTALL_ROOT " \
 		       | cut -d" " -f 1)
