@@ -190,6 +190,7 @@ function install-net_static {
 	local macvlan="${5:-""}"
 	local ipvlan="${6:-""}"
 	local bridge="${7:-""}"
+	local forward="${8:-""}"
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
@@ -273,13 +274,22 @@ function install-net_static {
 		EOF
 	done; fi
 
+	if [ ! -z "$forward" ] ; then 
+		cat >>$cfgfile <<-EOF
+			IPForward=$forward
+		EOF
+	fi
+
 
 	if [ -f $INSTALL_ROOT/etc/resolv.conf ] || [ -l $INSTALL_ROOT/etc/resolv.conf ]; then
 	    rm $INSTALL_ROOT/etc/resolv.conf
 	fi
 	ln -s /run/systemd/resolve/resolv.conf $INSTALL_ROOT/etc/resolv.conf
 
-	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service systemd-resolved.service
+	systemctl --root=$INSTALL_ROOT enable \
+		systemd-networkd.service \
+		systemd-resolved.service \
+		systemd-timesyncd.service
 	local ntp_info
 
 	#----- Closing  ------------------------------------------------------
