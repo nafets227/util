@@ -221,7 +221,7 @@ function kvm_getDefaultID() {
 		vKube1 ) id="21" ;;
 		vKube2 ) id="22" ;;
 		vKube3 ) id="23" ;;
-		vDomTest ) id="31" ;;
+		vWinSrvTest ) id="32" ;;
 	esac
 
 	if [ -z "$id" ] ; then
