@@ -204,6 +204,7 @@ function kvm_getDefaultID() {
 	
 	case $vmname in
 		vDom   ) id="01" ;;
+		vWinSrv ) id="02" ;;
 		#Octopus)id="03" ;; # SATIP HW appliance, save the ID here
 		xen1 | vXen1 | kvm1 | vKvm1 | vPhys1 )
 		         id="05" ;;

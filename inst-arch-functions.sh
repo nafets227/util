@@ -63,7 +63,7 @@ function inst-arch_init-fulldisk () {
 			dd if=/dev/zero of=$diskdev count=0 bs=1 seek=10G || return 1
 		fi
 	else
-		wipefs --all $diskdev || return 1
+		wipefs --all --force $diskdev || return 1
 	fi
 
 	parted -s -- "$diskdev" mklabel gpt &&
@@ -81,9 +81,10 @@ function inst-arch_init-fulldisk () {
 	part_root=$(tail -1 <<<$parts) \
 	|| return 1
 
-	INSTALL_DEV=$(losetup | grep $diskdev | cut -d" " -f 1) \
-		&& test ! -z "$INSTALL_DEV" \
-		|| return 1
+	INSTALL_DEV=$(losetup | grep $diskdev | cut -d" " -f 1) || return 1
+	if [ -z "$INSTALL_DEV" ] ; then
+		INSTALL_DEV="$diskdev"
+	fi
 	INSTALL_FINALIZE_CMD="kpartx -d $(realpath "$diskdev")"
 
 	inst-arch_initinternal "$name" "/dev/mapper/$part_root" \
