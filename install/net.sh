@@ -248,6 +248,8 @@ function install-net_static {
 				Domains=$dom
 				EOF
 		fi
+	else
+		echo "IPv6AcceptRouterAdvertisements=false" >>$cfgfile
 	fi
 	
 	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
