@@ -316,102 +316,67 @@ function install-net_static {
 	return 0
 }
 
-##### install_net_dhcp ######################################################
-#function install-net_dhcp {
-#cat >/etc/systemd/network/nafetsde-dhcp.network <<EOF
-#[Match]
-#Name=eth* en*
-#
-#[Network]
-#DHCP=both
-#EOF
-#
-#mkdir -p /etc/systemd/system/systemd-timesyncd.service.d
-#echo -e "[Unit]\nConditionVirtualization=" > /etc/systemd/system/systemd-timesyncd.service.d/allow_virt.conf
-#systemctl daemon-reload
-#
-#systemctl enable \
-#    systemd-networkd.service \
-#    systemd-resolved.service \
-#    systemd-timesyncd.service
-#    
-#systemctl reload-or-restart \
-#    systemd-networkd.service \
-#    systemd-resolved.service \
-#    systemd-timesyncd.service
-#
-##BUGFIX: resolved is not correctly creating resolve.conf
-## from DHCP for searchlist and DNS Server
-## see https://bugs.freedesktop.org/show_bug.cgi?id=85397
-#systemctl disable systemd-resolved
-#systemctl stop systemd-resolved
-#cat >/etc/resolv.conf <<-EOF
-#	nameserver 192.168.108.1 192.168.108.250
-#	search dom.nafets.de intranet.nafets.de
-#	EOF
-#
-#systemctl enable systemd-networkd-wait-online.service
-#/usr/lib/systemd/systemd-networkd-wait-online
-#
-#echo "Setting up Network [dhcp] completed."
-#}
-
-##### install_net_dhcp2 #####################################################
+##### install_net_dhcp #######################################################
 # Install a secondary network interface that is somehow restricted
 # Parameter:
 #      iface               - name of interface, wildcards allowed
 #      hostname [optional] - hostname to use to get address via DHCP 
-#function install-net_dhcp2 {
-#if [ $# -lt 1 ] ; then
-#    echo "$0 install_net_static ERROR: Wrong number of parameters ($# instead of 1 or 2)."
-#    return -1
-#fi
-#
-#local iface=$1
-#local hostname=${2:-""}
-#local virt=${3:-""}
-#
-#if [ -z $virt ] ; then
-#    local readonly cfgfile="/etc/systemd/network/nafetsde-$iface.network"
-#else
-#    local readonly cfgfile="/etc/systemd/network/nafetsde-$iface-$virt.network"
-#fi
-#
-#cat >$cfgfile <<-EOF
-#	[Match]
-#	Name=$iface
-#	EOF
-#
-#if [ ! -z $virt ] ; then
-#    cat >>$cfgfile <<-EOF
-#	Virtualization=$virt
-#	EOF
-#fi
-#
-#cat >>$cfgfile <<-EOF
-#
-#	[Network]
-#	Description="Secondary Interface with DHCP in nafets.de"
-#	DHCP=both
-#	EOF
-#
-#if [ ! -z $hostname ]; then	
-#    cat >>$cfgfile <<-EOF
-#
-#	[DHCP]
-#	Hostname=$hostname
-#	EOF
-#fi
-#
-#systemctl reload-or-restart systemd-networkd.service
-#
-#printf "Setting up secondarys Network %s [dhcp" "$iface"
-#if [ ! -z $hostname ] ; then
-#    printf ", hostname=%s" "$hostname"
-#fi
-#if [ ! -z $virt ] ; then
-#    printf ", virtualisation=%s" "$virt"
-#fi
-#printf "]\n"
-#}
+#      virt                - restrict to virtualisation [yes/no], both if empty
+function install-net_dhcp {
+	local iface=${1:-""}
+	local hostname=${2:-""}
+	local virt=${3:-""}
+
+	if [ -z $virt ] ; then
+		local readonly cfgfilename="nafetsde-$iface.network"
+	else
+		local readonly cfgfilename="nafetsde-$iface-$virt.network"
+	fi
+	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/$cfgfilename"
+
+	if [ ! -z "$iface" ] ; then
+		cat >$cfgfile <<-EOF
+			[Match]
+			Name=$iface
+		EOF
+	fi
+
+	if [ ! -z $virt ] ; then
+		cat >>$cfgfile <<-EOF
+			Virtualization=$virt
+		EOF
+	fi
+
+	cat >>$cfgfile <<-EOF
+
+		[Network]
+		Description="Secondary Interface with DHCP in nafets.de"
+		DHCP=ipv4
+	EOF
+
+	if [ ! -z $hostname ]; then
+		cat >>$cfgfile <<-EOF
+
+			[DHCP]
+			Hostname=$hostname
+		EOF
+	fi
+
+	systemctl --root=$INSTALL_ROOT enable \
+		systemd-networkd.service \
+		systemd-resolved.service \
+		systemd-timesyncd.service \
+		|| return 1
+	# systemctl --root=$INSTALL_ROOT enable \
+	#	systemd-networkd-wait-online.service
+
+	printf "Setting up Network %s [dhcp" "$iface"
+	if [ ! -z $hostname ] ; then
+	    printf ", hostname=%s" "$hostname"
+	fi
+	if [ ! -z $virt ] ; then
+	    printf ", virtualisation=%s" "$virt"
+	fi
+	printf "] completed.\n"
+}
 
