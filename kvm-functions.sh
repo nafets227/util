@@ -33,7 +33,7 @@ function kvm_parseParm () {
 		
 		#DEBUG printf "DEBUG: parm %s value \"%s\"\n" "$parm" "$value" >&2
 		case "$parm" in
-			--disk | --boot | --root | --dev* )
+			--disk | --root | --dev* )
 				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
 				prm_disk="$value"
 				;;
@@ -96,6 +96,14 @@ function kvm_parseParm () {
 				;;
 			--cpuhost )
 				prm_cpuhost="${value:-1}"
+				;;
+			--arch )
+				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				prm_arch="$value"
+				;;
+			--boot )
+				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				prm_boot="$value"
 				;;
 			*)
 				printf "Error: unknown Parameter %s with value %s\n" \
@@ -220,6 +228,8 @@ function kvm_getDefaultID() {
 		vKube2 ) id="22" ;;
 		vKube3 ) id="23" ;;
 		vWinSrvTest ) id="32" ;;
+		vPiBuild ) id="09" ;;
+		vPiBuildTest ) id="39" ;;
 	esac
 
 	if [ -z "$id" ] ; then
@@ -292,6 +302,11 @@ function kvm_create-vm () {
 	local prm_net2
 	local prm_net3
 	local prm_cpuhost="0"
+	local prm_arch
+	local prm_boot
+	local diskbustype="virtio" # will be modified for arch architecture to scsi
+	local nettype="virtio" # will be modified for arch architectures to smc91c111
+	local videotype="virtio" # will be modified for arch architectures
 	rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 
 	# Parse Parameters
@@ -339,6 +354,17 @@ function kvm_create-vm () {
 		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	fi
 
+	#set Disk Bus device depending on Architecture
+	if [ "$prm_arch" == "armv6l" ] ; then
+		diskbustype="scsi" # sd does work for definition,  but not when domain is started
+		nettype="smc91c111"
+		videotype="vga"
+	else
+		diskbustype="virtio"
+		nettype="virtio"
+		videotype="virtio"
+	fi
+
 	# Tell user what we do
 	local prefix_dryrun=""
 	[ "$prm_dryrun" -ne 0 ] && prefix_dryrun="Dryrun-"
@@ -347,7 +373,9 @@ function kvm_create-vm () {
 		"$prefix_dryrun" \
 		"$vmname" \
 		"$prm_id"
+	printf "\tarch %s\n" "${prm_arcg:-<default>}"
 	printf "\tefi BIOS %s\n" "$prm_efi"
+	printf "\tBoot %s\n" "${prm_boot:-<none>}"
 	printf "\tOS %s\n" "${prm_os:-<default>}"
 	printf "\tmemory %s\n" "$prm_mem"
 	printf "\tcpu %s (host=%s)\n" "$prm_cpu" "$prm_cpuhost"
@@ -368,21 +396,19 @@ function kvm_create-vm () {
 		--memory $prm_mem
 		--vcpus=$prm_cpu
 		--import
-		--disk $prm_disk,format=raw,bus=virtio
-		--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
-		--video virtio
+		--disk $prm_disk,format=raw,bus=$diskbustype
 		--events on_crash=restart
 		--noautoconsole
 		--noreboot
 		"
 	if [ ! -z "$prm_disk2" ] ; then
 		virt_prms="$virt_prms
-			--disk $prm_disk2,format=raw,bus=virtio
+			--disk $prm_disk2,format=raw,bus=$diskbustype
 			"
 	fi
 	if [ ! -z "$prm_disk3" ] ; then
 		virt_prms="$virt_prms
-			--disk $prm_disk3,format=raw,bus=virtio
+			--disk $prm_disk3,format=raw,bus=$diskbustype
 			"
 	fi
 	if [ "$prm_auto" == "1" ] ; then
@@ -400,34 +426,60 @@ function kvm_create-vm () {
 			--sound $prm_sound
 			"
 	fi
-	if [ "$prm_efi" == "1" ] ; then 
+	if [ "$prm_net" == "none" ] ; then
 		virt_prms="$virt_prms
-			--boot loader=/usr/share/ovmf/x64/OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/usr/share/ovmf/x64/OVMF_VARS.fd,loader_secure=no
+			--net none
 			"
-	fi
-	if [ ! -z "$prm_net" ] ; then
+	elif [ ! -z "$prm_net" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6C:$prm_id
+			--network type=direct,source=$prm_net,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6C:$prm_id
 			"
 	fi
 	if [ ! -z "$prm_net2" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net2,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6D:$prm_id
+			--network type=direct,source=$prm_net2,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6D:$prm_id
 			"
 	fi
 	if [ ! -z "$prm_net3" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net3,source_mode=bridge,model=virtio,mac=00:16:3E:A8:6E:$prm_id
+			--network type=direct,source=$prm_net3,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6E:$prm_id
 			"
 	fi
 	if [ "$prm_cpuhost" == "1" ] ; then
 		virt_prms="$virt_prms
 			--cpu host-passthrough
 			"
-	else
+	elif [ -z "$prm_cpuhost" ] ; then
 		virt_prms="$virt_prms
 			--cpu host
 			"
+	fi
+	if [ ! -z "$prm_arch" ] ; then
+		virt_prms="$virt_prms
+			--arch $prm_arch
+			"
+		if [ "$prm_arch" == "armv6l" ] ; then
+			virt_prms="$virt_prms
+				--cpu arm1176
+				--machine versatilepb
+				"
+		else
+			virt_prms="$virt_prms
+				--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
+				--video $videotype
+				"
+		fi
+	fi
+	# !!! --boot must be last to avoid deleting the ''
+	if [ "$prm_efi" == "1" ] ; then
+		virt_prms="$virt_prms
+			--boot loader=/usr/share/ovmf/x64/OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/usr/share/ovmf/x64/OVMF_VARS.fd,loader_secure=no
+			"
+	elif [ ! -r "$prm_boot" ] ; then
+		virt_prms="$virt_prms
+			--boot \"$prm_boot\"
+			"
+
 	fi
 	# @TODO ostype
 	# @TODO memory balloning for hot-plug and unplug
@@ -448,7 +500,7 @@ function kvm_create-vm () {
 		virt-install --dry-run $virt_prms
 		rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
 	else
-		virt-install $virt_prms
+		eval virt-install $virt_prms
 		rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
 	fi
 
