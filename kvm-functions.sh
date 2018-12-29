@@ -227,6 +227,11 @@ function kvm_getDefaultID() {
 		vKube1 ) id="21" ;;
 		vKube2 ) id="22" ;;
 		vKube3 ) id="23" ;;
+
+		vKube1Test ) id=26 ;;
+		vKube2Test ) id=27 ;;
+		vKube3Test ) id=28 ;;
+
 		vWinSrvTest ) id="32" ;;
 		vPiBuild ) id="09" ;;
 		vPiBuildTest ) id="39" ;;
