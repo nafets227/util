@@ -185,11 +185,15 @@ function inst-arch_finalize {
 	# From here on we do not do any error handling.
 	# We just do our best to cleanup things.
 
-	# arch-chroot will fail on non-x86 systems. passwd --root also fails,
-	# so we kindly ignore if it fails.
-	arch-chroot $INSTALL_ROOT <<-EOF
-		passwd -e root
-	EOF
+	if [ "$1" != "--no-passwd-expire" ] ; then
+		# arch-chroot will fail on non-x86 systems. passwd --root also fails,
+		# so we kindly ignore if it fails.
+		arch-chroot $INSTALL_ROOT <<-EOF
+			passwd -e root
+		EOF
+	else
+		printf "Skipping expire root password\n"
+	fi
 
 	umount --recursive --detach-loop "$INSTALL_ROOT"
 

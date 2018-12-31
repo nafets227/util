@@ -549,6 +549,62 @@ function kvm_delete-vm {
    
 }
 
+##### kvm_start-vm ##########################################################
+# Parameters:
+# 1 - machinename [mandatory]
+# 2 - DNS name of machine [optional, default=machinename ]
+# 2 - Timeout to wait for machine to appear in seconds [optional, 60]
+function kvm_start_vm {
+	if [ -z "$1" ] ; then
+		printf "Error: no machine name supplied\n" >&2
+		return 1
+	fi
+	local readonly vmname="$1"
+	local readonly dnsname="${2:-$vmname}"
+	local readonly sleepMax=${3:-60}
+
+	local readonly sleepFirst=5
+	local readonly sleepNext=5
+
+	local slept=0 # beginning
+
+	ping -c 1 -W 1 "$dnsname"; rc=$?
+	case $rc in
+		0)
+			printf "Error: %s is running and replying to ping at %s\n" \
+				"$vmname" "$dnsname"
+			return 1
+			;;
+		1)
+			# expected
+			;;
+		*)
+			printf "Error: cannot ping %s %s\n" \
+				"$vmname" "$dnsname"
+			return 1
+			;;
+	esac
+
+	printf "Starting virtual Machine %s\n" "$vmname"
+	virsh start $vmname || return 1
+
+	printf "Waiting initial %s seconds for machine %s to appear (%s/%s)\n" \
+		"$sleepFirst" "$vmname" "$slept" "$sleepMax"
+	sleep $sleepFirst ; slept=$(( $slept + $sleepFirst ))
+
+	while [ "$slept" -lt "$sleepMax" ] ; do
+		ping -c 1 -W 1 "$dnsname" && return 0
+		printf "Waiting another %s seconds for machine %s to appear (%s/%s)\n" \
+			"$sleepNext" "$vmname" "$slept" "$sleepMax"
+		sleep $sleepNext ; slept=$(( $slept + $sleepNext ))
+	done
+
+	printf "ERROR: Timed out waiting %s seconds for machine %s\n" \
+		"$sleepMax" "$MNAME"
+
+	return 1
+}
+
 ##### Main ###################################################################
 
 # do nothing
