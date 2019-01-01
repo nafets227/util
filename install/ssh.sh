@@ -136,3 +136,12 @@ function install-ssh_key {
 	
 	return 0
 }
+
+#### install-ssh_remove-known-host ###########################################
+function install-ssh_remove-known-host {
+	host="$1"
+
+	ssh-keygen -R "$host"
+
+	return $?
+}
