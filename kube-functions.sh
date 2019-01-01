@@ -119,7 +119,7 @@ function kube-install {
 	if [ ! -z "$(ls $confdir/*.sh 2>/dev/null)" ] ; then
 		for f in $confdir/kube/*.sh ; do
 			printf "Loading Kubeconfig %s ... " "$(basename $f)"
-			. $f --$action
+			. $f --$action || return 1
 		done
 	fi
 
@@ -128,7 +128,8 @@ function kube-install {
 		for f in $confdir/*.yaml ; do
 			printf "Loading Kubeconfig %s ... " "$(basename $f)"
 			kubectl $kube_action -n $ns -f $f || \
-				kubectl replace -n $ns -f $f
+				kubectl replace -n $ns -f $f \
+			|| return 1
 		done
 	fi
 
@@ -137,7 +138,8 @@ function kube-install {
 		for f in $confdir/*.yaml.template ; do
 			printf "Loading Kubeconfig %s ... " "$(basename $f)"
 			eval sed $sed_parms <$f \
-			| kubectl $kube_action -n $ns -f -
+			| kubectl $kube_action -n $ns -f - \
+			|| return 1
 		done
 	fi
 
@@ -145,7 +147,8 @@ function kube-install {
 	if [ ! -z $(ls $confdir/*.yaml.delete 2>/dev/null) ] ; then
 		for f in $BASEDIR/kube/*.yaml.delete ; do
 			kubectl delete -n $ns -f $f \
-			       	--cascade=true --ignore-not-found
+				--cascade=true --ignore-not-found \
+			|| return 1
 		done
 	fi
 
