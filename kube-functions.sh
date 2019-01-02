@@ -155,6 +155,49 @@ function kube-install {
 	return 0
 }
 
+##### kube-wait : Wait for Cluster to start all pods ################################
+# Parameters:
+# 1 - Minimum number of pods [optional, 1]
+# 2 - Timeout to wait for machine to appear in seconds [optional, default=240]
+function kube-wait {
+	local readonly minPods=${1:-1}
+        local readonly sleepMax=${2:-240}
+
+        local readonly sleepNext=5
+
+        local slept=0 # beginning
+
+        while [ "$slept" -lt "$sleepMax" ] ; do
+		PODS=$(/usr/bin/kubectl -n kube-system get pods -o name) &&
+		POD_CNT=$(wc -w <<<"$PODS") &&
+
+		POD_ACT=$(/usr/bin/kubectl \
+			-n kube-system \
+			wait $PODS \
+			--for condition=Ready \
+			--timeout=0 2>/dev/null)
+		POD_WAIT_RC=$?
+		POD_ACT_CNT=$(wc -l <<<"$POD_ACT")
+
+		if [ "$POD_WAIT_RC" == 0 ] &&
+		   [ "$POD_CNT" -ge "$minPods" ] ; then
+			return 0
+		fi
+
+		printf "Waiting for pods: %s/%s/%s (def/act/exp)" \
+			"$POD_CNT" "$(wc -l <<<"$POD_ACT")" "$minPods"
+
+                printf " sleep %s seconds (%s/%s)\n" \
+                        "$sleepNext" "$slept" "$sleepMax"
+                sleep $sleepNext ; slept=$(( $slept + $sleepNext ))
+        done
+
+        printf "ERROR: Timed out waiting %s seconds for Kubernetes\n" \
+                "$sleepMax"
+
+        return 1
+}
+
 ##### MAIN-template ##################################################################
 # This can be used as template for application specific install script
 function main-template {
