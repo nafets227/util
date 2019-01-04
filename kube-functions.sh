@@ -181,6 +181,8 @@ function kube-wait {
 
 		if [ "$POD_WAIT_RC" == 0 ] &&
 		   [ "$POD_CNT" -ge "$minPods" ] ; then
+			printf "Pods OK: %s/%s/%s (def/act/exp)" \
+				"$POD_CNT" "$(wc -l <<<"$POD_ACT")" "$minPods"
 			return 0
 		fi
 
