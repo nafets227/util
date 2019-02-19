@@ -432,17 +432,17 @@ function kvm_create-vm () {
 			"
 	elif [ ! -z "$prm_net" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6C:$prm_id
+			--network type=direct,source=$prm_net,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6C:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ ! -z "$prm_net2" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net2,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6D:$prm_id
+			--network type=direct,source=$prm_net2,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6D:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ ! -z "$prm_net3" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net3,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6E:$prm_id
+			--network type=direct,source=$prm_net3,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6E:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ "$prm_cpuhost" == "1" ] ; then
