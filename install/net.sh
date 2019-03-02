@@ -249,7 +249,12 @@ function install-net_static {
 				EOF
 		fi
 	else
-		echo "IPv6AcceptRouterAdvertisements=false" >>$cfgfile
+		cat <<-EOF >>$cfgfile || return 1
+			IPv6AcceptRouterAdvertisements=false
+			LLMNR=no
+			LinkLocalAddressing=no
+			IPv6AcceptRA=no
+			EOF
 	fi
 	
 	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
