@@ -30,7 +30,6 @@ function install-nfs_server {
 		# Standard NFS Setup in nafets.de
 		# (C) 2015-2018 Stefan Schallenberg
 
-		/srv/nfs4 192.168.108.0/24(rw,fsid=root,no_subtree_check,crossmnt,no_root_squash)
 		EOF
 	if [ "$?" != "0" ] ; then return 1 ; fi
 
@@ -69,6 +68,7 @@ function install-nfs_export {
 	path="$1"
 	exportname="$2"
 	options="$3"
+	nets="${4:-192.168.108.0/24}"
 
         #----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
@@ -79,7 +79,8 @@ function install-nfs_export {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
-	elif fgrep "/srv/nfs4/$exportname" $INSTALL_ROOT/etc/exports >&/dev/null ; then
+	elif [ ! -z "$exportname" ] &&
+	     fgrep "/srv/nfs4/$exportname" $INSTALL_ROOT/etc/exports >&/dev/null ; then
 		printf "%s: Error %s already exportet (see /etc/exports)\n" \
 			"$FUNCNAME" "$exportname" >&2
 		return 1
@@ -91,16 +92,28 @@ function install-nfs_export {
 			exportopt="ro,no_subtree_check,nohide,no_root_squash"
 			;;
 		"rw" )
-			exportopt="rw,subtree_check,nohide,no_root_squash"
+			if [ "$exportname" == "" ] ; then
+				exportopt="rw,fsid=root,no_subtree_check,crossmnt,no_root_squash"
+			else
+				exportopt="rw,subtree_check,nohide,no_root_squash"
+			fi
 			;;
 		* )
 			exportopt="$3"
 	esac
 
-	install-mount "$path" "/srv/nfs4/$exportname"  "none bind 0 0" || return 1
+	if [ "$exportname" != "" ] ; then
+		install-mount "$path" "/srv/nfs4/$exportname"  "none bind 0 0" || return 1
+	fi
+
+	local netopt=""
+	for n in $nets ; do
+		netopt+=" $n($exportopt)"
+	done
+	netopt="${netopt:1}" # remove leading blank
 
 	cat >>$INSTALL_ROOT/etc/exports <<-EOF
-		/srv/nfs4/$exportname 192.168.108.0/24($exportopt)
+		/srv/nfs4/$exportname $netopt
 		EOF
 
         #----- Closing  ------------------------------------------------------
