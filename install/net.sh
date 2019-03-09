@@ -229,7 +229,10 @@ function install-net_static {
 		EOF
 	if [ ! -z "$ipaddr" ] ; then
 		for f in $ipaddr ; do
-			echo "Address=$f/24" >>$cfgfile
+			if [[ $f != */* ]] ; then
+				f+="/24"
+			fi
+			echo "Address=$f" >>$cfgfile
 		done
 		local primary_ip=${ipaddr%% *}
 		local ip_net=${primary_ip%.*}
