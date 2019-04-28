@@ -100,6 +100,12 @@ function kvm_parseParm () {
 			--net5 )
 				prm_net5="${value:-$(kvm_getDefaultNetBackend)}"
 				;;
+			--net6 )
+				prm_net6="${value:-$(kvm_getDefaultNetBackend)}"
+				;;
+			--net7 )
+				prm_net7="${value:-$(kvm_getDefaultNetBackend)}"
+				;;
 			--cpuhost )
 				prm_cpuhost="${value:-1}"
 				;;
@@ -294,6 +300,8 @@ function kvm_getDefaultOS () {
 #   --net3 <backend> [optional, default=empty]
 #   --net4 <backend> [optional, default=empty]
 #   --net5 <backend> [optional, default=empty]
+#   --net6 <backend> [optional, default=empty]
+#   --net7 <backend> [optional, default=empty]
 #   --cpuhost allow access to host CPU, use only for nexted virtualization!
 function kvm_create-vm () {
 	# Set Default values
@@ -316,6 +324,8 @@ function kvm_create-vm () {
 	local prm_net3
 	local prm_net4
 	local prm_net5
+	local prm_net6
+	local prm_net7
 	local prm_cpuhost="0"
 	local prm_arch
 	local prm_boot
@@ -402,6 +412,8 @@ function kvm_create-vm () {
 	printf "\tnet3 %s\n" "${prm_net3:-<none>}"
 	printf "\tnet4 %s\n" "${prm_net4:-<none>}"
 	printf "\tnet5 %s\n" "${prm_net5:-<none>}"
+	printf "\tnet6 %s\n" "${prm_net6:-<none>}"
+	printf "\tnet7 %s\n" "${prm_net7:-<none>}"
 	printf "\tVirtualisation: %s\n" "$prm_virt"
 	printf "\tAutoStart: %s\n" "$prm_auto"
 	printf "\tSound: %s\n" "${prm_sound:-<none>}"
@@ -449,27 +461,37 @@ function kvm_create-vm () {
 			"
 	elif [ ! -z "$prm_net" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6A:$prm_id,trustGuestRxFilters=yes
+			--network type=direct,source=$prm_net,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:60:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ ! -z "$prm_net2" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net2,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6B:$prm_id,trustGuestRxFilters=yes
+			--network type=direct,source=$prm_net2,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:61:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ ! -z "$prm_net3" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net3,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6C:$prm_id,trustGuestRxFilters=yes
+			--network type=direct,source=$prm_net3,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:62:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ ! -z "$prm_net4" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net4,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6D:$prm_id,trustGuestRxFilters=yes
+			--network type=direct,source=$prm_net4,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:63:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ ! -z "$prm_net5" ] ; then
 		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net5,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:6E:$prm_id,trustGuestRxFilters=yes
+			--network type=direct,source=$prm_net5,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:64:$prm_id,trustGuestRxFilters=yes
+			"
+	fi
+	if [ ! -z "$prm_net6" ] ; then
+		virt_prms="$virt_prms
+			--network type=direct,source=$prm_net6,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:65:$prm_id,trustGuestRxFilters=yes
+			"
+	fi
+	if [ ! -z "$prm_net7" ] ; then
+		virt_prms="$virt_prms
+			--network type=direct,source=$prm_net7,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:66:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ "$prm_cpuhost" == "1" ] ; then
