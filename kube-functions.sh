@@ -46,11 +46,12 @@ function kube-getIP {
 #		ip=myipvalue
 #	before the yaml file will be processed by kubernetes.
 function kube-install {
-	action="$1"
-	app="$2"
-	ns="${3:-test}"
-	confdir="$(realpath ${4:-./kube})"
-	envnames="$5"
+	local action="$1"
+	local app="$2"
+	local ns="${3:-test}"
+	local confdir="$(realpath ${4:-./kube})"
+	local envnames="$5"
+	local kube_action action_desploy
 
 	##### checking parameters
 	if [ "$#" -lt 2 ] ; then
