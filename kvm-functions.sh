@@ -637,11 +637,14 @@ function kvm_start_vm {
 	sleep $sleepFirst ; slept=$(( $slept + $sleepFirst ))
 
 	while [ "$slept" -lt "$sleepMax" ] ; do
-		ping -c 1 -W 1 "$dnsname" && \
-			ssh -o StrictHostKeyChecking=no -n "$dnsname" && \
+		ping -c 1 -W 1 "$dnsname" &&
+			ssh -o StrictHostKeyChecking=no -n "$dnsname" &&
+			vmstatus=$(ssh -o StrictHostKeyChecking=no "$dnsname" \
+				<<<"systemctl is-system-running") &&
+			[ "$vmstatus" == "running" ] &&
 			return 0
-		printf "Waiting another %s seconds for machine %s to appear (%s/%s)\n" \
-			"$sleepNext" "$vmname" "$slept" "$sleepMax"
+		printf "Waiting another %s seconds for machine %s to appear (%s/%s) %s\n" \
+			"$sleepNext" "$vmname" "$slept" "$sleepMax" "$vmstatus"
 		sleep $sleepNext ; slept=$(( $slept + $sleepNext ))
 	done
 
