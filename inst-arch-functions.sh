@@ -402,7 +402,7 @@ function inst-arch_bootmgr-grubraw {
 function inst-arch_add_repo () {
 	local readonly PACCONF=$INSTALL_ROOT/etc/pacman.conf
 	repo="$1"
-	srv="$2"
+	srv="${2:-"MIRROR"}"
 	sig="$3"
 
 	#----- Input checks --------------------------------------------------
@@ -421,14 +421,15 @@ function inst-arch_add_repo () {
 	if [ ! -z "$sig" ] ; then
 		printf "SigLevel = %s\n" "$sig" >>$PACCONF || return 1
 	fi
-	if [ -z "$srv" ] ; then
-		printf "Include = /etc/pacman.d/mirrorlist\n" \
-			>>$PACCONF || return 1
-	else
-		for f in $srv ; do
+
+	for f in $srv ; do
+		if [ "$f" == "MIRROR" ] ; then
+			printf "Include = /etc/pacman.d/mirrorlist\n" \
+				>>$PACCONF || return 1
+		else
 			printf "Server = %s\n" "$f" >>$PACCONF || return 1
-		done
-	fi
+		fi
+	done
 
 	#----- Closing -------------------------------------------------------
 	printf "Added ArchLinux Repo %s" >&2
