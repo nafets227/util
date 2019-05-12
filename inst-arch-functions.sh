@@ -160,6 +160,7 @@ function inst-arch_initinternal () {
 	export INSTALL_ROOT
 
 	# Create root Filesystems and mount it
+	wipefs --all --force $rootdev || return 1
 	mkfs.ext4 $rootdev >&2 || return 1
 	mount $rootdev $INSTALL_ROOT >&2 || return 1
 
