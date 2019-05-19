@@ -382,7 +382,8 @@ function kvm_create-vm () {
 	#set Disk Bus device depending on Architecture
 	if [ "$prm_arch" == "armv6l" ] ; then
 		diskbustype="scsi" # sd does work for definition,  but not when domain is started
-		nettype="smc91c111"
+		# old: nettype="smc91c111"
+		nettype="virtio"
 		videotype="vga"
 	else
 		diskbustype="virtio"

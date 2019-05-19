@@ -120,12 +120,12 @@ function install_ease-of-use {
 	chmod 755 $INSTALL_ROOT/etc/profile.d/nafets_de.sh
 
 	# Enable Syntax highlighting in vim
-	arch-chroot $INSTALL_ROOT <<-"EOF" || return 1
-		pacman -S --needed --noconfirm vim
-		EOF
-
-	fgrep "syntax enable" $INSTALL_ROOT/etc/vimrc >/dev/null || \
+	if \
+		[ -e $INSTALL_ROOT/etc/vimrc ]  &&
+		! fgrep "syntax enable" $INSTALL_ROOT/etc/vimrc >/dev/null
+	then
 		printf "syntax enable\n" >>$INSTALL_ROOT/etc/vimrc
+	fi
 
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up Environment completed.\n"
