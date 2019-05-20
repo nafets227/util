@@ -607,6 +607,7 @@ function kvm_start_vm {
 	local readonly vmname="$1"
 	local readonly dnsname="${2:-$vmname}"
 	local readonly sleepMax=${3:-60}
+	local readonly waitDNS=${4:-0}
 
 	local readonly sleepFirst=5
 	local readonly sleepNext=5
@@ -624,9 +625,14 @@ function kvm_start_vm {
 			# expected
 			;;
 		*)
-			printf "Error: cannot ping %s %s\n" \
-				"$vmname" "$dnsname"
-			return 1
+			if [ "$waitDNS" == "0" ] ; then
+				printf "Error: cannot ping %s %s\n" \
+					"$vmname" "$dnsname"
+				return 1
+			else
+				printf "Warning: cannot ping %s %s\n" \
+					"$vmname" "$dnsname"
+			fi
 			;;
 	esac
 
@@ -638,12 +644,15 @@ function kvm_start_vm {
 	sleep $sleepFirst ; slept=$(( $slept + $sleepFirst ))
 
 	while [ "$slept" -lt "$sleepMax" ] ; do
+		[ ! -z "$(dig +short $dnsname)" ] &&
 		ping -c 1 -W 1 "$dnsname" &&
-			ssh -o StrictHostKeyChecking=no -n "$dnsname" &&
-			vmstatus=$(ssh -o StrictHostKeyChecking=no "$dnsname" \
-				<<<"systemctl is-system-running") &&
-			[ "$vmstatus" == "running" ] &&
-			return 0
+		ssh -o StrictHostKeyChecking=no -n "$dnsname" &&
+		vmstatus=$(ssh -o StrictHostKeyChecking=no "$dnsname" \
+			<<<"systemctl is-system-running" |
+			tail -1) &&
+		[ "$vmstatus" == "running" ] &&
+		return 0
+
 		printf "Waiting another %s seconds for machine %s to appear (%s/%s) %s\n" \
 			"$sleepNext" "$vmname" "$slept" "$sleepMax" "$vmstatus"
 		sleep $sleepNext ; slept=$(( $slept + $sleepNext ))

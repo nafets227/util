@@ -309,6 +309,108 @@ function inst-arch_baseos {
 	return 0
 }
 
+##### Install ARM base OS ####################################################
+function inst-arch_basearm {
+	# Parameters:
+	#    1 - hostname
+	local name="$1"
+
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
+
+	# Download latest Image
+	local readonly CACHDIR="/var/cache/archlinuxarm"
+	test -d "$CACHDIR" || mkdir -p "$CACHDIR" || return 1
+	printf "Downloading Arch linux ARM for PI\n"
+	if [ -f $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz ] ; then
+		CURL_OPT="--time-cond $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz"
+	else
+		CURL_OPT=""
+	fi
+	curl \
+		--location \
+		--remote-time \
+		--output $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
+		$CURL_OPT \
+		http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-latest.tar.gz \
+	|| return 1
+
+	# Now start the installation after confirmation of the user
+	printf "Installing Arch Linux ARM on %s for %s.\n" \
+		"$INSTALL_ROOT" "$name" >&2
+
+	# bsdtar complains when writing to FAT32 since it cannot put the access
+	# rights. So we write boot separately with options to bsdtar to ignore
+	# access rights. Be careful with the order of options, bsdtar is very
+	# ugly on that.
+	printf "Extracting root FS ... \n"
+	bsdtar \
+		--exclude=./boot \
+		-f $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
+		-C $INSTALL_ROOT \
+		-xpz &&
+	bsdtar \
+		--no-fflags \
+		-f $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
+		-C $INSTALL_ROOT \
+		-xz \
+		./boot &&
+
+	genfstab -U -p $INSTALL_ROOT >$INSTALL_ROOT/etc/fstab || return 1
+
+	test -e $INSTALL_ROOT/etc/localtime && rm $INSTALL_ROOT/etc/localtime
+
+	# set Hostname
+	printf "%s\n" "$name" >$INSTALL_ROOT/etc/hostname &&
+
+	# Now Set the system to German language
+	# for german use: echo "LANG=de_DE.UTF-8" > /etc/locale.conf
+	printf "LANG=en_DK.UTF-8" > $INSTALL_ROOT/etc/locale.conf &&
+	ln -s /usr/share/zoneinfo/Europe/Berlin $INSTALL_ROOT/etc/localtime &&
+	cat >>$INSTALL_ROOT/etc/locale.gen <<-EOF || return 1
+
+		# by $OURSELVES
+		de_DE.UTF-8 UTF-8
+		en_DK.UTF-8 UTF-8
+		EOF
+
+	# Setup a Keyring for new system
+	KEYR_DIR=/usr/share/pacman/keyrings/$(basename $INSTALL_ROOT) &&
+	ln -s \
+		$INSTALL_ROOT/usr/share/pacman/keyrings \
+		$KEYR_DIR &&
+	sed "s:Include = /:Include = $INSTALL_ROOT/:" \
+		<$INSTALL_ROOT/etc/pacman.conf \
+		>$INSTALL_ROOT/etc/pacman.conf.installroot
+	pacman-key --init \
+		--config $INSTALL_ROOT/etc/pacman.conf.installroot \
+		--gpgdir $INSTALL_ROOT/etc/pacman.d/gnupg &&
+	pacman-key --populate $(basename $INSTALL_ROOT)/archlinuxarm \
+		--config $INSTALL_ROOT/etc/pacman.conf.installroot \
+		--gpgdir $INSTALL_ROOT/etc/pacman.d/gnupg \
+	|| return 1
+
+	# Executing pacman fails as the hooks would executed with the wrong 
+	# architecture and thus fail.
+	# So we dont allow additional packages here, instead they need to be
+	# in stalled using ssh later once the system is up and running.
+	##### Install additional requested packages
+	##### PACMAN_ARGS="--arch arm" &&
+	##### PACMAN_ARGS+=" --root $INSTALL_ROOT" &&
+	##### PACMAN_ARGS+=" --config $INSTALL_ROOT/etc/pacman.conf.installroot" &&
+	##### PACMAN_ARGS+=" --cachedir $INSTALL_ROOT/var/cache/pacman/pkg" &&
+	##### PACMAN_ARGS+=" --gpgdir $INSTALL_ROOT/etc/pacman.d/gnupg" &&
+	##### PACMAN_ARGS+=" --noconfirm" &&
+	##### pacman $PACMAN_ARGS -Suy \
+	##### pacman $PACMAN_ARGS -S --needed openssh $extrapkg \
+	##### || return 1
+
+	return 0
+}
+
 ##### Install Grub for efi ###################################################
 function inst-arch_bootmgr-grubefi {
 	if [ ! -d "$INSTALL_ROOT" ] ; then
