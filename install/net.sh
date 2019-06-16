@@ -225,7 +225,7 @@ function install-net_static {
 
 		[Network]
 		Description="Static IP Adress in nafets.de"
-		DHCP=none
+		DHCP=no
 		EOF
 	if [ ! -z "$ipaddr" ] ; then
 		for f in $ipaddr ; do
