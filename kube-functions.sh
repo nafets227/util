@@ -23,7 +23,95 @@ function kube-getIP {
 	return 0
 }
 
+##### kube-inst_init - Initialize Kubernetes Installation ####################
+# Parameter:
+#   1 - action [install|delete]
+#   2 - stage [prod|preprod|test|testtest] where to install
+#   3 - app Application name to be assigne to kubernetes tag
+# Environment Variables set on exit:
+#   KUBE_CONFIGFILE name of Kubeconfig with access credentials
+#   KUBE_ACTION     action
+#   KUBE_STAGE      stage
+#   KUBE_NAMESPACE  Namespeace to be used
+#   KUBE_APP        Application name to be used in Labels
+#   KUBE_BASEDOM    Base Domain to be used for internal Services
+function kube-inst_init {
+	local action="$1"
+	local stage="${2:-preprod}"
+	local app="$3"
+
+	if [ "$action" == "install" ] || [ "$action" == "delete" ] ; then
+		KUBE_ACTION="$action"
+	else
+		printf "Invalid Action %s\n" "$action"
+		return 1
+	fi
+
+	if [ "$stage" == "prod" ] ; then
+		KUBE_CONFIGFILE="/root/.kube/nafets-prod.conf"
+		KUBE_NAMESPACE="prod"
+		KUBE_BASEDOM="intranet.nafets.de"
+	elif [ "$stage" == "preprod" ] ; then
+		KUBE_CONFIGFILE="/root/.kube/nafets-prod.conf"
+		KUBE_NAMESPACE="test"
+		KUBE_BASEDOM="$stage.nafets.de"
+	elif [ "$stage" == "test" ] ; then
+		KUBE_CONFIGFILE="/root/.kube/nafets-test.conf"
+		KUBE_NAMESPACE="test"
+		KUBE_BASEDOM="$stage.nafets.de"
+	elif [ "$stage" == "testtest" ] ; then
+		KUBE_CONFIGFILE="/root/.kube/nafets-test.conf"
+		KUBE_NAMESPACE="testtest"
+		KUBE_BASEDOM="$stage.nafets.de"
+	else
+		unset KUBE_ACTION
+		printf "Invalid stage %s\n" "$stage"
+		return 1
+	fi
+
+	KUBE_STAGE="$stage"
+	KUBE_APP="$app"
+
+	return 0
+}
+
+##### kube-inst_exec - Execute installation
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - confdir
+#   2 - envnames
+function kube-inst_exec {
+	local confdir="$(realpath ${1:-./kube})"
+	local envnames="$2"
+
+	if  [ -z "$KUBE_CONFIGFILE" ] ||
+	    [ -z "$KUBE_ACTION" ] ||
+	    [ -z "$KUBE_NAMESPACE" ] ||
+	    [ -z "$KUBE_BASEDOM" ] ||
+	    [ -z "$KUBE_APP" ] ; then
+		printf "kube-inst_init has not been called. \n"
+		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
+		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
+		return 1
+	fi
+
+	KUBECONFIG=$KUBE_CONFIGFILE kube-install \
+		"$KUBE_ACTION" \
+		"$KUBE_APP" \
+		"$KUBE_NAMESPACE" \
+		"$confdir" \
+		"$envnames KUBE_APP KUBE_BASEDOM"
+	rc="$?"
+
+	unset KUBE_CONFIGFILE KUBE_ACTION KUBE_NAMESPACE KUBE_APP KUBE_BASEDOM
+
+	return $rc
+}
+
 ##### kube-install - install Kubernetes objects in kube/ subdir ##############
+# DEPRECATED
+#   This function is Deprecated, please use kube-inst_init and kube-inst_exec
+#   instead
 # Parameter: 
 #   1 - action [ install | delete ]
 #   2 - app Application name to be assigned to kubernetes tag
