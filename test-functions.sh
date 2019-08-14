@@ -46,7 +46,8 @@ function test_exec_url {
 	shift 2
 	local curl_parms="$*"
 
-	local http_code=$(curl -s $curl_parms \
+	local http_code
+	http_code=$(curl -s $curl_parms \
 		-i \
 		-o $TESTSETDIR/$testnr.curlout \
 	       	-w "%{http_code}" \
