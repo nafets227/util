@@ -44,10 +44,9 @@ function test_exec_url {
 	local url="$1"
 	local rc_exp=${2-200}
 	shift 2
-	local curl_parms="$*"
 
 	local http_code
-	http_code=$(curl -s $curl_parms \
+	http_code=$(curl -s "$@" \
 		-i \
 		-o $TESTSETDIR/$testnr.curlout \
 	       	-w "%{http_code}" \
@@ -57,7 +56,7 @@ function test_exec_url {
 		printf "FAILED. RC=%d HTTP-Code=%s (exp=%s)\n" \
 	       		"$rc" "$http_code" "$rc_exp"
 		printf "URL: %s\n" "$url"
-		printf "Options: %s\n" "$curl_parms"
+		printf "Options: %s\n" "$@"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.curlout
 		printf "\n"
