@@ -226,6 +226,8 @@ function kube-install {
 	if [ ! -z "$(ls $confdir/*.yaml.template 2>/dev/null)" ] ; then
 		for f in $confdir/*.yaml.template ; do
 			printf "Loading Kubeconfig %s ... " "$(basename $f)"
+			#debug printf "YAML with templace parms replaced: \n"
+			#debug eval sed $sed_parms <$f
 			eval sed $sed_parms <$f \
 			| kubectl $kube_action -n $ns -f - \
 			|| return 1
