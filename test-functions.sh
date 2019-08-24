@@ -76,6 +76,75 @@ function test_exec_url {
 	return 0
 }
 
+function test_exec_recvmail {
+	testnr=$(( ${testnr-0} + 1))
+	printf "Executing Test %d ... " "$testnr"
+
+	local url="$1"
+	local rc_exp="${2:-0}"
+	shift 2
+
+	local readonly MAIL_STD_OPT="-e -n -vv -Sv15-compat -Snosave -Sexpandaddr=fail,-all,+addr"
+	# -SNosave is included in -d and generates error messages - so dont include it
+	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
+	local MAIL_OPT="-S 'folder=$url'"
+
+	LC_ALL=C MAILRC=/dev/null \
+		eval mail $MAIL_STD_OPT $MAIL_OPT "$@" \
+		>$TESTSETDIR/$testnr.mailout \
+		2>&1 \
+		</dev/null
+	rc=$?
+	if [ $rc -ne $rc_exp ] ; then
+		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
+		printf "test_exec_recvmail(%s,%s,%s)\n" "$rc_exp" "$url" "$@"
+		printf "CMD: mail %s %s %s\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*"
+		printf "========== Output Test %d Begin ==========\n" "$testnr"
+		cat $TESTSETDIR/$testnr.mailout
+		printf "========== Output Test %d End ==========\n" "$testnr"
+	else
+		printf "OK\n"
+	fi
+}
+
+function test_exec_sendmail {
+	testnr=$(( ${testnr-0} + 1))
+	printf "Executing Test %d ... " "$testnr"
+
+	local url="$1"
+	local rc_exp="${2:-0}"
+	local from="$3"
+	local to="$4"
+	shift 4
+	opts="$@"
+
+	local readonly MAIL_STD_OPT="-n -vv -Sv15-compat -Ssendwait -Snosave -Sexpandaddr=fail,-all,+addr"
+	# -SNosave is included in -d and generates error messages - so dont include it
+	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
+	MAIL_OPT="-S 'smtp=$url'"
+	MAIL_OPT="$MAIL_OPT -s 'Subject TestMail $testnr'"
+	MAIL_OPT="$MAIL_OPT -r '$from'"
+
+	printf "Executing Test %d ..." "$testnr"
+	LC_ALL=C MAILRC=/dev/null \
+		eval mail $MAIL_STD_OPT $MAIL_OPT "$@" '$to' \
+		>$TESTSETDIR/$testnr.mailout \
+		2>&1 \
+		<<<"Text TestMail $testnr"
+	rc=$?
+	if [ $rc -ne $rc_exp ] ; then
+		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
+		printf "send_testmail(%s,%s,%s,%s,%s)\n" "$rc_exp" "$url" "$from" "$to" "$*"
+		printf "CMD: mailx %s %s %s '%s'\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*" "$to"
+		printf "========== Output Test %d Begin ==========\n" "$testnr"
+		cat $TESTSETDIR/$testnr.mailout
+		printf "========== Output Test %d End ==========\n" "$testnr"
+	else
+		printf "OK\n"
+	fi
+}
+
+
 function testset_init {
 	printf "TESTS Starting.\n"
 	testsetok=0
