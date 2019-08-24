@@ -125,7 +125,6 @@ function test_exec_sendmail {
 	MAIL_OPT="$MAIL_OPT -s 'Subject TestMail $testnr'"
 	MAIL_OPT="$MAIL_OPT -r '$from'"
 
-	printf "Executing Test %d ..." "$testnr"
 	LC_ALL=C MAILRC=/dev/null \
 		eval mail $MAIL_STD_OPT $MAIL_OPT "$@" '$to' \
 		>$TESTSETDIR/$testnr.mailout \
