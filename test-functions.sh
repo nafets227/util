@@ -78,12 +78,12 @@ function test_exec_url {
 
 function test_exec_recvmail {
 	testnr=$(( ${testnr-0} + 1))
-	printf "Executing Test %d ... " "$testnr"
 
 	local url="$1"
 	local rc_exp="${2:-0}"
 	shift 2
 
+	printf "Executing Test %d (recvmail %s %s) ... " "$testnr" "$rc_exp" "$url"
 	local readonly MAIL_STD_OPT="-e -n -vv -Sv15-compat -Snosave -Sexpandaddr=fail,-all,+addr"
 	# -SNosave is included in -d and generates error messages - so dont include it
 	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
@@ -109,7 +109,6 @@ function test_exec_recvmail {
 
 function test_exec_sendmail {
 	testnr=$(( ${testnr-0} + 1))
-	printf "Executing Test %d ... " "$testnr"
 
 	local url="$1"
 	local rc_exp="${2:-0}"
@@ -118,6 +117,7 @@ function test_exec_sendmail {
 	shift 4
 	opts="$@"
 
+	printf "Executing Test %d (sendmail %s %s) ... " "$testnr" "$rc_exp" "$url"
 	local readonly MAIL_STD_OPT="-n -vv -Sv15-compat -Ssendwait -Snosave -Sexpandaddr=fail,-all,+addr"
 	# -SNosave is included in -d and generates error messages - so dont include it
 	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
