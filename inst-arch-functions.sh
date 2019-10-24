@@ -226,7 +226,7 @@ function inst-arch_baseos {
 		"$INSTALL_ROOT" "$name" "$extrapkg" "$extramod" >&2
 
 	#Bootstrap the new system
-	pacstrap -c -d $INSTALL_ROOT base openssh grub $extrapkg || return 1
+	pacstrap -c -d $INSTALL_ROOT base openssh grub linux linux-firmware $extrapkg || return 1
 	genfstab -U -p $INSTALL_ROOT >$INSTALL_ROOT/etc/fstab || return 1
 
 	# Now include the needed modules in initcpio
