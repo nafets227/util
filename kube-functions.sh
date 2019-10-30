@@ -267,18 +267,17 @@ function kube-wait {
 			wait $PODS \
 			--for condition=Ready \
 			--timeout=0 2>/dev/null)
-		POD_WAIT_RC=$?
 		POD_ACT_CNT=$(wc -l <<<"$POD_ACT")
 
-		if [ "$POD_WAIT_RC" == 0 ] &&
+		if [ "$POD_ACT_CNT" -ge "$minPods" ] &&
 		   [ "$POD_CNT" -ge "$minPods" ] ; then
-			printf "Pods OK: %s/%s/%s (def/act/exp)" \
-				"$POD_CNT" "$(wc -l <<<"$POD_ACT")" "$minPods"
+			printf "Pods OK: %s/%s/%s (def/act/exp)\n" \
+				"$POD_CNT" "$POD_ACT_CNT" "$minPods"
 			return 0
 		fi
 
 		printf "Waiting for pods: %s/%s/%s (def/act/exp)" \
-			"$POD_CNT" "$(wc -l <<<"$POD_ACT")" "$minPods"
+			"$POD_CNT" "$POD_ACT_CNT" "$minPods"
 
                 printf " sleep %s seconds (%s/%s)\n" \
                         "$sleepNext" "$slept" "$sleepMax"
