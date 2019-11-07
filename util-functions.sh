@@ -54,6 +54,35 @@ function util_loadfunc-or-exit {
 	return 0	
 }
 
+##### util_download  #########################################################
+function util_download {
+	local readonly URL="$1"
+	local readonly CACHFIL="${2:-/var/cache/nafets-util/$(basename $URL)}"
+
+        printf "Downloading %s to %s\n" "$URL" "$CACHFIL" >&2
+
+	test -d "$(dirname $CACHFIL)" ||
+		mkdir -p "$(dirname $CACHFIL)" ||
+		return 1
+
+        if [ -f $CACHFIL ] ; then
+                CURL_OPT="--time-cond $CACHFIL"
+        else
+                CURL_OPT=""
+        fi
+        curl \
+                --location \
+                --remote-time \
+                --output $CACHFIL \
+                $CURL_OPT \
+                $URL \
+		>&2 \
+        || return 1
+
+	printf "%s\n" "$CACHFIL"
+	return 0
+}
+
 ##### Main ###################################################################
 # do nothing
 

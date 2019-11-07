@@ -322,6 +322,7 @@ function inst-arch_basearm {
 	fi
 
 	# Download latest Image
+	# @TODO: use util-download
 	local readonly CACHDIR="/var/cache/archlinuxarm"
 	test -d "$CACHDIR" || mkdir -p "$CACHDIR" || return 1
 	printf "Downloading Arch linux ARM for PI\n"
