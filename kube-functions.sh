@@ -108,6 +108,68 @@ function kube-inst_exec {
 	return $rc
 }
 
+##### kube-inst_secret - install Kubernetes Secret using cert* helper ########
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - name of secret
+#   2 - name of the CA (default: nafetsde-ca)
+# Prerequisites:
+#   $CERT_STORE_DIR/<caname>.crt
+#        our CA and its key
+#   ./$certname.reqtxt
+#        the details of the fields certificate
+function kube-inst_tls-secret {
+	local secretname="$1"
+	local caname="$2"
+
+	if  [ -z "$KUBE_CONFIGFILE" ] ||
+	    [ -z "$KUBE_ACTION" ] ||
+	    [ -z "$KUBE_NAMESPACE" ] ||
+	    [ -z "$KUBE_BASEDOM" ] ||
+	    [ -z "$KUBE_APP" ] ; then
+		printf "kube-inst_init has not been called. \n"
+		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
+		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
+		return 1
+	fi
+
+	if [ -z "$secretname" ] ; then
+		printf "%s: Error. Got no or empty secret name.\n" \
+			"$FUNCNAME"
+		return 1
+	fi
+
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		kube_action="apply"
+		action_display="Installing"
+	elif [ "$KUBE_ACTION" == "delete" ] ; then
+		kube_action="delete"
+		action_display="Deleting"
+	else
+		printf "%s: Error. Action (Parm1) %s unknown." \
+		       "$FUNCNAME" "$1"
+		printf " Must be \"install\" or \"delete\".\n"
+		return 1
+	fi
+
+	printf "creating secret %s ... " "$secretname"
+
+	local cert_key_fname cert_fname
+        cert_key_fname=$(cert_get_key $secretname) &&
+        cert_fname=$(cert_get_cert $secretname $caname) &&
+
+	kubectl create secret tls $secretname \
+		--cert=$cert_fname \
+		--key=$cert_key_fname \
+		--save-config \
+		--dry-run \
+		-o yaml \
+	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
+	|| return 1
+
+	return 0
+}
+
 ##### kube-install - install Kubernetes objects in kube/ subdir ##############
 # DEPRECATED
 #   This function is Deprecated, please use kube-inst_init and kube-inst_exec
