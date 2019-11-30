@@ -106,6 +106,9 @@ function kvm_parseParm () {
 			--net7 )
 				prm_net7="${value:-$(kvm_getDefaultNetBackend)}"
 				;;
+			--net8 )
+				prm_net8="${value:-$(kvm_getDefaultNetBackend)}"
+				;;
 			--cpuhost )
 				prm_cpuhost="${value:-1}"
 				;;
@@ -229,6 +232,8 @@ function kvm_getDefaultID() {
 		         id="05" ;;
 		vPhys2 )
 		         id="06" ;;
+		vRouter )
+		         id="07" ;;
 
 		vVdr   ) id="10" ;;
 		vMgmt  ) id="12" ;;
@@ -247,6 +252,7 @@ function kvm_getDefaultID() {
 		vWinSrvTest ) id="32" ;;
 		vPiBuild ) id="09" ;;
 		vPiBuildTest ) id="39" ;;
+		vRouterTest ) id="37" ;;
 	esac
 
 	if [ -z "$id" ] ; then
@@ -302,6 +308,7 @@ function kvm_getDefaultOS () {
 #   --net5 <backend> [optional, default=empty]
 #   --net6 <backend> [optional, default=empty]
 #   --net7 <backend> [optional, default=empty]
+#   --net8 <backend> [optional, default=empty]
 #   --cpuhost allow access to host CPU, use only for nexted virtualization!
 function kvm_create-vm () {
 	# Set Default values
@@ -326,6 +333,7 @@ function kvm_create-vm () {
 	local prm_net5
 	local prm_net6
 	local prm_net7
+	local prm_net8
 	local prm_cpuhost="0"
 	local prm_arch
 	local prm_boot
@@ -415,6 +423,7 @@ function kvm_create-vm () {
 	printf "\tnet5 %s\n" "${prm_net5:-<none>}"
 	printf "\tnet6 %s\n" "${prm_net6:-<none>}"
 	printf "\tnet7 %s\n" "${prm_net7:-<none>}"
+	printf "\tnet8 %s\n" "${prm_net8:-<none>}"
 	printf "\tVirtualisation: %s\n" "$prm_virt"
 	printf "\tAutoStart: %s\n" "$prm_auto"
 	printf "\tSound: %s\n" "${prm_sound:-<none>}"
@@ -493,6 +502,11 @@ function kvm_create-vm () {
 	if [ ! -z "$prm_net7" ] ; then
 		virt_prms="$virt_prms
 			--network type=direct,source=$prm_net7,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:66:$prm_id,trustGuestRxFilters=yes
+			"
+	fi
+	if [ ! -z "$prm_net8" ] ; then
+		virt_prms="$virt_prms
+			--network type=direct,source=$prm_net8,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:67:$prm_id,trustGuestRxFilters=yes
 			"
 	fi
 	if [ "$prm_cpuhost" == "1" ] ; then
