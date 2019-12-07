@@ -4,11 +4,41 @@
 #
 # (C) 2017 Stefan Schallenberg
 
+function test_lastoutput_contains {
+	testnr=$(( ${testnr-0} + 1))
+	# not increasing testexecnr
+	local search="$1"
+
+	local grep_cnt
+	grep_cnt=$(grep -c "$search" <$TESTSETDIR/$testexecnr.out)
+	if [ $? -ne 0 ] ; then
+		# grep error
+		printf "ERROR checking %s. Search: '%s'\n" \
+			"$testnr" "$search"
+		testsetfailed="$testsetfailed $testnr"
+		return 1
+	elif [ "$grep_cnt" == "0" ] ; then
+		# expected text not in output.
+		printf "CHECK %s FAILED. '%s' not found in output of test %s\n" \
+			"$testnr" "$search" "$testexecnr"
+		printf "========== Output Test %d Begin ==========\n" "$testexecnr"
+		cat $TESTSETDIR/$testexecnr.out
+		printf "========== Output Test %d End ==========\n" "$testexecnr"
+		testsetfailed="$testsetfailed $testnr"
+	else
+		# expected text in output -> OK
+		testsetok=$(( ${testsetok-0} + 1))
+	fi
+
+	return 0
+}
+
 # Parameters:
 #     1 - command to test
 #     2 - expected RC [default: 0]
 function test_exec_simple {
 	testnr=$(( ${testnr-0} + 1))
+	testexecnr=$testnr
 	printf "Executing Test %d ... " "$testnr"
 
 	local rc_exp=${2-0}
@@ -39,6 +69,7 @@ function test_exec_simple {
 
 function test_exec_url {
 	testnr=$(( ${testnr-0} + 1))
+	testexecnr=$testnr
 	printf "Executing Test %d ... " "$testnr"
 	
 	local url="$1"
@@ -78,6 +109,7 @@ function test_exec_url {
 
 function test_exec_recvmail {
 	testnr=$(( ${testnr-0} + 1))
+	testexecnr=$testnr
 
 	local url="$1"
 	local rc_exp="${2:-0}"
@@ -111,6 +143,7 @@ function test_exec_recvmail {
 
 function test_exec_sendmail {
 	testnr=$(( ${testnr-0} + 1))
+	testexecnr=$testnr
 
 	local url="$1"
 	local rc_exp="${2:-0}"
@@ -152,6 +185,7 @@ function testset_init {
 	printf "TESTS Starting.\n"
 	testsetok=0
 	testnr=0
+	testexecnr=0
 	testsetfailed=""
 
 	TESTSETLOG=0
