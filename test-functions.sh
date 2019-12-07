@@ -102,8 +102,10 @@ function test_exec_recvmail {
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.mailout
 		printf "========== Output Test %d End ==========\n" "$testnr"
+		testsetfailed="$testsfailed $testnr"
 	else
 		printf "OK\n"
+		testsetok=$(( ${testsetok-0} + 1))
 	fi
 }
 
@@ -138,8 +140,10 @@ function test_exec_sendmail {
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.mailout
 		printf "========== Output Test %d End ==========\n" "$testnr"
+		testsetfailed="$testsfailed $testnr"
 	else
 		printf "OK\n"
+		testsetok=$(( ${testsetok-0} + 1))
 	fi
 }
 
