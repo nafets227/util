@@ -662,7 +662,13 @@ function kvm_start_vm {
 		ping -c 1 -W 1 "$dnsname" &&
 		ssh -o StrictHostKeyChecking=no -n "$dnsname" &&
 		vmstatus=$(ssh -o StrictHostKeyChecking=no "$dnsname" \
-			<<<"systemctl is-system-running" |
+			<<-EOF |
+			if [ -e /usr/bin/systemctl ] ; then
+				/usr/bin/systemctl is-system-running
+			else
+				echo "running" ;
+			fi
+			EOF
 			tail -1) &&
 		[ "$vmstatus" == "running" ] &&
 		return 0
