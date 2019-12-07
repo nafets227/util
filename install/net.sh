@@ -221,8 +221,21 @@ function install-net_static {
 		EOF
 	fi
 
-	cat >>$cfgfile <<-EOF
+	# enable Multicast on all interfaces that are configured with an
+	# IP adress (e.g. NOT vlan´s etc.)
+	if [ ! -z "$ipaddr" ] ; then
+		cat >>$cfgfile <<-EOF
+			[Link]
+			Multicast=true
+			EOF
+	else
+		cat >>$cfgfile <<-EOF
+			[Link]
+			Multicast=false
+			EOF
+	fi
 
+	cat >>$cfgfile <<-EOF
 		[Network]
 		Description="Static IP Adress in nafets.de"
 		DHCP=no
