@@ -10,7 +10,7 @@ function test_lastoutput_contains {
 	local search="$1"
 
 	local grep_cnt
-	grep_cnt=$(grep -c "$search" <$TESTSETDIR/$testexecnr.out)
+	grep_cnt=$(grep -z -c "$search" <$TESTSETDIR/$testexecnr.out)
 	if [ $? -ne 0 ] ; then
 		# grep error
 		printf "ERROR checking %s. Search: '%s'\n" \
@@ -43,7 +43,9 @@ function test_exec_simple {
 
 	local rc_exp=${2-0}
 
-	$1 >$TESTSETDIR/$testnr.out 2>&1
+	printf "#-----\n#----- Command: %s\n#-----\n" "$1" \
+		>$TESTSETDIR/$testnr.out
+	eval $1 >>$TESTSETDIR/$testnr.out 2>&1
 	local rc=$?
 	
 	if [ $rc -ne $rc_exp ] ; then
@@ -180,6 +182,20 @@ function test_exec_sendmail {
 	fi
 }
 
+function test_assert_tools {
+	rc=0
+	for f in "$@" ; do
+		printf "Checking for tool %s ..." "$f"
+		if errmsg=$(which $f 2>&1) ; then
+			printf "OK\n"
+		else
+			printf "ERROR: %s\n" "$errmsg"
+			rc=1
+		fi
+	done
+
+	return $rc
+}
 
 function testset_init {
 	printf "TESTS Starting.\n"
