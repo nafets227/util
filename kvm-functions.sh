@@ -172,15 +172,9 @@ function kvm_getDefaultDisk2 () {
 }
 
 ##### getDefaultNetBackend ###################################################
-# choose Default Backend Network Device
-# mcvTest for machine names *Test, mcvProd otherwise
+# choose Default Backend Network Device (always mcvProd)
 function kvm_getDefaultNetBackend () {
-	vmname="$1"
-	if [[ "$vmname" == *Test ]] ; then
-		printf "mcvTest\n"
-	else
-		printf "mcvProd\n"
-	fi
+	printf "mcvProd\n"
 
 	return 0
 
