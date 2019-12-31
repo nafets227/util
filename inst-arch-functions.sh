@@ -226,7 +226,7 @@ function inst-arch_baseos {
 		"$INSTALL_ROOT" "$name" "$extrapkg" "$extramod" >&2
 
 	#Bootstrap the new system
-	pacstrap -c -d $INSTALL_ROOT base openssh grub linux linux-firmware $extrapkg || return 1
+	pacstrap -c -d $INSTALL_ROOT base openssh grub linux linux-firmware pacutils $extrapkg || return 1
 	genfstab -U -p $INSTALL_ROOT >$INSTALL_ROOT/etc/fstab || return 1
 
 	# Now include the needed modules in initcpio
@@ -539,6 +539,68 @@ function inst-arch_add_repo () {
 	[ -z "$sig" ] || printf " (SigLevel %s)" "$sig" >&2
 	[ -z "$srv" ] || printf " (Srv %s)" "$srv" >&2
 	printf "\n"
+
+	return 0
+}
+
+#### inst-arch_fixverpkg #####################################################
+function inst-arch_fixverpkg () {
+set -x # @TODO remove
+	local readonly PACCONF=$INSTALL_ROOT/etc/pacman.conf
+	pkgs="$@"
+
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	elif [ ! -w $PACCONF ] ; then
+		printf "%s: Error /etc/pacman.conf does not exist or ist not writable\n" \
+			"$FUNCNAME"  >&2
+		return 1
+	elif ! grep "IgnorePkg" $PACCONF ; then
+		printf "%s: Error /etc/pacman.conf does not contain IgnorePkg\n" \
+			"$FUNCNAME"  >&2
+		return 1
+	elif [ ! -x "$INSTALL_ROOT/usr/bin/pacconf" ] ; then
+		printf "%s: Error /usr/bin/pacconf does not exist or ist not executable\n" \
+			"$FUNCNAME"  >&2
+		return 1
+	fi
+
+	#----- Real Work -----------------------------------------------------
+	local arch PKGBASE pkg pkgfile pkgnames pkgslocal
+	arch=$(arch-chroot $INSTALL_ROOT /usr/bin/pacconf |
+		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') &&
+	printf "Arch=%s\n" "$arch" &&
+	PKGBASE="/data/prod/intranet.nafets.de/repo/pacman-cache/archlinux" &&
+	PKGBASE+="/community/os/$arch" &&
+	/bin/true || return 1
+
+	pkgnames=""
+	pkgslocal=""
+	for pkg in $pkgs ; do
+		if [ -f $PKGBASE/$pkg-$arch.pkg.tar.xz ] ; then
+			pkgfile=$PKGBASE/$pkg-$arch.pkg.tar.xz
+		elif [ -f $PKGBASE/$pkg-any.pkg.tar.xz ] ; then
+			pkgfile=$PKGBASE/$pkg-any.pkg.tar.xz
+		else
+			printf "Error: Package file %s not found.\n" "$pkg"
+			return 1
+		fi
+		pkgnames+=" $(pacman -Qp $pkgfile | cut -d" " -f 1)" &&
+		pkgslocal+=" /root/$(basename $pkgfile)" &&
+		cp -a $pkgfile $INSTALL_ROOT/root/ &&
+		/bin/true || return 1
+	done
+	arch-chroot $INSTALL_ROOT \
+		pacman -U --needed --noconfirm $pkgslocal &&
+	sed -i "s/#* *IgnorePkg *= *\(.*\)$/IgnorePkg =$pkgnames \1/" \
+		$PACCONF &&
+	/bin/true || return 1
+
+	#----- Closing -------------------------------------------------------
+	printf "Added Package(s) with fixed version %s\n" "$pkgs" >&2
 
 	return 0
 }
