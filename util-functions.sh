@@ -66,7 +66,7 @@ function util_download {
 		return 1
 
         if [ -f $CACHFIL ] ; then
-                CURL_OPT="--time-cond $CACHFIL"
+                CURL_OPT="--time-cond $CACHFIL --time-cond -$CACHFIL"
         else
                 CURL_OPT=""
         fi
