@@ -545,7 +545,6 @@ function inst-arch_add_repo () {
 
 #### inst-arch_fixverpkg #####################################################
 function inst-arch_fixverpkg () {
-set -x # @TODO remove
 	local readonly PACCONF=$INSTALL_ROOT/etc/pacman.conf
 	pkgs="$@"
 
