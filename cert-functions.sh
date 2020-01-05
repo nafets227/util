@@ -119,27 +119,34 @@ function cert_create_cert {
 	#    1 - name of certificate (without extension)
 	#    2 - name of the CA (default: nafetsde-ca)
 	#    3 - serial (default:1)
+	#    4 - reqtxt file (default: "-" means read from stdin)
 	# Prerequisites:
 	#    $CERT_PRIVATE_DIR/<caname>.key
 	#    $CERT_STORE_DIR/<caname>.crt
 	#        our CA and its key
 	#    $CERT_PRIVATE_DIR/$certname.key.insecure
 	#        contains a valid private key.
-	#    ./$certname.reqtxt
-	#        the details of the fields certificate
 	#
 	# Output:
 	#    $CERT_STORE_DIR/$certname.crt
 	#        the certificate (without root cert)
 	#    $CERT_STORE_DIR/$certname.fullchain.crt
 	#        the certificate (including root cert)
+	#    $CERT_STORE_DIR/$certname.reqtxt
+	#        the request config given by parm #3 or default.
 
 	local name="$1"
 	local caname="${2:-"nafetsde-ca"}"
 	local serial="${3:-"1"}"
+	local req="${4:-"-"}"
 
 	if [ -z "$name" ] ; then
 		printf "Internal Error (%s): No parm, expected >= 1\n" "$BASH_FUNC"
+		return 1
+	elif [ "$req" != "-" ] && [ ! -f "$req" ] ; then
+		printf "Internal Error (%s): req %s is not - and does not exist.\n" \
+			"$BASH_FUNC" \
+			"$req"
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
 		printf "Internal Error (%s): cert key %s does not exist.\n" \
@@ -156,11 +163,6 @@ function cert_create_cert {
 			"$BASH_FUNC" \
 			"$CERT_STORE_DIR/$caname.crt"
 		return 1
-	elif [ ! -f "$name.reqtxt" ] ; then
-		printf "Internal Error (%s): cert details %s does not exist.\n" \
-			"$BASH_FUNC" \
-			"$name.reqtxt"
-		return 1
 	elif [ -f "$CERT_STORE_DIR/$name.crt" ] ; then
 		printf "Internal Error (%s): cert %s already exists.\n" \
 			"$BASH_FUNC" \
@@ -168,10 +170,17 @@ function cert_create_cert {
 		return 1
 	fi
 
+	if [ "$req" == "-" ] ; then
+		# store stdin to reqtxt file
+		cat >$CERT_STORE_DIR/$name.reqtxt || return 1
+	else
+		cp -a $req $CERT_STORE_DIR/$name.reqtxt || return 1
+	fi
+
 	openssl req \
 		-new \
 		-key $CERT_PRIVATE_DIR/$name.key.insecure \
-		-config $name.reqtxt \
+		-config $CERT_STORE_DIR/$name.reqtxt \
 		-out $CERT_STORE_DIR/$name.csr &&
 	openssl x509 \
 		-req \
@@ -182,7 +191,7 @@ function cert_create_cert {
 		-set_serial $serial \
 		-out $CERT_STORE_DIR/$name.crt \
 		-extensions v3_req \
-		-extfile $name.reqtxt &&
+		-extfile $CERT_STORE_DIR/$name.reqtxt &&
 	cat \
 		$CERT_STORE_DIR/$name.crt \
 		$CERT_STORE_DIR/$caname.crt \
@@ -197,14 +206,13 @@ function cert_update_cert {
 	# Parameters:
 	#    1 - name of certificate (without extension)
 	#    2 - name of the CA (default: nafetsde-ca)
+	#    3 - reqtxt file (default: "-" means read from stdin)
 	# Prerequisites:
 	#    $CERT_PRIVATE_DIR/<caname>.key
 	#    $CERT_STORE_DIR/<caname>.crt
 	#        our CA and its key
 	#    $CERT_PRIVATE_DIR/$certname.key.insecure
 	#        contains a valid private key.
-	#    ./$certname.reqtxt
-	#        the details of the fields certificate
 	#    $CERT_STORE_DIR/$certname.crt
 	#        the old certificate (wused to read serial and increase it)
 	#
@@ -216,6 +224,7 @@ function cert_update_cert {
 
 	local name="$1"
 	local caname="${2:-"nafetsde-ca"}"
+	local req="$3" # default handled in called function cert_create_cert
 
 	if [ -z "$name" ] ; then
 		printf "Internal Error (%s): No parm, expected >= 1\n" "$BASH_FUNC"
@@ -229,11 +238,6 @@ function cert_update_cert {
 		printf "Internal Error (%s): cert Signing request %s does not exists.\n" \
 			"$BASH_FUNC" \
 			"$CERT_STORE_DIR/$name.csr"
-		return 1
-	elif [ ! -f "$name.reqtxt" ] ; then
-		printf "Internal Error (%s): cert details %s does not exist.\n" \
-			"$BASH_FUNC" \
-			"$name.reqtxt"
 		return 1
 	fi
 
@@ -250,7 +254,7 @@ function cert_update_cert {
 
 	# now create updated cert
 	serial=$(( $serial + 1)) &&
-	cert_create_cert "$name" "$caname" "$serial" \
+	cert_create_cert "$name" "$caname" "$serial" "$req" \
 	|| return 1
 
 	# If we would like to reuse the cst we could use something like the
@@ -268,14 +272,13 @@ function cert_get_cert {
 	# Parameters:
 	#    1 - name of certificate (without extension)
 	#    2 - name of the CA (default: nafetsde-ca)
+	#    3 - reqtxt file (default: "-" means read from stdin)
 	# Prerequisites:
 	#    $CERT_PRIVATE_DIR/<caname>.key
 	#    $CERT_STORE_DIR/<caname>.crt
 	#        our CA and its key
 	#    $CERT_PRIVATE_DIR/$certname.key.insecure
 	#        contains a valid private key.
-	#    ./$certname.reqtxt
-	#        the details of the fields certificate
 	# Output:
 	#    $CERT_STORE_DIR/$certname.crt
 	#        the updated certificate (without root cert)
@@ -284,6 +287,7 @@ function cert_get_cert {
 
 	local name="$1"
 	local caname="${2:-"nafetsde-ca"}"
+	local req="$3" # default will be handled by called functions
 
 	if [ -z "$name" ] ; then
 		printf "Internal Error (%s): No parm, expected >= 1\n" "$BASH_FUNC"
@@ -292,10 +296,10 @@ function cert_get_cert {
 
 	if [ ! -f $CERT_STORE_DIR/$name.crt ] ; then
 		# CERT does not exist yet
-		cert_create_cert "$name" "$caname" || return 1
+		cert_create_cert "$name" "$caname" "$req" || return 1
 	else
 		# CERT does already exist
-		cert_update_cert "$name" "$caname" || return 1
+		cert_update_cert "$name" "$caname" "$req" || return 1
 	fi
 	printf "%s\n" "$CERT_STORE_DIR/$name.crt"
 

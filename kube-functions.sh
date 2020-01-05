@@ -116,7 +116,7 @@ function kube-inst_exec {
 # Prerequisites:
 #   $CERT_STORE_DIR/<caname>.crt
 #        our CA and its key
-#   ./$certname.reqtxt
+#   stdin as .reqtxt file
 #        the details of the fields certificate
 function kube-inst_tls-secret {
 	local secretname="$1"
