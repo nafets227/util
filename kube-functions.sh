@@ -108,7 +108,7 @@ function kube-inst_exec {
 	return $rc
 }
 
-##### kube-inst_secret - install Kubernetes Secret using cert* helper ########
+##### kube-inst_tls-secret - install Kubernetes Secret using cert* helper ####
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - name of secret
@@ -161,6 +161,66 @@ function kube-inst_tls-secret {
 	kubectl create secret tls $secretname \
 		--cert=$cert_fname \
 		--key=$cert_key_fname \
+		--save-config \
+		--dry-run \
+		-o yaml \
+	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
+	|| return 1
+
+	return 0
+}
+
+##### kube-inst_generic-secret - install Kubernetes Secret using cert* helper ########
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - name of secret
+#   2 - name of file
+function kube-inst_generic-secret {
+	local secretname="$1"
+	local fname="$2"
+
+	if  [ -z "$KUBE_CONFIGFILE" ] ||
+	    [ -z "$KUBE_ACTION" ] ||
+	    [ -z "$KUBE_NAMESPACE" ] ||
+	    [ -z "$KUBE_BASEDOM" ] ||
+	    [ -z "$KUBE_APP" ] ; then
+		printf "kube-inst_init has not been called. \n"
+		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
+		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
+		return 1
+	fi
+
+	if [ -z "$secretname" ] ; then
+		printf "%s: Error. Got no or empty secret name.\n" \
+			"$FUNCNAME"
+		return 1
+	elif [ -z "$fname" ] ; then
+		printf "%s: Error. Got no or empty filename.\n" \
+			"$FUNCNAME"
+		return 1
+	elif [ ! -f "$fname" ] ; then
+		printf "%s: Error. file %s does not exist.\n" \
+			"$FUNCNAME" "$fname"
+		return 1
+	fi
+
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		kube_action="apply"
+		action_display="Installing"
+	elif [ "$KUBE_ACTION" == "delete" ] ; then
+		kube_action="delete"
+		action_display="Deleting"
+	else
+		printf "%s: Error. Action \$KUBE_ACTION=%s unknown." \
+		       "$FUNCNAME" "$1"
+		printf " Must be \"install\" or \"delete\".\n"
+		return 1
+	fi
+
+	printf "creating secret %s ... " "$secretname"
+
+	kubectl create secret generic $secretname \
+		--from-file=$fname \
 		--save-config \
 		--dry-run \
 		-o yaml \
