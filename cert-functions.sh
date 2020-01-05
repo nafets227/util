@@ -88,6 +88,31 @@ function cert_create_ca {
 	return 1
 }
 
+##### cert_query_ca ##########################################################
+function cert_query_ca {
+	# Parameters:
+	#    1 - name of the CA (default: nafetsde-ca)
+	# Prerequisites:
+	#    $CERT_STORE_DIR/<caname>.crt
+	#        our CA and its key
+	# Output:
+	#    $CERT_STORE_DIR/<caname>.crt
+	#        the location of the ca
+
+	local caname="${1:-"nafetsde-ca"}"
+
+	if [ ! -f "$CERT_STORE_DIR/$caname.crt" ] ; then
+		printf "Internal Error (%s): ca cert %s does not exist.\n" \
+			"$BASH_FUNC" \
+			"$CERT_STORE_DIR/$caname.crt"
+		return 1
+	fi
+
+	printf "%s\n" "$CERT_STORE_DIR/$caname.crt"
+
+	return 0
+}
+
 ##### cert_create_cert #######################################################
 function cert_create_cert {
 	# Parameters:
