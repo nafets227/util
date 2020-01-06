@@ -334,7 +334,7 @@ function kube-install {
 
 	#Execute Shell Scripts in confdir
 	if [ ! -z "$(ls $confdir/*.sh 2>/dev/null)" ] ; then
-		for f in $confdir/kube/*.sh ; do
+		for f in $confdir/*.sh ; do
 			printf "Loading Kubeconfig %s ... " "$(basename $f)"
 			. $f --$action || return 1
 		done
@@ -364,7 +364,7 @@ function kube-install {
 
 	#Execute yaml.delete in confdir
 	if [ ! -z $(ls $confdir/*.yaml.delete 2>/dev/null) ] ; then
-		for f in $BASEDIR/kube/*.yaml.delete ; do
+		for f in $confdir/*.yaml.delete ; do
 			kubectl delete -n $ns -f $f \
 				--cascade=true --ignore-not-found \
 			|| return 1
