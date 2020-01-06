@@ -28,6 +28,7 @@ function kube-getIP {
 #   1 - action [install|delete]
 #   2 - stage [prod|preprod|test|testtest] where to install
 #   3 - app Application name to be assigne to kubernetes tag
+#   4 - namespace (only use if non-stan dard, standard is based on stage)
 # Environment Variables set on exit:
 #   KUBE_CONFIGFILE name of Kubeconfig with access credentials
 #   KUBE_ACTION     action
@@ -39,6 +40,7 @@ function kube-inst_init {
 	local action="$1"
 	local stage="${2:-preprod}"
 	local app="$3"
+	local ns="$4"
 
 	if [ "$action" == "install" ] || [ "$action" == "delete" ] ; then
 		KUBE_ACTION="$action"
@@ -71,6 +73,10 @@ function kube-inst_init {
 
 	KUBE_STAGE="$stage"
 	KUBE_APP="$app"
+
+	if [ ! -z "$ns" ] ; then
+		KUBE_NAMESPACE="$ns"
+	fi
 
 	return 0
 }
