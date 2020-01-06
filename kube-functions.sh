@@ -101,7 +101,7 @@ function kube-inst_exec {
 		return 1
 	fi
 
-	KUBECONFIG=$KUBE_CONFIGFILE kube-install \
+	KUBECONFIG=$KUBE_CONFIGFILE kube-inst_internal \
 		"$KUBE_ACTION" \
 		"$KUBE_APP" \
 		"$KUBE_NAMESPACE" \
@@ -236,7 +236,7 @@ function kube-inst_generic-secret {
 	return 0
 }
 
-##### kube-install - install Kubernetes objects in kube/ subdir ##############
+##### kube-inst_internal - install Kubernetes objects in kube/ subdir ##############
 # DEPRECATED
 #   This function is Deprecated, please use kube-inst_init and kube-inst_exec
 #   instead
@@ -261,7 +261,7 @@ function kube-inst_generic-secret {
 #  		value=mynamevalue
 #		ip=myipvalue
 #	before the yaml file will be processed by kubernetes.
-function kube-install {
+function kube-inst_internal {
 	local action="$1"
 	local app="$2"
 	local ns="${3:-test}"
@@ -420,6 +420,23 @@ function kube-wait {
 
 ##### MAIN-template ##################################################################
 # This can be used as template for application specific install script
+function config-template {
+	kube-inst_init \
+		"action [install|delete]" \
+		"stage [prod|preprod|test|testtest] where to install"
+		"app Application name to be assigne to kubernetes tag"
+		"namespace (only use if non-stan dard, standard is based on stage)"
+	if [ "$KUBE_STAGE" == "prod" ] ; then
+		MYVAL="prodvalue"
+	elif [ "$KUBE_STAGE" == "preprod" ] ; then
+		MYVAL="preprodvalue"
+	elif [ "$KUBE_STAGE" == "test" ] ; then
+		MYVAL="testvalue"
+	else
+		return 1
+	fi
+}
+
 function main-template {
 if [ "$1" == "--config" ] ; then
 	shift
@@ -427,8 +444,9 @@ if [ "$1" == "--config" ] ; then
 	printf "Loaded config for app %s in Namespace %s\n" \
 		"$app" "$ns"
 else
-	config "$@"
-	kube-install ...
+	config "$@" &&
+	kube-inst_exec  "./kube" "MYVAL" &&
+	/bin/true || return 1
 fi
 }
 
