@@ -78,6 +78,15 @@ function kube-inst_init {
 		KUBE_NAMESPACE="$ns"
 	fi
 
+	# Create Namespace if it does not exist yet
+	kubectl \
+		--kubeconfig $KUBE_CONFIGFILE \
+		get namespace $KUBE_NAMESPACE &>/dev/null ||
+	kubectl \
+		--kubeconfig $KUBE_CONFIGFILE \
+		get namespace $KUBE_NAMESPACE &>/dev/null ||
+	return 1
+
 	return 0
 }
 
@@ -320,7 +329,7 @@ function kube-inst_internal {
 		printf "\t %s=%s\n" "$f" "$value"
 	done
 
-	# @TODO create namespace and load configmaps
+	# @TODO load configmaps
 #
 #	kubectl delete -n $ns configmap nginx.$app \
 #		--cascade=true --ignore-not-found
@@ -425,7 +434,7 @@ function config-template {
 		"action [install|delete]" \
 		"stage [prod|preprod|test|testtest] where to install"
 		"app Application name to be assigne to kubernetes tag"
-		"namespace (only use if non-stan dard, standard is based on stage)"
+		"namespace (only use if non-standard, standard is based on stage)"
 	if [ "$KUBE_STAGE" == "prod" ] ; then
 		MYVAL="prodvalue"
 	elif [ "$KUBE_STAGE" == "preprod" ] ; then
