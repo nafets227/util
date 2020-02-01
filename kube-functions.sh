@@ -213,7 +213,7 @@ function kube-inst_generic-secret {
 		printf "%s: Error. Got no or empty filename.\n" \
 			"$FUNCNAME"
 		return 1
-	elif [ ! -f "$fname" ] ; then
+	elif [ ! -f "$fname" ] && [ ! -d "$fname" ] ; then
 		printf "%s: Error. file %s does not exist.\n" \
 			"$FUNCNAME" "$fname"
 		return 1
