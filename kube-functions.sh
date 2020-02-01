@@ -213,10 +213,8 @@ function kube-inst_generic-secret {
 		printf "%s: Error. Got no or empty filename.\n" \
 			"$FUNCNAME"
 		return 1
-	elif [ ! -f "$fname" ] && [ ! -d "$fname" ] ; then
-		printf "%s: Error. file %s does not exist.\n" \
-			"$FUNCNAME" "$fname"
-		return 1
+	# Do not check if fname exists.
+	# it may be also a directory or a sting like logicalname=realname
 	fi
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
