@@ -17,9 +17,8 @@ function install-nfs_server {
         fi
 
         #----- Real Work -----------------------------------------------------
-	arch-chroot $INSTALL_ROOT <<-EOF
+	arch-chroot $INSTALL_ROOT \
 		pacman -S --needed --noconfirm nfs-utils
-		EOF
 	if [ "$?" != "0" ] ; then return 1 ; fi
 
 	if [ ! -d $INSTALL_ROOT/srv/nfs4 ]; then
@@ -134,9 +133,8 @@ function install-nfs_client {
 	fi
 
         #----- Real Work -----------------------------------------------------
-	arch-chroot $INSTALL_ROOT <<-EOF
+	arch-chroot $INSTALL_ROOT \
 		pacman -S --needed --noconfirm nfs-utils
-		EOF
 
 	systemctl --root=$INSTALL_ROOT enable rpcbind.service nfs-client.target remote-fs.target || return 1
 

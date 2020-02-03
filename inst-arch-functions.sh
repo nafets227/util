@@ -7,6 +7,22 @@
 # (C) 2014-2018 Stefan Schallenberg
 #
 
+##### Helper for arch-chroot #################################################
+function inst-arch_chroot-helper() {
+	# this helper function copies the stdin into a file and then executed
+	# this file in the chroot.
+	# This prevents the current shell from losing its tty and behaving as
+	# ^Z has been pressed, i.e. prompting "[1] has been stopped" and user
+	# would have to enter "fg" to resume the stopped job.
+	local rc=0
+        cat >$1/inst-arch_chroot-helper-temp &&
+        chmod +x $1/inst-arch_chroot-helper-temp &&
+        arch-chroot "$@" /inst-arch_chroot-helper-temp
+	rc=$?
+	rm $1/inst-arch_chroot-helper-temp
+	return $rc
+}
+
 #### Setup Filesystems #######################################################
 function inst-arch_init() {
 	# Parameters:
@@ -188,7 +204,7 @@ function inst-arch_finalize {
 	if [ "$1" != "--no-passwd-expire" ] ; then
 		# arch-chroot will fail on non-x86 systems. passwd --root also fails,
 		# so we kindly ignore if it fails.
-		arch-chroot $INSTALL_ROOT <<-EOF
+		inst-arch_chroot-helper $INSTALL_ROOT <<-EOF
 			passwd -e root
 		EOF
 	else
@@ -253,7 +269,7 @@ function inst-arch_baseos {
 		EOF
 
 	#Now chroot into the future system
-	arch-chroot $INSTALL_ROOT <<-EOF || return 1
+	inst-arch_chroot-helper $INSTALL_ROOT <<-EOF || return 1
 		systemctl enable sshd.service
 
 		locale-gen
@@ -301,7 +317,7 @@ function inst-arch_baseos {
 	#	GRUB_SERIAL_COMMAND="serial --speed=38400 --unit=0 --word=8 --parity=no --stop=1"
 	#	EOF
 	#
-	arch-chroot $INSTALL_ROOT <<-"EOFGRUB" || return 1
+	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
 		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
 		EOFGRUB
 
@@ -422,7 +438,7 @@ function inst-arch_bootmgr-grubefi {
 
 	printf "Installing Grub-EFI on %s\n" "$INSTALL_ROOT" >&2
 
-	arch-chroot $INSTALL_ROOT <<-"EOFGRUB" || return 1
+	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
 		pacman -S --needed --noconfirm efibootmgr || exit 1
 		grub-install \
 			--target=x86_64-efi \
@@ -490,7 +506,7 @@ function inst-arch_bootmgr-grubraw {
 
 	printf "Installing Grub-Raw on %s (%s)\n" "$INSTALL_ROOT" "$rawdev" >&2
 
-	arch-chroot $INSTALL_ROOT <<-EOF || return 1
+	inst-arch_chroot-helper $INSTALL_ROOT <<-EOF || return 1
 		grub-install \\
 			--target=i386-pc \\
 			--boot-directory=/boot/grub2 \\

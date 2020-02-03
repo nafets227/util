@@ -40,9 +40,7 @@ function install-ssl_nafetsca {
 		$casrc \
 		$INSTALL_ROOT/etc/ca-certificates/trust-source/anchors/nafetsde-ca.pem \
 		|| return 1
-	arch-chroot $INSTALL_ROOT <<-EOF
-		update-ca-trust extract
-		EOF
+	arch-chroot $INSTALL_ROOT update-ca-trust extract
 
 	#----- Closing  ------------------------------------------------------
 	printf "Trusted SSL CA nafets.de\n"
