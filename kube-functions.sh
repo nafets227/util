@@ -51,19 +51,15 @@ function kube-inst_init {
 
 	if [ "$stage" == "prod" ] ; then
 		KUBE_CONFIGFILE="/root/.kube/nafets-prod.conf"
-		KUBE_NAMESPACE="prod"
 		KUBE_BASEDOM="intranet.nafets.de"
 	elif [ "$stage" == "preprod" ] ; then
 		KUBE_CONFIGFILE="/root/.kube/nafets-prod.conf"
-		KUBE_NAMESPACE="test"
 		KUBE_BASEDOM="$stage.nafets.de"
 	elif [ "$stage" == "test" ] ; then
 		KUBE_CONFIGFILE="/root/.kube/nafets-test.conf"
-		KUBE_NAMESPACE="test"
 		KUBE_BASEDOM="$stage.nafets.de"
 	elif [ "$stage" == "testtest" ] ; then
 		KUBE_CONFIGFILE="/root/.kube/nafets-test.conf"
-		KUBE_NAMESPACE="testtest"
 		KUBE_BASEDOM="$stage.nafets.de"
 	else
 		unset KUBE_ACTION
@@ -73,10 +69,7 @@ function kube-inst_init {
 
 	KUBE_STAGE="$stage"
 	KUBE_APP="$app"
-
-	if [ ! -z "$ns" ] ; then
-		KUBE_NAMESPACE="$ns"
-	fi
+	KUBE_NAMESPACE="${ns:-$KUBE_STAGE}"
 
 	# Create Namespace if it does not exist yet
 	kubectl \
@@ -377,7 +370,7 @@ function kube-inst_volume {
 function kube-inst_internal {
 	local action="$1"
 	local app="$2"
-	local ns="${3:-test}"
+	local ns="$3"
 	local confdir="$(realpath ${4:-./kube})"
 	local envnames="$5"
 	local kube_action action_desploy
