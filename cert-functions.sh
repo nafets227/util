@@ -177,17 +177,21 @@ function cert_create_cert {
 		cp -a $req $CERT_STORE_DIR/$name.reqtxt || return 1
 	fi
 
+	cert_read_pw || return 1
+
 	openssl req \
 		-new \
 		-key $CERT_PRIVATE_DIR/$name.key.insecure \
 		-config $CERT_STORE_DIR/$name.reqtxt \
 		-out $CERT_STORE_DIR/$name.csr &&
+	PW=$INST_CERT_CA_PW \
 	openssl x509 \
 		-req \
 		-days 365 \
 		-in $CERT_STORE_DIR/$name.csr \
 		-CA $CERT_STORE_DIR/$caname.crt \
 		-CAkey $CERT_PRIVATE_DIR/$caname.key \
+		-passin env:PW \
 		-set_serial $serial \
 		-out $CERT_STORE_DIR/$name.crt \
 		-extensions v3_req \
@@ -302,6 +306,21 @@ function cert_get_cert {
 		cert_update_cert "$name" "$caname" "$req" || return 1
 	fi
 	printf "%s\n" "$CERT_STORE_DIR/$name.crt"
+
+	return 0
+}
+
+##### cert_read_pw ###########################################################
+function cert_read_pw {
+	if [ -z "$INST_CERT_CA_PW" ] ; then
+		read -s -p "Please enter CA Password" INST_CERT_CA_PW </dev/tty \
+		|| return 1
+		printf "\n" >/dev/tty
+		if [ -z "$INST_CERT_CA_PW" ] ; then
+			printf "Internal error getting CA Password.\n"
+			return 1
+		fi
+	fi
 
 	return 0
 }
