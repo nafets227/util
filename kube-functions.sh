@@ -279,7 +279,7 @@ function kube-inst_volume {
 	fi
 
         #### Make sure directory exists on server
-	if [ "$KUBE_ACTIION" == "install" ] ; then
+	if [ "$KUBE_ACTION" == "install" ] ; then
 		ssh $nfsserver \
 			"test -d /srv/nfs4/$path" \
 			'||' "mkdir -p /srv/nfs4/$path" \
