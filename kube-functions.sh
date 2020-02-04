@@ -160,6 +160,7 @@ function kube-inst_tls-secret {
 		return 1
 	fi
 
+	# @TODO handle delete correctly, do not create a new cert !
 	printf "creating secret %s ... " "$secretname"
 
 	local cert_key_fname cert_fname
@@ -425,18 +426,6 @@ function kube-inst_internal {
 		eval "value=\$$f"
 		printf "\t %s=%s\n" "$f" "$value"
 	done
-
-	# @TODO load configmaps
-#
-#	kubectl delete -n $ns configmap nginx.$app \
-#		--cascade=true --ignore-not-found
-#
-#	kubectl create configmap auth.$app \
-#		--from-file=$BASEDIR/auth.conf \
-#		--save-config \
-#		--dry-run \
-#		-o yaml \
-#		| kubectl apply -n $ns -f -
 
 	#Execute Shell Scripts in confdir
 	if [ ! -z "$(ls $confdir/*.sh 2>/dev/null)" ] ; then
