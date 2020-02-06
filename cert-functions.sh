@@ -249,7 +249,8 @@ function cert_update_cert {
 	local timestamp &&
 	timestamp=$(date +"%Y%m%d-%H%M%s") &&
 	local serial &&
-	serial="$(openssl x509 -noout -serial -in "$CERT_STORE_DIR/$name.crt")" &&
+	serial="$(openssl x509 -noout -serial -in "$CERT_STORE_DIR/$name.crt" |
+		sed 's:serial=::')" &&
 	mv "$CERT_STORE_DIR/$name.csr" \
 		"$CERT_ARCHIVE_DIR/$name.csr.before$timestamp" &&
 	mv "$CERT_STORE_DIR/$name.crt" \
@@ -257,7 +258,9 @@ function cert_update_cert {
 	|| return 1
 
 	# now create updated cert
-	serial=$(( $serial + 1)) &&
+	# NB: use 10# to avoid errors when serial is 09 that the shell tried
+	#     to interpret as octal number and fails.
+	serial=$(( 10#$serial + 1)) &&
 	cert_create_cert "$name" "$caname" "$serial" "$req" \
 	|| return 1
 
@@ -313,7 +316,7 @@ function cert_get_cert {
 ##### cert_read_pw ###########################################################
 function cert_read_pw {
 	if [ -z "$INST_CERT_CA_PW" ] ; then
-		read -s -p "Please enter CA Password" INST_CERT_CA_PW </dev/tty \
+		read -s -p "Please enter CA Password " INST_CERT_CA_PW </dev/tty \
 		|| return 1
 		printf "\n" >/dev/tty
 		if [ -z "$INST_CERT_CA_PW" ] ; then
