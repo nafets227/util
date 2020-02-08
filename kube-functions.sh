@@ -44,6 +44,10 @@ function kube-inst_init {
 
 	if [ "$action" == "install" ] || [ "$action" == "delete" ] ; then
 		KUBE_ACTION="$action"
+	elif [ "$action" == "config" ] || [ "$action" == "test" ] ; then
+		# may lead to errors if calling subsequent functiond
+		KUBE_ACTION="$actione"
+		action=config
 	else
 		printf "Invalid Action %s\n" "$action"
 		return 1
@@ -71,14 +75,16 @@ function kube-inst_init {
 	KUBE_APP="$app"
 	KUBE_NAMESPACE="${ns:-$KUBE_STAGE}"
 
-	# Create Namespace if it does not exist yet
-	kubectl \
-		--kubeconfig $KUBE_CONFIGFILE \
-		get namespace $KUBE_NAMESPACE &>/dev/null ||
-	kubectl \
-		--kubeconfig $KUBE_CONFIGFILE \
-		create namespace $KUBE_NAMESPACE &>/dev/null ||
-	return 1
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		# Create Namespace if it does not exist yet
+		kubectl \
+			--kubeconfig $KUBE_CONFIGFILE \
+			get namespace $KUBE_NAMESPACE &>/dev/null ||
+		kubectl \
+			--kubeconfig $KUBE_CONFIGFILE \
+			create namespace $KUBE_NAMESPACE &>/dev/null ||
+		return 1
+	fi
 
 	return 0
 }
