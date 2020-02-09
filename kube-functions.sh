@@ -44,9 +44,11 @@ function kube-inst_init {
 
 	if [ "$action" == "install" ] || [ "$action" == "delete" ] ; then
 		KUBE_ACTION="$action"
-	elif [ "$action" == "config" ] || [ "$action" == "test" ] ; then
+	elif [ "$action" == "config" ] ||
+	     [ "$action" == "test" ] ||
+	     [ "$action" == "none" ] ; then
 		# may lead to errors if calling subsequent functiond
-		KUBE_ACTION="$actione"
+		KUBE_ACTION="$action"
 		action=config
 	else
 		printf "Invalid Action %s\n" "$action"
