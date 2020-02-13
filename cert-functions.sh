@@ -260,7 +260,7 @@ function cert_update_cert {
 	# now create updated cert
 	# NB: use 10# to avoid errors when serial is 09 that the shell tried
 	#     to interpret as octal number and fails.
-	serial=$(( 10#$serial + 1)) &&
+	serial=$(( 0x$serial + 1)) &&
 	cert_create_cert "$name" "$caname" "$serial" "$req" \
 	|| return 1
 
