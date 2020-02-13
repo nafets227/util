@@ -302,7 +302,7 @@ function kube-inst_volume {
 		apiVersion: v1
 		kind: PersistentVolume
 		metadata:
-		  name: $share.$KUBE_APP
+		  name: $share.$KUBE_APP.$KUBE_STAGE
 		  annotations:
 		    volume.beta.kubernetes.io/storage-class: "nafets"
 		  labels:
