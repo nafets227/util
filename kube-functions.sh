@@ -278,7 +278,7 @@ function kube-inst_volume {
 		kube_action="apply"
 		action_display="Installed"
 	elif [ "$KUBE_ACTION" == "delete" ] ; then
-		kube_action="delete"
+		kube_action="delete --wait=false"
 		action_display="Deleted"
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
