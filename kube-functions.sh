@@ -124,6 +124,67 @@ function kube-inst_exec {
 	return $rc
 }
 
+##### kube-inst_helm - install Helm Chart #####
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - release (=name) of helm chart
+#   2 - url of source
+#   3ff - [optional] variables to set (var=value)
+function kube-inst_helm {
+	local release="$1"
+	local sourceurl="$2"
+	shift 2
+
+	if  [ -z "$KUBE_CONFIGFILE" ] ||
+	    [ -z "$KUBE_ACTION" ] ||
+	    [ -z "$KUBE_NAMESPACE" ] ||
+	    [ -z "$KUBE_BASEDOM" ] ||
+	    [ -z "$KUBE_APP" ] ; then
+		printf "kube-inst_init has not been called. \n"
+		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
+		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
+		return 1
+	fi
+
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		local action=""
+		if helm status \
+				--kubeconfig $KUBE_CONFIGFILE \
+				--namespace $KUBE_NAMESPACE \
+				$release >/dev/null ; then
+			action=upgrade
+		else
+			action=install
+		fi
+
+		local parms=""
+		for p in $* ; do
+			parms+=" --set $p"
+		done
+
+		helm $action \
+			--kubeconfig $KUBE_CONFIGFILE \
+			--namespace $KUBE_NAMESPACE \
+			$parms \
+			$release \
+			$sourceurl &&
+		/bin/true || return 1
+	elif [ "$KUBE_ACTION" == "delete" ] ; then
+		helm uninstall \
+			--kubeconfig $KUBE_CONFIGFILE \
+			--namespace $KUBE_NAMESPACE \
+			$release &&
+		/bin/true || return 1
+	else
+		printf "%s: Error. Action (Parm1) %s unknown." \
+			"$FUNCNAME" "$1"
+		printf " Must be \"install\" or \"delete\".\n"
+		return 1
+	fi
+
+	return 0
+}
+
 ##### kube-inst_tls-secret - install Kubernetes Secret using cert* helper ####
 # Prerequisite: kube-inst_init has been called
 # Parametets:
@@ -382,7 +443,7 @@ function kube-inst_internal {
 	local ns="$3"
 	local confdir="$(realpath ${4:-./kube})"
 	local envnames="$5"
-	local kube_action action_desploy
+	local kube_action action_display
 
 	##### checking parameters
 	if [ "$#" -lt 2 ] ; then
