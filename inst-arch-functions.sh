@@ -481,7 +481,9 @@ function inst-arch_bootmgr-grubefi {
 function inst-arch_bootmgr-grubraw {
 	# Parameters:
 	#    1 - rawdev [optional, autoprobed to device of INSTALL_ROOT]
+	#    2 - bootdir [optional, default /boot/grub2]
 	local rawdev="$1"
+	local bootdir="${2-/boot/grub2}"
 
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
@@ -504,12 +506,14 @@ function inst-arch_bootmgr-grubraw {
 		return 1
 	fi
 
-	printf "Installing Grub-Raw on %s (%s)\n" "$INSTALL_ROOT" "$rawdev" >&2
+	printf "Installing Grub-Raw on %s (%s) for %s\n" \
+		"$INSTALL_ROOT" "$rawdev" "$bootdir" >&2
 
 	inst-arch_chroot-helper $INSTALL_ROOT <<-EOF || return 1
 		grub-install \\
 			--target=i386-pc \\
-			--boot-directory=/boot/grub2 \\
+			--boot-directory=$bootdir \\
+			--force \\
 			$rawdev \\
 			|| exit 1
 	EOF
