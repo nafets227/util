@@ -348,10 +348,13 @@ function install-net_dhcp {
 	local hostname=${2:-""}
 	local virt=${3:-""}
 
+	iface_fname=${iface//\*/_}
+	iface_fname=${iface_fname// /_}
+
 	if [ -z $virt ] ; then
-		local readonly cfgfilename="nafetsde-$iface.network"
+		local readonly cfgfilename="nafetsde-$iface_fname.network"
 	else
-		local readonly cfgfilename="nafetsde-$iface-$virt.network"
+		local readonly cfgfilename="nafetsde-$iface_fname-$virt.network"
 	fi
 	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/$cfgfilename"
 
