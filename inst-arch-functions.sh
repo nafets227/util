@@ -201,16 +201,6 @@ function inst-arch_finalize {
 	# From here on we do not do any error handling.
 	# We just do our best to cleanup things.
 
-	if [ "$1" != "--no-passwd-expire" ] ; then
-		# arch-chroot will fail on non-x86 systems. passwd --root also fails,
-		# so we kindly ignore if it fails.
-		inst-arch_chroot-helper $INSTALL_ROOT <<-EOF
-			passwd -e root
-		EOF
-	else
-		printf "Skipping expire root password\n"
-	fi
-
 	umount --recursive --detach-loop "$INSTALL_ROOT"
 
 	if [ ! -z "$INSTALL_FINALIZE_CMD" ] ; then
@@ -252,15 +242,19 @@ function inst-arch_baseos {
 			$INSTALL_ROOT/etc/mkinitcpio.conf
 	fi
 
-	# set Hostname
-	printf "%s\n" "$name" >$INSTALL_ROOT/etc/hostname
+	# set Hostname, locale and root password
+	# for german use: --locale=LANG=de_DE.UTF-8
+	rm $INSTALL_ROOT/etc/{machine-id,localtime,hostname,shadow,locale.conf}
+	systemd-firstboot --root=$INSTALL_ROOT \
+		--hostname="$name" \
+		--locale="en_DK.UTF-8" \
+		--locale-messages=en_US \
+		--keymap="de-latin1-nodeadkeys" \
+		--timezone="Europe/Berlin" \
+		--copy-root-password \
+		--setup-machine-id \
+	|| return 1
 
-	# Now Set the system to German language
-	# for german use: echo "LANG=de_DE.UTF-8" > /etc/locale.conf
-	printf "LANG=en_DK.UTF-8" > $INSTALL_ROOT/etc/locale.conf
-	echo "KEYMAP=de-latin1-nodeadkeys"  > $INSTALL_ROOT/etc/vconsole.conf
-	test -e $INSTALL_ROOT/etc/localtime && rm $INSTALL_ROOT/etc/localtime
-	ln -s /usr/share/zoneinfo/Europe/Berlin $INSTALL_ROOT/etc/localtime
 	cat >>$INSTALL_ROOT/etc/locale.gen <<-EOF
 
 		# by $OURSELVES
@@ -275,9 +269,6 @@ function inst-arch_baseos {
 		locale-gen
 
 		mkinitcpio -p linux
-
-		#Root Passwort aendern
-		printf "Forst2000\nForst2000\n" | passwd
 		EOF
 
 	# Concfigure Grub for both XEN ( in /boot/grub/grub.cfg) and
