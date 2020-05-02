@@ -6,7 +6,7 @@
 ##### Configuration ##########################################################
 readonly INSTALL_SSL_SOURCE="/data/ca/private /etc/ca-certificates/extracted/cadir"
 
-##### install-ssh_trust ######################################################
+##### install-ssl_nafetsca ###################################################
 function install-ssl_nafetsca {
 	
  	#----- Input checks --------------------------------------------------
