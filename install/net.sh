@@ -404,3 +404,71 @@ function install-net_dhcp {
 	printf "] completed.\n"
 }
 
+##### install-net_wlan #######################################################
+# Install a WLAN adapter
+# Parameter:
+#      iface  - name of interface, wildcards allowed
+#      SSID   - SSID of the WLAN to be connected to
+#      wlanpw - WLAN Password
+function install-net_wlan {
+	local iface="$1"
+	local ssid="$2"
+	local wlanpw="$3"
+
+	#----- Input checks --------------------------------------------------
+	if [ $# -ne 3 ]; then
+		printf "Internal Error: %s got %s parms (exp=3)\n" \
+                        "$FUNCNAME" "$#" >&2
+		return 1
+        elif [ ! -d "$INSTALL_ROOT" ] ; then
+                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+                        "$FUNCNAME" "$INSTALL_ROOT" >&2
+                return 1
+        fi
+
+	#----- Real Work -----------------------------------------------------
+	iface_fname=${iface//\*/_}
+	iface_fname=${iface_fname// /_}
+
+	local readonly cfgfilename="nafetsde-$iface_fname.network"
+	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/$cfgfilename"
+
+	pacman -S --sysroot $INSTALL_ROOT --needed --noconfirm wpa_supplicant &&
+
+	cat >$cfgfile <<-EOF &&
+		[Match]
+		Name=$iface
+
+		[Network]
+		Description="WLAN Interface with DHCP in nafets.de"
+		DHCP=yes
+		IPv6PrivacyExtensions=true
+
+		[DHCPv4]
+		RouteMetric=2048
+	EOF
+
+	local readonly cfgdirwpa="$INSTALL_ROOT/etc/wpa_supplicant" &&
+	local readonly cfgfilewpa="$cfgdirwpa/wpa_supplicant-$iface_fname.conf" &&
+	cat >$cfgfilewpa <<-EOF &&
+		ctrl_interface=/var/run/wpa_supplicant
+		ctrl_interface_group=wheel
+		update_config=1
+		eapol_version=1
+		ap_scan=1
+		fast_reauth=1
+		EOF
+	wpa_passphrase "$ssid" <<<"$wlanpw" >>$cfgfilewpa &&
+
+	systemctl --root=$INSTALL_ROOT enable \
+		systemd-networkd.service \
+		wpa_supplicant@$iface_fname \
+		systemd-resolved.service \
+		systemd-timesyncd.service \
+		&& \
+	/bin/true || return 1
+
+	printf "Setting up WLAN Network %s completed.\n" "$iface"
+
+	return 0
+}
