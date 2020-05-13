@@ -248,7 +248,7 @@ function inst-arch_baseos {
 	systemd-firstboot --root=$INSTALL_ROOT \
 		--hostname="$name" \
 		--locale="en_DK.UTF-8" \
-		--locale-messages=en_US \
+		--locale-messages="en_US.UTF-8" \
 		--keymap="de-latin1-nodeadkeys" \
 		--timezone="Europe/Berlin" \
 		--copy-root-password \
@@ -260,6 +260,7 @@ function inst-arch_baseos {
 		# by $OURSELVES
 		de_DE.UTF-8 UTF-8
 		en_DK.UTF-8 UTF-8
+		en_US.UTF-8 UTF-8
 		EOF
 
 	#Now chroot into the future system
