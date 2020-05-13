@@ -236,11 +236,12 @@ function kube-inst_tls-secret {
         cert_key_fname=$(cert_get_key $secretname) &&
         cert_fname=$(cert_get_cert $secretname $caname) &&
 
-	kubectl create secret tls $secretname \
+	kubectl --kubeconfig $KUBE_CONFIGFILE \
+		create secret tls $secretname \
 		--cert=$cert_fname \
 		--key=$cert_key_fname \
 		--save-config \
-		--dry-run \
+		--dry-run=client \
 		-o yaml \
 	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
 	|| return 1
@@ -295,10 +296,11 @@ function kube-inst_generic-secret {
 
 	printf "creating secret %s ... " "$secretname"
 
-	kubectl create secret generic $secretname \
+	kubectl --kubeconfig $KUBE_CONFIGFILE \
+		create secret generic $secretname \
 		--from-file=$fname \
 		--save-config \
-		--dry-run \
+		--dry-run=client \
 		-o yaml \
 	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
 	|| return 1
