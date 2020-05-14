@@ -216,11 +216,13 @@ function inst-arch_finalize {
 function inst-arch_baseos {
 	# Parameters:
 	#    1 - hostname
-	#    3 - additional package [optionsal]
-	#    4 - additional Modules in initrd [optional]
+	#    2 - additional package [optional]
+	#    3 - additional Modules in initrd [optional]
+	#    4 - time to run autoupdate [default=blank means disabled]
 	local name="$1"
 	local extrapkg="$2"
 	local extramod="$3"
+	local updatetim="$4"
 
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
@@ -312,6 +314,25 @@ function inst-arch_baseos {
 	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
 		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
 		EOFGRUB
+
+	# Configure an autoupdate Service and timer.
+	# if updatetim is blank, disable it
+	printf "Configuring nafetsde-autoupdate at %s on %s\n" \
+		"$updatetim" "$INSTALL_ROOT" >&2
+
+	install-timer \
+		"nafetsde-autoupdate" \
+		"/bin/bash -c \"pacman -Suy --noconfirm $pkgs_ignore && systemctl reboot\"" \
+		"" \
+		"" \
+                "*-*-* ${updatetim-1:00}" \
+	|| return 1
+
+	if [ -z "$updatetim" ] ; then
+		systemctl --root $INSTALL_ROOT \
+			disable nafetsde-autoupdate.timer \
+		|| return 1
+	fi
 
 
 	return 0
