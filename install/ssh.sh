@@ -4,7 +4,7 @@
 #
 
 ##### Configuration ##########################################################
-readonly INSTALL_SSH_SOURCE="/data/ca/private-ssh"
+readonly INSTALL_SSH_SOURCE="phys.intranet.nafets.de:/data/ca/private-ssh"
 
 ##### install-ssh_getUserData ################################################
 function install-ssh_getUserData {
@@ -83,7 +83,7 @@ function install-ssh_trust {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
-	elif [ ! -r "$fname" ] ; then
+	elif [ ! -z "${fname/*:*/}" ] && [ ! -r "$fname" ] ; then
 		printf "%s: Error File %s does not exist or ist not readable.\n" \
 			"$FUNCNAME" "$fname" >&2
 		return 1
@@ -94,7 +94,18 @@ function install-ssh_trust {
 	
 	install -d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && \
 	install -d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d && \
-	install -m 600 $fname $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d && \
+	/bin/true || return 1
+
+	if [ ! -z "${fname/*:*/}" ] ; then
+		install -m 600 $fname $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
+		/bin/true || return 1
+	else
+		scp $fname /tmp/$(basename $fname) &&
+		install -m 600 /tmp/$(basename $fname) $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
+		rm /tmp/$(basename $fname) && \
+		/bin/true || return 1
+	fi
+
 	cat $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/* \
 		>$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys || \
 	return 1
@@ -117,7 +128,7 @@ function install-ssh_key {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
-	elif [ ! -r "$fname" ] ; then
+	elif [ ! -z "${fname/*:*/}" ] && [ ! -r "$fname" ] ; then
 		printf "%s: Error File %s does not exist or ist not readable.\n" \
 			"$FUNCNAME" "$fname" >&2
 		return 1
@@ -127,9 +138,17 @@ function install-ssh_key {
 	install-ssh_getUserData "$user" || return 1
 	
 	install -d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && 
-	install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
-		$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa \
-		|| return 1
+	if [ ! -z "${fname/*:*/}" ] ; then
+		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
+		/bin/true || return 1
+	else
+		scp $fname /tmp/$(basename $fname) &&
+		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 /tmp/$(basename $fname) \
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
+		rm /tmp/$(basename $fname) &&
+		/bin/true || return 1
+	fi
 	
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up SSH Key %s for %s completed.\n" "$fname" "$user" >&2
