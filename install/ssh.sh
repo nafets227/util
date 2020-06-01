@@ -4,7 +4,11 @@
 #
 
 ##### Configuration ##########################################################
-readonly INSTALL_SSH_SOURCE="phys.intranet.nafets.de:/data/ca/private-ssh"
+if [ "${HOSTNAME:0:4}" == "phys" ] ; then
+	readonly INSTALL_SSH_SOURCE="/data/ca/private-ssh"
+else
+	readonly INSTALL_SSH_SOURCE="phys.intranet.nafets.de:/data/ca/private-ssh"
+fi
 
 ##### install-ssh_getUserData ################################################
 function install-ssh_getUserData {
