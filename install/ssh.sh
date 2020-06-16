@@ -96,16 +96,21 @@ function install-ssh_trust {
 	#----- Real Work -----------------------------------------------------
 	install-ssh_getUserData "$user" || return 1
 	
-	install -d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && \
-	install -d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d && \
+	install -o $INSTSSH_UID -g $INSTSSH_GID \
+		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && \
+	install -o $INSTSSH_UID -g $INSTSSH_GID \
+		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d && \
 	/bin/true || return 1
 
 	if [ ! -z "${fname/*:*/}" ] ; then
-		install -m 600 $fname $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
+		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
 		/bin/true || return 1
 	else
 		scp $fname /tmp/$(basename $fname) &&
-		install -m 600 /tmp/$(basename $fname) $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
+		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 \
+			/tmp/$(basename $fname) \
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
 		rm /tmp/$(basename $fname) && \
 		/bin/true || return 1
 	fi
@@ -141,7 +146,8 @@ function install-ssh_key {
 	#----- Real Work -----------------------------------------------------
 	install-ssh_getUserData "$user" || return 1
 	
-	install -d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && 
+	install -o $INSTSSH_UID -g $INSTSSH_GID \
+		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && 
 	if [ ! -z "${fname/*:*/}" ] ; then
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
