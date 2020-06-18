@@ -54,7 +54,7 @@ function test_exec_simple {
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.out
 		printf "========== Output Test %d End ==========\n" "$testnr"
-		testsetfailed="$testsfailed $testnr"
+		testsetfailed="$testsetfailed $testnr"
 	else
 		printf "OK\n"
 		testsetok=$(( ${testsetok-0} + 1))
@@ -94,7 +94,7 @@ function test_exec_url {
 		cat $TESTSETDIR/$testnr.curlout
 		printf "\n"
 		printf "========== Output Test %d End ==========\n" "$testnr"
-		testsetfailed="$testsfailed $testnr"
+		testsetfailed="$testsetfailed $testnr"
 	else
 		printf "OK\n"
 		testsetok=$(( ${testsetok-0} + 1))
@@ -136,7 +136,7 @@ function test_exec_recvmail {
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.mailout
 		printf "========== Output Test %d End ==========\n" "$testnr"
-		testsetfailed="$testsfailed $testnr"
+		testsetfailed="$testsetfailed $testnr"
 	else
 		printf "OK\n"
 		testsetok=$(( ${testsetok-0} + 1))
@@ -175,7 +175,7 @@ function test_exec_sendmail {
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.mailout
 		printf "========== Output Test %d End ==========\n" "$testnr"
-		testsetfailed="$testsfailed $testnr"
+		testsetfailed="$testsetfailed $testnr"
 	else
 		printf "OK\n"
 		testsetok=$(( ${testsetok-0} + 1))
