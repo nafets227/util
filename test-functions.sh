@@ -46,10 +46,10 @@ function test_exec_simple {
 	printf "#-----\n#----- Command: %s\n#-----\n" "$1" \
 		>$TESTSETDIR/$testnr.out
 	eval $1 >>$TESTSETDIR/$testnr.out 2>&1
-	local rc=$?
+	TESTRC=$?
 	
-	if [ $rc -ne $rc_exp ] ; then
-		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
+	if [ $TESTRC -ne $rc_exp ] ; then
+		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
 		printf "CMD: %s\n" "$1"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.out
@@ -78,22 +78,22 @@ function test_exec_url {
 	local rc_exp=${2-200}
 	shift 2
 
-	local http_code
-	http_code=$(curl -s "$@" \
+	TESTRC=$(curl -s "$@" \
 		-i \
 		-o $TESTSETDIR/$testnr.curlout \
-	       	-w "%{http_code}" \
+		-w "%{http_code}" \
 		"$url")
 	local rc=$?
-       	if [ $rc -ne 0 ] || [ "$http_code" != "$rc_exp" ] ; then
+	if [ $rc -ne 0 ] || [ "$TESTRC" != "$rc_exp" ] ; then
 		printf "FAILED. RC=%d HTTP-Code=%s (exp=%s)\n" \
-	       		"$rc" "$http_code" "$rc_exp"
+		"$rc" "$http_code" "$rc_exp"
 		printf "URL: %s\n" "$url"
 		printf "Options: %s\n" "$@"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.curlout
 		printf "\n"
 		printf "========== Output Test %d End ==========\n" "$testnr"
+		[ "$rc" -ne 0 ] && TESTRC=999
 		testsetfailed="$testsetfailed $testnr"
 	else
 		printf "OK\n"
@@ -128,8 +128,8 @@ function test_exec_recvmail {
 		>$TESTSETDIR/$testnr.mailout \
 		2>&1 \
 		</dev/null
-	rc=$?
-	if [ $rc -ne $rc_exp ] ; then
+	TESTRC=$?
+	if [ $TESTRC -ne $rc_exp ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
 		printf "test_exec_recvmail(%s,%s,%s)\n" "$rc_exp" "$url" "$@"
 		printf "CMD: mail %s %s %s\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*"
@@ -167,8 +167,8 @@ function test_exec_sendmail {
 		>$TESTSETDIR/$testnr.mailout \
 		2>&1 \
 		<<<"Text TestMail $testnr"
-	rc=$?
-	if [ $rc -ne $rc_exp ] ; then
+	TESTRC=$?
+	if [ $TESTRC -ne $rc_exp ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
 		printf "send_testmail(%s,%s,%s,%s,%s)\n" "$rc_exp" "$url" "$from" "$to" "$*"
 		printf "CMD: mailx %s %s %s '%s'\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*" "$to"
