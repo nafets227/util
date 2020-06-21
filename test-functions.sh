@@ -36,6 +36,7 @@ function test_lastoutput_contains {
 # Parameters:
 #     1 - command to test
 #     2 - expected RC [default: 0]
+#     3 - optional message to be printed if test fails
 function test_exec_simple {
 	testnr=$(( ${testnr-0} + 1))
 	testexecnr=$testnr
@@ -51,6 +52,9 @@ function test_exec_simple {
 	if [ $TESTRC -ne $rc_exp ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
 		printf "CMD: %s\n" "$1"
+		if [ ! -z "$3" ] ; then
+			printf "Info: %s\n" "$3"
+		fi
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.out
 		printf "========== Output Test %d End ==========\n" "$testnr"
