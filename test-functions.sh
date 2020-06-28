@@ -8,9 +8,10 @@ function test_lastoutput_contains {
 	testnr=$(( ${testnr-0} + 1))
 	# not increasing testexecnr
 	local search="$1"
+	local extension="${2-.out}"
 
 	local grep_cnt
-	grep_cnt=$(grep -z -c "$search" <$TESTSETDIR/$testexecnr.out)
+	grep_cnt=$(grep -z -c "$search" <$TESTSETDIR/$testexecnr$extension)
 	if [ $? -ne 0 ] ; then
 		# grep error
 		printf "ERROR checking %s. Search: '%s'\n" \
@@ -88,7 +89,7 @@ function test_exec_url {
 		-w "%{http_code}" \
 		"$url")
 	local rc=$?
-	if [ $rc -ne 0 ] || [ "$TESTRC" != "$rc_exp" ] ; then
+	if [ $rc -ne 0 ] || [ "x$TESTRC" != "x$rc_exp" ] ; then
 		printf "FAILED. RC=%d HTTP-Code=%s (exp=%s)\n" \
 		"$rc" "$http_code" "$rc_exp"
 		printf "URL: %s\n" "$url"
