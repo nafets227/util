@@ -4,6 +4,57 @@
 #
 # (C) 2017 Stefan Schallenberg
 
+function test_cleanImap {
+	if [ "$#" -ne 3 ] ; then
+		printf "%s: Internal Error. Got %s parms (exp=3)\n" \
+			"$FUNCNAME" "$#"
+		return 1
+	fi
+
+	local mail_adr="$1"
+	local mail_pw="$2"
+	local mail_srv="$3"
+
+	local imapstatus
+
+	printf "Cleaning %s at %s. Deleting all Mails.\n" \
+		"$mail_adr" "$mail_srv"
+
+	imapstatus=$(
+		curl --ssl --silent --show-error \
+		"imap://$mail_srv" \
+		--user "$mail_adr:$mail_pw" \
+		--request 'STATUS INBOX (MESSAGES)'
+	) || return 1
+	imapstatus=${imapstatus%%$'\r'} # delete CR LF
+
+	#DEBUG printf "DEBUG: Status=%s\n" "$imapstatus"
+	if [ "${imapstatus:0:25}" != "* STATUS INBOX (MESSAGES " ] ; then
+		printf "Wrong Status received from IMAP: \"%s\"\n" \
+			"$imapstatus"
+		return 1
+	elif [ "$imapstatus" == "* STATUS INBOX (MESSAGES 0)" ] ; then
+		# 0 Messages -> no deleting needed
+		return 0
+	fi
+
+	imapstatus=$(
+		curl --ssl --silent --show-error \
+		"imap://$mail_srv/INBOX" \
+		--user "$mail_adr:$mail_pw" \
+		--request 'STORE 1:* +FLAGS \Deleted'
+	) || return 1
+
+	imapstatus=$(
+		curl --ssl --silent --show-error \
+		"imap://$mail_srv/INBOX" \
+		--user "$mail_adr:$mail_pw" \
+		--request 'EXPUNGE'
+	) || return 1
+
+	return 0
+}
+
 function test_lastoutput_contains {
 	testnr=$(( ${testnr-0} + 1))
 	# not increasing testexecnr
