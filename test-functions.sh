@@ -253,6 +253,47 @@ function test_assert_tools {
 	return $rc
 }
 
+function test_expect_files {
+	testnr=$(( ${testnr-0} + 1))
+	# not increasing testexecnr
+
+	# parm 1: directory
+	# parm 2: nr of files (except . and ..)
+	local testdir="$1"
+	local testexpected="$2"
+	local rc
+
+	if [ ${testdir:0:1} != "/" ] ; then
+		testdir="$TESTSETDIR/$testdir"
+	fi
+
+	testresult=$( set -o pipefail ; ls -1A $testdir | wc -l)
+	rc=$?
+
+	if [ "$rc" != 0 ] ; then
+		printf "\tCHECK %s FAILED. Cannot get files in '%s'\n" \
+			"$testnr" "$1"
+		testsetfailed="$testsetfailed $testnr"
+		return 1
+	elif [ $testresult != $testexpected ] ; then
+		# nr of files differ from expected
+		printf "\tCHECK %s FAILED. nr of files in '%s' is %s (exp=%s)\n" \
+			"$testnr" "$1" "$testresult" "$testexpected"
+#		printf "========== Output Test %d Begin ==========\n" "$testexecnr"
+#		cat $TESTSETDIR/$testexecnr.out
+#		printf "========== Output Test %d End ==========\n" "$testexecnr"
+		testsetfailed="$testsetfailed $testnr"
+		return 0
+	else
+		printf "\tCHECK %s OK.\n" "$testnr"
+		testsetok=$(( ${testsetok-0} + 1))
+		return 0
+	fi
+
+	# should not reach this
+	return 99
+}
+
 function testset_init {
 	printf "TESTS Starting.\n"
 	testsetok=0
