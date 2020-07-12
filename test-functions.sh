@@ -239,18 +239,65 @@ function test_exec_sendmail {
 }
 
 function test_assert_tools {
-	rc=0
+	testnr=$(( ${testnr-0} + 1))
+
+	printf "Executing Assert %d (Tools %s) ... " "$testnr" "$*"
+
 	for f in "$@" ; do
-		printf "Checking for tool %s ..." "$f"
-		if errmsg=$(which $f 2>&1) ; then
-			printf "OK\n"
-		else
-			printf "ERROR: %s\n" "$errmsg"
-			rc=1
+		if ! errmsg=$(which $f 2>&1) ; then
+			printf "FAILED: Missing %s\n\t%s\n" \
+				"$f" "$errmsg"
+			TESTRC=1
+			testsetfailed="$testsetfailed $testnr"
+			return $TESTRC
 		fi
 	done
 
-	return $rc
+	printf "OK\n"
+	TESTRC=0
+	testsetok=$(( ${testsetok-0} + 1))
+	return $TESTRC
+}
+
+function test_assert_vars {
+	testnr=$(( ${testnr-0} + 1))
+
+	printf "Executing Assert %s (Vars %s) ... " "$testnr" "$*"
+
+	for f in "$@" ; do
+		if eval "[ -z \$$f ]" ; then
+			printf "FAILED: Missing %s\n" "$f"
+			TESTRC=1
+			testsetfailed="$testsetfailed $testnr"
+			return $TESTRC
+		fi
+	done
+
+	printf "OK\n"
+	TESTRC=0
+	testsetok=$(( ${testsetok-0} + 1))
+	return $TESTRC
+}
+
+
+function test_assert_files {
+	testnr=$(( ${testnr-0} + 1))
+
+	printf "Executing Assert %s (Files %s) ... " "$testnr" "$*"
+
+	for f in "$@" ; do
+		if [ ! -f "$f" ] ; then
+			printf "FAILED: Missing %s\n"
+			TESTRC=1
+			testsetfailed="$testsetfailed $testnr"
+			return $TESTRC
+		fi
+	done
+
+	printf "OK\n"
+	TESTRC=0
+	testsetok=$(( ${testsetok-0} + 1))
+	return $TESTRC
 }
 
 function test_expect_files {
