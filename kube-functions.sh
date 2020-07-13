@@ -478,7 +478,7 @@ function kube-inst_internal {
 	if [ ! -z "$envnames" ] ; then  for f in $envnames ; do
 		if [[ -v $f ]] ; then
 			eval "value=\$$f"
-			sed_parms="$sed_parms -e 's/\${$f}/${value//\//\\\/}/'"
+			sed_parms="$sed_parms -e 's/\${$f}/${value//\//\\\/}/g'"
 		else
 			printf "%s: variable for envname %s not defined.\n" \
 				"$FUNCNAME" "$f"
