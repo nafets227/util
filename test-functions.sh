@@ -55,6 +55,49 @@ function test_cleanImap {
 	return 0
 }
 
+function test_putImap {
+	if [ "$#" -ne 3 ] ; then
+		printf "%s: Internal Error. Got %s parms (exp=3)\n" \
+			"$FUNCNAME" "$#"
+		return 1
+	fi
+
+	local mail_adr="$1"
+	local mail_pw="$2"
+	local mail_srv="$3"
+
+	printf "Storing a Mail into %s at %s.\n" \
+		"$mail_adr" "$mail_srv"
+
+	cat >$TESTSETDIR/testmsg <<-EOF &&
+		Return-Path: <$mail_adrt>
+		From: Test-From <$mail_adr>
+		Content-Type: text/plain; charset=us-ascii
+		Content-Transfer-Encoding: 7bit
+		Mime-Version: 1.0 (Mac OS X Mail 10.2 \(3259\))
+		Subject: Test from test_putImap
+		Date: Thu, 4 Mar 2017 11:50:19 +0100
+		To: Test-To <$mail_adr>
+
+		Test
+		EOF
+
+	curl --ssl --silent --show-error \
+		"imap://$mail_srv/INBOX" \
+		--user "$mail_adr:$mail_pw" \
+		-T $TESTSETDIR/testmsg &&
+
+
+	curl --ssl --silent --show-error \
+		"imap://$mail_srv/INBOX" \
+		--user "$mail_adr:$mail_pw" \
+		--request 'STORE 1 -Flags /Seen' &&
+
+	true || return 1
+
+	return 0
+}
+
 function test_lastoutput_contains {
 	testnr=$(( ${testnr-0} + 1))
 	# not increasing testexecnr
