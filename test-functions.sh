@@ -364,7 +364,8 @@ function testset_init {
 		shift
 	done
 
-	TESTSETDIR=$(mktemp --tmpdir --directory $TESTSETNAME.XXXXXXXXXX)
+	TESTSETDIR=$(mktemp -d ${TMPDIR:-/tmp}/$TESTSETNAME.XXXXXXXXXX) \
+		|| return 1
 	printf "\tTESTSETDIR=%s\n" "$TESTSETDIR"
 	printf "\tTESTSETLOG=%s\n" "$TESTSETLOG"
 	printf "\tTESTSETPARM=%s\n" "$TESTSETPARM"
