@@ -312,6 +312,69 @@ function kube-inst_generic-secret {
 	return 0
 }
 
+##### kube-inst_configmap - install Kubernetes Configmap ####################
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - name of configmap
+#   2ff - name of file(s)
+function kube-inst_configmap {
+	local cmapname="$1"
+	shift
+
+	if  [ -z "$KUBE_CONFIGFILE" ] ||
+	    [ -z "$KUBE_ACTION" ] ||
+	    [ -z "$KUBE_NAMESPACE" ] ||
+	    [ -z "$KUBE_BASEDOM" ] ||
+	    [ -z "$KUBE_APP" ] ; then
+		printf "kube-inst_init has not been called. \n"
+		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
+		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
+		return 1
+	fi
+
+	if [ -z "$cmapname" ] ; then
+		printf "%s: Error. Got no or empty configmap name.\n" \
+			"$FUNCNAME"
+		return 1
+	elif [ -z "$1" ] ; then
+		printf "%s: Error. Got no or empty filename.\n" \
+			"$FUNCNAME"
+		return 1
+	# Do not check if fname exists.
+	# it may be also a directory or a string like logicalname=realname
+	fi
+
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		kube_action="apply"
+		action_display="Installing"
+	elif [ "$KUBE_ACTION" == "delete" ] ; then
+		kube_action="delete"
+		action_display="Deleting"
+	else
+		printf "%s: Error. Action \$KUBE_ACTION=%s unknown." \
+		       "$FUNCNAME" "$1"
+		printf " Must be \"install\" or \"delete\".\n"
+		return 1
+	fi
+	printf "creating configmap %s ... " "$secretname"
+
+	local fromfilearg=""
+	for a in "$@" ; do
+		fromfilearg+=" --from-file=$a"
+	done
+
+	kubectl --kubeconfig $KUBE_CONFIGFILE \
+		create configmap $cmapname \
+		$fromfilearg \
+		--save-config \
+		--dry-run=client \
+		-o yaml \
+	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
+	|| return 1
+
+	return 0
+}
+
 ##### kube-inst_volume - Install Volume
 # Prerequisite: kube-inst_init has been called
 # Parametets:
