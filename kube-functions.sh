@@ -253,10 +253,10 @@ function kube-inst_tls-secret {
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - name of secret
-#   2 - name of file
+#   2ff - name of file(s)
 function kube-inst_generic-secret {
 	local secretname="$1"
-	local fname="$2"
+	shift
 
 	if  [ -z "$KUBE_CONFIGFILE" ] ||
 	    [ -z "$KUBE_ACTION" ] ||
@@ -273,12 +273,12 @@ function kube-inst_generic-secret {
 		printf "%s: Error. Got no or empty secret name.\n" \
 			"$FUNCNAME"
 		return 1
-	elif [ -z "$fname" ] ; then
+	elif [ -z "$1" ] ; then
 		printf "%s: Error. Got no or empty filename.\n" \
 			"$FUNCNAME"
 		return 1
 	# Do not check if fname exists.
-	# it may be also a directory or a sting like logicalname=realname
+	# it may be also a directory or a string like logicalname=realname
 	fi
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
@@ -293,12 +293,16 @@ function kube-inst_generic-secret {
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
-
 	printf "creating secret %s ... " "$secretname"
+
+	local fromfilearg=""
+	for a in "$@" ; do
+		fromfilearg+=" --from-file=$a"
+	done
 
 	kubectl --kubeconfig $KUBE_CONFIGFILE \
 		create secret generic $secretname \
-		--from-file=$fname \
+		$fromfilearg \
 		--save-config \
 		--dry-run=client \
 		-o yaml \
