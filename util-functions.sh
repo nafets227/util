@@ -7,6 +7,13 @@
 # (C) 2018 Stefan Schallenberg
 #
 
+##### Configuration ##########################################################
+if [ "${HOSTNAME:0:4}" == "phys" ] ; then
+        readonly INSTALL_KEY_SOURCE="/data/ca/private"
+else
+        readonly INSTALL_KEY_SOURCE="phys.intranet.nafets.de:/data/ca/private"
+fi
+
 ##### ltrim ##################################################################
 function ltrim {
 	if [ $# -ne 1 ] ; then
@@ -80,6 +87,27 @@ function util_download {
         || return 1
 
 	printf "%s\n" "$CACHFIL"
+	return 0
+}
+
+#### util_make-local #########################################################
+function util_make-local {
+	fname="$1"
+	if [ -z "$fname" ] ; then
+		printf "Internal error: got %s parms (exp>1)\n" "$#"
+		return 1
+	fi
+
+	#----- Action -------------------------------------------------------
+	if [ ! -z "${fname/*:*/}" ] ; then
+		# fname contains no ":" so its already local
+		printf "%s\n" "$fname"
+	else
+		# fname ontains A ":" so its remote
+		scp $fname /tmp/$(basename $fname) || return 1
+		printf "%s\n" "/tmp/$(basename $fname)"
+	fi
+
 	return 0
 }
 
