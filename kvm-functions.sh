@@ -208,54 +208,6 @@ function kvm_getDefaultAuto () {
 	return 0
 }
 
-##### getDefaultID ###########################################################
-# return a unique 8bit ID to be used in various places like MAC adr, VNC port
-# Parameters:
-# 1 - machinename [mandatory]
-function kvm_getDefaultID() {
-	if [ "$#" -lt 1 ] ; then
-		printf "Error: no machine name supplied\n" >&2
-		return 1
-	fi
-	local vmname="$1"
-	
-	case $vmname in
-		vWinSrv ) id="02" ;;
-		#Octopus)id="03" ;; # SATIP HW appliance, save the ID here
-		vPhys1 )
-		         id="05" ;;
-		vPhys2 )
-		         id="06" ;;
-		vRouter )
-		         id="07" ;;
-
-		vVdr   ) id="10" ;;
-		vMgmt  ) id="12" ;;
-		vWin   ) id="13" ;;
-		
-		vTest  ) id="17" ;;
-		
-		vKube1 ) id="21" ;;
-		vKube2 ) id="22" ;;
-		vKube3 ) id="23" ;;
-
-		vKube1Test ) id=26 ;;
-		vKube2Test ) id=27 ;;
-		vKube3Test ) id=28 ;;
-
-		vWinSrvTest ) id="32" ;;
-		vPiBuild ) id="09" ;;
-		vPiBuildTest ) id="39" ;;
-		vRouterTest ) id="37" ;;
-	esac
-
-	if [ -z "$id" ] ; then
-		return 1
-	else
-		printf "%s\n" "$id"
-		return 0
-	fi
-	}
 
 ##### getDefaultOS ###########################################################
 # Parameters:
@@ -291,7 +243,6 @@ function kvm_getDefaultOS () {
 #         CPU #0 is intended for physical machine only
 #         CPU #1 is intende vor Vdr only
 #   --id   internal ID, needs to be unique in whole system
-#         [default: use a static mapping table inside this script]
 #   --replace replace existing VMs [default=no]
 #   --auto [default=1] auto-start VM at boot
 #   --dry-run done really execute anything.
@@ -343,12 +294,9 @@ function kvm_create-vm () {
 	# Calculate Domain ID to be used as unique number where needed
 	# e.g. in MAC adress
 	if [ -z "$prm_id" ] ; then
-		prm_id=$(kvm_getDefaultID $vmname)
-		rc=$?; if [ "$rc" -ne 0 ] ; then
-			printf "No ID given (--id) and no Default found for machine %s.\n" \
+		printf "No ID given (--id) for machine %s.\n" \
 				"$vmname" >&2
-			return $rc;
-		fi
+		return 1
 	fi
 
 	# Find Device if not given on commandline
