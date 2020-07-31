@@ -130,47 +130,6 @@ function kvm_parseParm () {
 	return 0
 }
 
-##### getDefaultDisk #########################################################
-# Parameter:
-#   1 - virtual machine name
-function kvm_getDefaultDisk () {
-	vmname="$1"
-	if [ -b /dev/vg-sys/$vmname-sys ] ; then
-		printf "/dev/vg-sys/%s-sys\n" "$vmname"
-	elif [ -e /var/lib/libvirt/images/$vmname.raw ] ; then
-		printf "/var/lib/libvirt/images/%s.raw\n" "$vmname"
-	else
-		printf "No Default Device found for machine %s. Candidates:\n" "$vmname" >&2
-		printf "\t/dev/vg-sys/%s-sys\n" "$vmname" >&2
-		printf "\t/var/lib/libvirt/images/%s.raw\n" "$vmname" >&2
-		return 1		
-	fi		
-} 
-
-##### getDefaultDisk2 ########################################################
-# Parameter:
-#   1 - virtual machine name
-function kvm_getDefaultDisk2 () {
-	vmname="$1"
-	for f in \
-			/dev/vg-sys/$vmname-data \
-			/dev/xen-data/$vmname-data \
-			/dev/data/$vmname-data \
-			; do
-		if [ -b $f ] ; then
-			printf "%s\n" "$f"
-			return 0
-		fi
-	done
-
-	if [ -e /var/lib/libvirt/images/$vmname-data.raw ] ; then
-		printf "/var/lib/libvirt/images/%s-data.raw\n" "$vmname"
-	else
-		printf "No Default Disk2 found.\n" >&2
-		return 0
-	fi
-}
-
 ##### getDefaultNetBackend ###################################################
 # choose Default Backend Network Device (always mcvProd)
 function kvm_getDefaultNetBackend () {
@@ -299,16 +258,11 @@ function kvm_create-vm () {
 		return 1
 	fi
 
-	# Find Device if not given on commandline
+	# Ensure Disk Device is known
 	if [ -z "$prm_disk" ] ; then
-		prm_disk=$(kvm_getDefaultDisk $vmname)
-		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
-	fi
-
-	# Auto-Detect second Disk if not given on commandline
-	if [ -z "$prm_disk2" ] ; then
-		prm_disk2=$(kvm_getDefaultDisk2 $vmname)
-		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
+		printf "No Disk given (--disk) for machine %s.\n" \
+			"$vmname" >&2
+		return 1
 	fi
 
 	# Auto-Detect OS if not given on commandline
