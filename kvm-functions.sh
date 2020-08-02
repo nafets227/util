@@ -6,6 +6,19 @@
 #
 # (C) 2018 Stefan Schallenberg
 
+##### expect_value - print error if not ######################################
+function kvm_expect_value () {
+	parm="$1"
+	value="$2"
+	if [ -z "$value" ] ; then
+		printf "Error: Parm %s needs value (e.g. %s==myvalue)\n" \
+			"$1" "$1"
+		return 1
+	else
+		return 0
+	fi
+}
+
 ##### parseParm - parse Parameters and set global variables ##################
 function kvm_parseParm () {
 	local readonly def_memory="1024M"
@@ -24,56 +37,50 @@ function kvm_parseParm () {
 		parm="${1%%=*}"
 		if [ "$1" != "$parm" ] ; then # contains =
 			value=${1#*=}
-			value_present=1
 		else
 			value=""
-			value_present=0
 		fi
 		shift
 		
 		#DEBUG printf "DEBUG: parm %s value \"%s\"\n" "$parm" "$value" >&2
 		case "$parm" in
 			--disk | --root | --dev* )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_disk="$value"
 				;;
 			--disk2 )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_disk2="$value"
 				;;
 			--disk3 )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_disk3="$value"
 				;;
 			--mem )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_mem="$value"
 				;;
 			--cpu )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_cpu="$value"
 				;;
 			--id )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_id="$value"
 				;;
 			--virt )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_virt="$value"
 				;;
 			--os )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_os="$value"
 				;;
 			--sound )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_sound="$value"
 				;;
 			--auto )
-				if [ "$value_present" -eq 0 ] && [ "${1:0:2}" != "--" ] ; then
-				       	value="$1"
-				       	shift
-				fi
 				prm_auto="${value:-1}"
 				;;
 			--replace )
@@ -113,11 +120,11 @@ function kvm_parseParm () {
 				prm_cpuhost="${value:-1}"
 				;;
 			--arch )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_arch="$value"
 				;;
 			--boot )
-				if [ "$value_present" -eq 0 ] ; then value="$1"; shift; fi
+				kvm_expect_value "$parm" "$value" || return 1
 				prm_boot="$value"
 				;;
 			*)
@@ -194,25 +201,25 @@ function kvm_getDefaultOS () {
 # Parameters:
 # 1 - machinename [mandatory]
 # Options:
-#   --disk <device> [optional, autodetected]
-#   --disk2 <device> [optional, autodetected]
-#   --disk3 <device> [optional, default=empty]
-#   --mem <size> [default=1024MB]
-#   --cpu <nr of config> [default: 3,cpuset=2-3]
+#   --disk=<device> [optional, autodetected]
+#   --disk2=<device> [optional, autodetected]
+#   --disk3=<device> [optional, default=empty]
+#   --mem=<size> [default=1024MB]
+#   --cpu=<nr of config> [default: 3,cpuset=2-3]
 #         CPU #0 is intended for physical machine only
 #         CPU #1 is intende vor Vdr only
-#   --id   internal ID, needs to be unique in whole system
+#   --id=internal ID, needs to be unique in whole system
 #   --replace replace existing VMs [default=no]
-#   --auto [default=1] auto-start VM at boot
+#   --auto=1 [default=1] auto-start VM at boot
 #   --dry-run done really execute anything.
-#   --net <backend> [optional, autodetected]
-#   --net2 <backend> [optional, default=empty]
-#   --net3 <backend> [optional, default=empty]
-#   --net4 <backend> [optional, default=empty]
-#   --net5 <backend> [optional, default=empty]
-#   --net6 <backend> [optional, default=empty]
-#   --net7 <backend> [optional, default=empty]
-#   --net8 <backend> [optional, default=empty]
+#   --net=<backend> [optional, autodetected]
+#   --net2=<backend> [optional, default=empty]
+#   --net3=<backend> [optional, default=empty]
+#   --net4=<backend> [optional, default=empty]
+#   --net5=<backend> [optional, default=empty]
+#   --net6=<backend> [optional, default=empty]
+#   --net7=<backend> [optional, default=empty]
+#   --net8=<backend> [optional, default=empty]
 #   --cpuhost allow access to host CPU, use only for nexted virtualization!
 function kvm_create-vm () {
 	# Set Default values
