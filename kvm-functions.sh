@@ -92,29 +92,9 @@ function kvm_parseParm () {
 			--efi )
 				prm_efi="${value:-1}"
 				;;
-			--net )
-				prm_net="${value:-$(kvm_getDefaultNetBackend)}"
-				;;
-			--net2 )
-				prm_net2="${value:-$(kvm_getDefaultNetBackend)}"
-				;;
-			--net3 )
-				prm_net3="${value:-$(kvm_getDefaultNetBackend)}"
-				;;
-			--net4 )
-				prm_net4="${value:-$(kvm_getDefaultNetBackend)}"
-				;;
-			--net5 )
-				prm_net5="${value:-$(kvm_getDefaultNetBackend)}"
-				;;
-			--net6 )
-				prm_net6="${value:-$(kvm_getDefaultNetBackend)}"
-				;;
-			--net7 )
-				prm_net7="${value:-$(kvm_getDefaultNetBackend)}"
-				;;
-			--net8 )
-				prm_net8="${value:-$(kvm_getDefaultNetBackend)}"
+			--net | --net[1-8] )
+				kvm_expect_value "$parm" "$value" || return 1
+				eval prm_${parm:2}="$value"
 				;;
 			--cpuhost )
 				prm_cpuhost="${value:-1}"
@@ -136,29 +116,6 @@ function kvm_parseParm () {
 
 	return 0
 }
-
-##### getDefaultNetBackend ###################################################
-# choose Default Backend Network Device (always mcvProd)
-function kvm_getDefaultNetBackend () {
-	printf "mcvProd\n"
-
-	return 0
-
-	# If mcvProd is not the default, re-enable the following code
-	# in order to identify the first non loopback device
-
-	ifaces="$(ip link show | sed -n -e 's/\([0-9]\+: \)\([^:]\+\).*/\2/p')"
-	rc=$? ; if [ "$rc" -ne 0 ] ; then return $rc; fi
-
-	for ifc in $ifaces ; do
-		if [ "$ifc" == "lo" ] ; then #ignore loopback device
-			/bin/true
-		else
-			printf "%s\n" $ifc
-			return 0
-		fi
-	done 
-	}
 
 ##### getDefaultAuto #########################################################
 # set Default Auto-Start value
@@ -278,12 +235,6 @@ function kvm_create-vm () {
 		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	fi
 
-	# Auto-Detect First network device if not given on commandline
-	if [ -z "$prm_net" ] ; then
-		prm_net="$(kvm_getDefaultNetBackend "$vmname")"
-		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
-	fi
-
 	# Auto-Detect Auto-start if not given on commandline
 	if [ -z "$prm_auto" ] ; then
 		prm_auto="$(kvm_getDefaultAuto "$vmname")"
@@ -372,45 +323,21 @@ function kvm_create-vm () {
 		virt_prms="$virt_prms
 			--net none
 			"
-	elif [ ! -z "$prm_net" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:60:$prm_id,trustGuestRxFilters=yes
-			"
-	fi
-	if [ ! -z "$prm_net2" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net2,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:61:$prm_id,trustGuestRxFilters=yes
-			"
-	fi
-	if [ ! -z "$prm_net3" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net3,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:62:$prm_id,trustGuestRxFilters=yes
-			"
-	fi
-	if [ ! -z "$prm_net4" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net4,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:63:$prm_id,trustGuestRxFilters=yes
-			"
-	fi
-	if [ ! -z "$prm_net5" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net5,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:64:$prm_id,trustGuestRxFilters=yes
-			"
-	fi
-	if [ ! -z "$prm_net6" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net6,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:65:$prm_id,trustGuestRxFilters=yes
-			"
-	fi
-	if [ ! -z "$prm_net7" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net7,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:66:$prm_id,trustGuestRxFilters=yes
-			"
-	fi
-	if [ ! -z "$prm_net8" ] ; then
-		virt_prms="$virt_prms
-			--network type=direct,source=$prm_net8,source_mode=bridge,model=$nettype,mac=00:16:3E:A8:67:$prm_id,trustGuestRxFilters=yes
-			"
+	else
+		for n in "" 2 3 4 5 6 7 8 ; do
+			eval thisprmnet=\$\{prm_net$n\}
+			if [ ! -z "$thisprmnet" ] ; then
+				thisprmnet_src=${thisprmnet%%,*}
+				thisprmnet_mac=${thisprmnet##*,}
+				if [ -z $thisprmnet_src ] || [ -z %thisprmnet_mac ] ; then
+					printf "invalid net parm %s for net%s.\n" "$thisprmnet" "$n"
+					return 1
+				fi
+				virt_prms="$virt_prms
+					--network type=direct,source=$thisprmnet_src,source_mode=bridge,model=$nettype,mac=$thisprmnet_mac,trustGuestRxFilters=yes
+				"
+			fi
+		done
 	fi
 	if [ "$prm_cpuhost" == "1" ] ; then
 		virt_prms="$virt_prms
