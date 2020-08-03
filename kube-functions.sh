@@ -375,16 +375,17 @@ function kube-inst_configmap {
 	return 0
 }
 
-##### kube-inst_volume - Install Volume
+##### kube-inst_nfs-volume - Install NFS Volume
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - share
 #   2 - path [optional, default depends on share]
-function kube-inst_volume {
+function kube-inst_nfs-volume {
 	local share="$1"
-	local path="${2:-/$KUBE_STAGE/$KUBE_APP/$share}"
+	local path="$2"
 
-	local readonly nfsserver="phys.intranet.nafets.de"
+	local readonly nfsserver="${path%%:*}"
+	local readonly nfspath="${path##*:}"
 
 	if  [ -z "$KUBE_CONFIGFILE" ] ||
 	    [ -z "$KUBE_ACTION" ] ||
@@ -420,8 +421,8 @@ function kube-inst_volume {
         #### Make sure directory exists on server
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		ssh $nfsserver \
-			"test -d /srv/nfs4/$path" \
-			'||' "mkdir -p /srv/nfs4/$path" \
+			"test -d /srv/nfs4/$nfspath" \
+			'||' "mkdir -p /srv/nfs4/$nfspath" \
 			|| return 1
 	fi
 	# when deleting we leave the data untouched !
@@ -445,7 +446,7 @@ function kube-inst_volume {
 		  accessModes:
 		    - ReadWriteMany
 		  nfs:
-		    path: $path
+		    path: $nfspath
 		    server: $nfsserver
 		  persistentVolumeReclaimPolicy: Retain
 
