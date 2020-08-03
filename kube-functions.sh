@@ -56,16 +56,16 @@ function kube-inst_init {
 	fi
 
 	if [ "$stage" == "prod" ] ; then
-		KUBE_CONFIGFILE="/root/.kube/nafets-prod.conf"
+		KUBE_CONFIGFILE="$HOME/.kube/nafets-prod.conf"
 		KUBE_BASEDOM="intranet.nafets.de"
 	elif [ "$stage" == "preprod" ] ; then
-		KUBE_CONFIGFILE="/root/.kube/nafets-prod.conf"
+		KUBE_CONFIGFILE="$HOME/.kube/nafets-prod.conf"
 		KUBE_BASEDOM="$stage.nafets.de"
 	elif [ "$stage" == "test" ] ; then
-		KUBE_CONFIGFILE="/root/.kube/nafets-test.conf"
+		KUBE_CONFIGFILE="$HOME/.kube/nafets-test.conf"
 		KUBE_BASEDOM="$stage.nafets.de"
 	elif [ "$stage" == "testtest" ] ; then
-		KUBE_CONFIGFILE="/root/.kube/nafets-test.conf"
+		KUBE_CONFIGFILE="$HOME/.kube/nafets-test.conf"
 		KUBE_BASEDOM="$stage.nafets.de"
 	else
 		unset KUBE_ACTION
