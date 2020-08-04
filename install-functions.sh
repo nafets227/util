@@ -8,51 +8,6 @@
 # (C) 2018 Stefan Schallenberg
 #
 
-
-#### Install our special files on machine ####################################
-function install_ssl-private-keys {
-	hostname=$(cat $INSTALL_ROOT/etc/hostname)
-
-	#----- Input checks --------------------------------------------------
-	if [ ! -d "$INSTALL_ROOT" ] ; then
-		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
-		return 1
-	elif [ ! -r $INSTALL_ROOT/etc/hostname ] ; then
-		printf "%s: Error hostname not set in %s\n" \
-			"$FUNCNAME" "$INSTALL_ROOT/etc/hostname" >&2
-	elif [ -z "$hostname" ] ; then
-		printf "%s: Error hostname empty in %s\n" \
-			"$FUNCNAME" "$INSTALL_ROOT/etc/hostname" >&2
-	fi
-
-	#----- Real Work -----------------------------------------------------
-	hostname=$(cat $INSTALL_ROOT/etc/hostname)
-	# Copy SSL private files
-	if [ -d /data/ca/$hostname/ ]; then
-		mkdir -p $INSTALL_ROOT/root/ssl.private &&
-		cp -L  /data/ca/$hostname/* $INSTALL_ROOT/root/ssl.private/ &&
-		chown -R root:root $INSTALL_ROOT/root/ssl.private &&
-		chmod -R 400 $INSTALL_ROOT/root/ssl.private
-		rc=$?
-	else
-		empty=yes
-		rc=0
-	fi
-
-	#----- Closing  ------------------------------------------------------
-	if [ $rc != "0" ] ; then
-		printf "Error installing private SSL Keys\n"
-		return 1
-	elif [ ! -z $empty ] ; then
-		printf "Warning: No private SSL Keys found.\n"
-	else
-		printf "Private SSL Keys installed.\n"
-	fi
-
-	return 0
-}
-
 #### Install a service that runs additional installations after first boot ###
 function install_setup_service () {
 	# Parameter:
@@ -158,7 +113,6 @@ function install_nafets-std {
 #	install_ssl_ca
 	# Root logon in SSH erlauben
 	install-ssh_allow-root-pw && 
-	install_ssl-private-keys &&
 	install_ease-of-use && 
 	install_instinfo
 
