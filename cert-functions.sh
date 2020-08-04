@@ -7,10 +7,6 @@
 # (C) 2019 Stefan Schallenberg
 #
 
-readonly CERT_PRIVATE_DIR=/data/ca/private
-readonly CERT_STORE_DIR=/data/ca/store
-readonly CERT_ARCHIVE_DIR=/data/ca/archive
-
 #### cert_create_key #########################################################
 function cert_create_key {
 	# Create a Key; fails if it already exists
@@ -329,8 +325,13 @@ function cert_read_pw {
 }
 
 ##### Main ###################################################################
-# do nothing
-
+# Verify all needed config variables are set
+if [ -z "$CERT_PRIVATE_DIR" ] ||
+   [ -z "$CERT_STORE_DIR" ] ||
+   [ -z "$CERT_ARCHIVE_DIR" ] ; then
+	printf "Not all CERT_ config variables are set.\n"
+	exit 1
+fi 
 
 ##############################################################################
 # Useful information:
