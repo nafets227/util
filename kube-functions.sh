@@ -241,7 +241,7 @@ function kube-inst_tls-secret {
 		--cert=$cert_fname \
 		--key=$cert_key_fname \
 		--save-config \
-		--dry-run=client \
+		--dry-run \
 		-o yaml \
 	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
 	|| return 1
@@ -304,7 +304,7 @@ function kube-inst_generic-secret {
 		create secret generic $secretname \
 		$fromfilearg \
 		--save-config \
-		--dry-run=client \
+		--dry-run \
 		-o yaml \
 	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
 	|| return 1
@@ -367,7 +367,7 @@ function kube-inst_configmap {
 		create configmap $cmapname \
 		$fromfilearg \
 		--save-config \
-		--dry-run=client \
+		--dry-run \
 		-o yaml \
 	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -n $KUBE_NAMESPACE -f - \
 	|| return 1
