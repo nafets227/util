@@ -7,13 +7,6 @@
 # (C) 2018 Stefan Schallenberg
 #
 
-##### Configuration ##########################################################
-if [ "${HOSTNAME:0:4}" == "phys" ] ; then
-        readonly INSTALL_KEY_SOURCE="/data/ca/private"
-else
-        readonly INSTALL_KEY_SOURCE="phys.intranet.nafets.de:/data/ca/private"
-fi
-
 ##### ltrim ##################################################################
 function ltrim {
 	if [ $# -ne 1 ] ; then
