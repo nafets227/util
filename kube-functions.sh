@@ -29,18 +29,19 @@ function kube-getIP {
 #   2 - stage [prod|preprod|test|testtest] where to install
 #   3 - app Application name to be assigne to kubernetes tag
 #   4 - namespace (only use if non-stan dard, standard is based on stage)
-# Environment Variables set on exit:
+#   5 - Kube Configfile (defaults to ~/.kube/$stage.conf )
+# Environment Variables set on exit
 #   KUBE_CONFIGFILE name of Kubeconfig with access credentials
 #   KUBE_ACTION     action
 #   KUBE_STAGE      stage
 #   KUBE_NAMESPACE  Namespeace to be used
 #   KUBE_APP        Application name to be used in Labels
-#   KUBE_BASEDOM    Base Domain to be used for internal Services
 function kube-inst_init {
 	local action="$1"
 	local stage="${2:-preprod}"
 	local app="$3"
 	local ns="$4"
+	local configfile="$5"
 
 	if [ "$action" == "install" ] || [ "$action" == "delete" ] ; then
 		KUBE_ACTION="$action"
@@ -55,21 +56,11 @@ function kube-inst_init {
 		return 1
 	fi
 
-	if [ "$stage" == "prod" ] ; then
-		KUBE_CONFIGFILE="$HOME/.kube/nafets-prod.conf"
-		KUBE_BASEDOM="intranet.nafets.de"
-	elif [ "$stage" == "preprod" ] ; then
-		KUBE_CONFIGFILE="$HOME/.kube/nafets-prod.conf"
-		KUBE_BASEDOM="$stage.nafets.de"
-	elif [ "$stage" == "test" ] ; then
-		KUBE_CONFIGFILE="$HOME/.kube/nafets-test.conf"
-		KUBE_BASEDOM="$stage.nafets.de"
-	elif [ "$stage" == "testtest" ] ; then
-		KUBE_CONFIGFILE="$HOME/.kube/nafets-test.conf"
-		KUBE_BASEDOM="$stage.nafets.de"
-	else
-		unset KUBE_ACTION
-		printf "Invalid stage %s\n" "$stage"
+	KUBE_CONFIGFILE="${configfile:-$HOME/.kube/$stage.conf}"
+	if [ ! -r "$KUBE_CONFIGFILE" ] ; then
+		printf "Kubeconfigfile %s does not exist or is not readable.\n" \
+			"$KUBE_CONFIGFILE"
+		unset KUBE_CONFIGFILE
 		return 1
 	fi
 
@@ -91,6 +82,22 @@ function kube-inst_init {
 	return 0
 }
 
+##### kube-inst_internal-verify-initialised ##################################
+function kube-inst_internal-verify-initialised {
+	if  [ ! -r "$KUBE_CONFIGFILE" ] ||
+	    [ -z "$KUBE_ACTION" ] ||
+	    [ -z "$KUBE_NAMESPACE" ] ||
+	    [ -z "$KUBE_STAGE" ] ||
+	    [ -z "$KUBE_APP" ] ; then
+		printf "kube-inst_init has not been called. \n"
+		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
+		printf "KUBE_STAGE or KUBE_APP is not set.\n"
+		return 1
+	else
+		return 0
+	fi
+}
+
 ##### kube-inst_exec - Execute installation
 # Prerequisite: kube-inst_init has been called
 # Parametets:
@@ -100,26 +107,17 @@ function kube-inst_exec {
 	local confdir="$(realpath ${1:-./kube})"
 	local envnames="$2"
 
-	if  [ -z "$KUBE_CONFIGFILE" ] ||
-	    [ -z "$KUBE_ACTION" ] ||
-	    [ -z "$KUBE_NAMESPACE" ] ||
-	    [ -z "$KUBE_BASEDOM" ] ||
-	    [ -z "$KUBE_APP" ] ; then
-		printf "kube-inst_init has not been called. \n"
-		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
-		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
-		return 1
-	fi
+	kube-inst_internal-verify-initialised || return 1
 
 	KUBECONFIG=$KUBE_CONFIGFILE kube-inst_internal \
 		"$KUBE_ACTION" \
 		"$KUBE_APP" \
 		"$KUBE_NAMESPACE" \
 		"$confdir" \
-		"$envnames KUBE_APP KUBE_BASEDOM"
+		"$envnames KUBE_APP"
 	rc="$?"
 
-	unset KUBE_CONFIGFILE KUBE_ACTION KUBE_NAMESPACE KUBE_APP KUBE_BASEDOM
+	unset KUBE_CONFIGFILE KUBE_ACTION KUBE_NAMESPACE KUBE_APP
 
 	return $rc
 }
@@ -135,16 +133,7 @@ function kube-inst_helm {
 	local sourceurl="$2"
 	shift 2
 
-	if  [ -z "$KUBE_CONFIGFILE" ] ||
-	    [ -z "$KUBE_ACTION" ] ||
-	    [ -z "$KUBE_NAMESPACE" ] ||
-	    [ -z "$KUBE_BASEDOM" ] ||
-	    [ -z "$KUBE_APP" ] ; then
-		printf "kube-inst_init has not been called. \n"
-		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
-		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
-		return 1
-	fi
+	kube-inst_internal-verify-initialised || return 1
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		local action=""
@@ -199,16 +188,7 @@ function kube-inst_tls-secret {
 	local secretname="$1"
 	local caname="$2"
 
-	if  [ -z "$KUBE_CONFIGFILE" ] ||
-	    [ -z "$KUBE_ACTION" ] ||
-	    [ -z "$KUBE_NAMESPACE" ] ||
-	    [ -z "$KUBE_BASEDOM" ] ||
-	    [ -z "$KUBE_APP" ] ; then
-		printf "kube-inst_init has not been called. \n"
-		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
-		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
-		return 1
-	fi
+	kube-inst_internal-verify-initialised || return 1
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
@@ -258,16 +238,7 @@ function kube-inst_generic-secret {
 	local secretname="$1"
 	shift
 
-	if  [ -z "$KUBE_CONFIGFILE" ] ||
-	    [ -z "$KUBE_ACTION" ] ||
-	    [ -z "$KUBE_NAMESPACE" ] ||
-	    [ -z "$KUBE_BASEDOM" ] ||
-	    [ -z "$KUBE_APP" ] ; then
-		printf "kube-inst_init has not been called. \n"
-		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
-		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
-		return 1
-	fi
+	kube-inst_internal-verify-initialised || return 1
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
@@ -321,16 +292,7 @@ function kube-inst_configmap {
 	local cmapname="$1"
 	shift
 
-	if  [ -z "$KUBE_CONFIGFILE" ] ||
-	    [ -z "$KUBE_ACTION" ] ||
-	    [ -z "$KUBE_NAMESPACE" ] ||
-	    [ -z "$KUBE_BASEDOM" ] ||
-	    [ -z "$KUBE_APP" ] ; then
-		printf "kube-inst_init has not been called. \n"
-		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
-		printf "KUBE_BASEDOM or KUBE_APP is not set.\n"
-		return 1
-	fi
+	kube-inst_internal-verify-initialised || return 1
 
 	if [ -z "$cmapname" ] ; then
 		printf "%s: Error. Got no or empty configmap name.\n" \
@@ -387,17 +349,7 @@ function kube-inst_nfs-volume {
 	local readonly nfsserver="${path%%:*}"
 	local readonly nfspath="${path##*:}"
 
-	if  [ -z "$KUBE_CONFIGFILE" ] ||
-	    [ -z "$KUBE_ACTION" ] ||
-	    [ -z "$KUBE_NAMESPACE" ] ||
-	    [ -z "$KUBE_BASEDOM" ] ||
-	    [ -z "$KUBE_APP" ] ||
-	    [ -z "$KUBE_STAGE" ] ; then
-		printf "kube-inst_init has not been called. \n"
-		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
-		printf "KUBE_BASEDOM, KUBE_APP or KUBE_STAGE is not set.\n"
-		return 1
-	fi
+	kube-inst_internal-verify-initialised || return 1
 
 	if [ -z "$share" ] ; then
 		printf "%s: Error. Got no or empty share name.\n" \
@@ -616,6 +568,7 @@ function config-template {
 		"stage [prod|preprod|test|testtest] where to install"
 		"app Application name to be assigne to kubernetes tag"
 		"namespace (only use if non-standard, standard is based on stage)"
+		"kubeconfig (only us if not standard ~/.kube/$stage.conf"
 	if [ "$KUBE_STAGE" == "prod" ] ; then
 		MYVAL="prodvalue"
 	elif [ "$KUBE_STAGE" == "preprod" ] ; then
@@ -643,8 +596,3 @@ fi
 ##### MAIN ###################################################################
 
 # do nothing ! just load functions
-
-#test
-#set -x
-#export MYIP=myipvalue
-#kube-install install myapp test . "MYIP"
