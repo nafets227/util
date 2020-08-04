@@ -586,6 +586,9 @@ function inst-arch_fixverpkg () {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
+	elif [ ! -d $PKGBASE ] ; then
+		printf "%s: Error PKSBASE %s does not exist\n" \
+			"$FUNCNAME" "$PKGBASE" >&2
 	elif [ ! -w $PACCONF ] ; then
 		printf "%s: Error /etc/pacman.conf does not exist or ist not writable\n" \
 			"$FUNCNAME"  >&2
@@ -601,21 +604,20 @@ function inst-arch_fixverpkg () {
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	local arch PKGBASE pkg pkgfile pkgnames pkgslocal
+	local arch PKGDIR pkg pkgfile pkgnames pkgslocal
 	arch=$(arch-chroot $INSTALL_ROOT /usr/bin/pacconf |
 		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') &&
 	printf "Arch=%s\n" "$arch" &&
-	PKGBASE="/data/prod/intranet.nafets.de/repo/pacman-cache/archlinux" &&
-	PKGBASE+="/community/os/$arch" &&
+	PKGDIR="$PKGBASE/community/os/$arch" &&
 	/bin/true || return 1
 
 	pkgnames=""
 	pkgslocal=""
 	for pkg in $pkgs ; do
-		if [ -f $PKGBASE/$pkg-$arch.pkg.tar.xz ] ; then
-			pkgfile=$PKGBASE/$pkg-$arch.pkg.tar.xz
-		elif [ -f $PKGBASE/$pkg-any.pkg.tar.xz ] ; then
-			pkgfile=$PKGBASE/$pkg-any.pkg.tar.xz
+		if [ -f $PKGDIR/$pkg-$arch.pkg.tar.xz ] ; then
+			pkgfile=$PKGDIR/$pkg-$arch.pkg.tar.xz
+		elif [ -f $PKGDIR/$pkg-any.pkg.tar.xz ] ; then
+			pkgfile=$PKGDIR/$pkg-any.pkg.tar.xz
 		else
 			printf "Error: Package file %s not found.\n" "$pkg"
 			return 1
