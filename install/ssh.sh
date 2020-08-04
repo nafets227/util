@@ -3,13 +3,6 @@
 # (C) 2015-2018 Stefan Schallenberg
 #
 
-##### Configuration ##########################################################
-if [ "${HOSTNAME:0:4}" == "phys" ] ; then
-	readonly INSTALL_SSH_SOURCE="/data/ca/private-ssh"
-else
-	readonly INSTALL_SSH_SOURCE="phys.intranet.nafets.de:/data/ca/private-ssh"
-fi
-
 ##### install-ssh_getUserData ################################################
 function install-ssh_getUserData {
 	user="$1"
@@ -76,7 +69,6 @@ function install-ssh_allow-root-pw {
 function install-ssh_trust {
 	fname="$1"
 	user="${2:-root}"
-	[[ $fname != */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
 	
  	#----- Input checks --------------------------------------------------
 	if [ "$#" -lt "1" ] ; then
@@ -130,7 +122,6 @@ function install-ssh_trust {
 function install-ssh_key {
 	fname="$1"
 	user="${2:-root}"
-	[[ $fname != */* ]] && fname="$INSTALL_SSH_SOURCE/$fname"
 
  	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
