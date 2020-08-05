@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # (C) 2015-2018 Stefan Schallenberg
 # (C) 2016 Veronika Ruoff
