@@ -121,6 +121,15 @@ function util-getIP {
 	return 0
 }
 
+##### util-get1IP #############################################################
+function util-get1IP {
+	set -o pipefail
+
+	util-getIP "$1" | tail -1
+
+	return $?
+}
+
 ##### Main ###################################################################
 # do nothing
 
