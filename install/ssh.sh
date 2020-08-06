@@ -92,19 +92,19 @@ function install-ssh_trust {
 		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && \
 	install -o $INSTSSH_UID -g $INSTSSH_GID \
 		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d && \
-	/bin/true || return 1
+	true || return 1
 
 	if [ ! -z "${fname/*:*/}" ] ; then
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
-		/bin/true || return 1
+		true || return 1
 	else
 		scp $fname /tmp/$(basename $fname) &&
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 \
 			/tmp/$(basename $fname) \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
 		rm /tmp/$(basename $fname) && \
-		/bin/true || return 1
+		true || return 1
 	fi
 
 	cat $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/* \
@@ -142,13 +142,13 @@ function install-ssh_key {
 	if [ ! -z "${fname/*:*/}" ] ; then
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
-		/bin/true || return 1
+		true || return 1
 	else
 		scp $fname /tmp/$(basename $fname) &&
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 /tmp/$(basename $fname) \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
 		rm /tmp/$(basename $fname) &&
-		/bin/true || return 1
+		true || return 1
 	fi
 	
 	#----- Closing  ------------------------------------------------------

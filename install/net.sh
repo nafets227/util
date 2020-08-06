@@ -466,7 +466,7 @@ function install-net_wlan {
 		systemd-resolved.service \
 		systemd-timesyncd.service \
 		&& \
-	/bin/true || return 1
+	true || return 1
 
 	printf "Setting up WLAN Network %s completed.\n" "$iface"
 

@@ -157,13 +157,13 @@ function kube-inst_helm {
 			$parms \
 			$release \
 			$sourceurl &&
-		/bin/true || return 1
+		true || return 1
 	elif [ "$KUBE_ACTION" == "delete" ] ; then
 		helm uninstall \
 			--kubeconfig $KUBE_CONFIGFILE \
 			--namespace $KUBE_NAMESPACE \
 			$release &&
-		/bin/true || return 1
+		true || return 1
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
 			"$FUNCNAME" "$1"
@@ -426,7 +426,7 @@ function kube-inst_nfs-volume {
 		      app: "$KUBE_APP"
 		      share: "$share"
 		EOF
-        /bin/true || return 1
+        true || return 1
 
         printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
                 "$action_display" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
@@ -516,7 +516,7 @@ function kube-inst_host-volume {
 		      app: "$KUBE_APP"
 		      share: "$share"
 		EOF
-        /bin/true || return 1
+        true || return 1
 
         printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
                 "$action_display" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
@@ -679,7 +679,7 @@ if [ "$1" == "--config" ] ; then
 else
 	config "$@" &&
 	kube-inst_exec  "./kube" "MYVAL" &&
-	/bin/true || return 1
+	true || return 1
 fi
 }
 

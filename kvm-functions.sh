@@ -379,7 +379,7 @@ function kvm_create-vm () {
 	# @TODO memory balloning for hot-plug and unplug
 	local domstate=$(virsh dominfo $vmname 2>/dev/null)
 	if [ "$prm_dryrun" -ne 0 ] ; then
-		/bin/true
+		true
 	elif [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
 		printf "ERROR: machine %s already existing and --replace was not given.\n" \
 			"$vmname" >&2

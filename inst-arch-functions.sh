@@ -609,7 +609,7 @@ function inst-arch_fixverpkg () {
 		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') &&
 	printf "Arch=%s\n" "$arch" &&
 	PKGDIR="$PKGBASE/community/os/$arch" &&
-	/bin/true || return 1
+	true || return 1
 
 	pkgnames=""
 	pkgslocal=""
@@ -625,13 +625,13 @@ function inst-arch_fixverpkg () {
 		pkgnames+=" $(pacman -Qp $pkgfile | cut -d" " -f 1)" &&
 		pkgslocal+=" /root/$(basename $pkgfile)" &&
 		cp -a $pkgfile $INSTALL_ROOT/root/ &&
-		/bin/true || return 1
+		true || return 1
 	done
 	arch-chroot $INSTALL_ROOT \
 		pacman -U --needed --noconfirm $pkgslocal &&
 	sed -i "s/#* *IgnorePkg *= *\(.*\)$/IgnorePkg =$pkgnames \1/" \
 		$PACCONF &&
-	/bin/true || return 1
+	true || return 1
 
 	#----- Closing -------------------------------------------------------
 	printf "Added Package(s) with fixed version %s\n" "$pkgs" >&2
