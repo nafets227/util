@@ -434,6 +434,96 @@ function kube-inst_nfs-volume {
         return 0
 }
 
+##### kube-inst_host-volume - Install Host Volume
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - share
+#   2 - path [optional, default depends on share]
+function kube-inst_host-volume {
+	local share="$1"
+	local path="$2"
+
+	kube-inst_internal-verify-initialised || return 1
+
+	if [ -z "$share" ] ; then
+		printf "%s: Error. Got no or empty share name.\n" \
+			"$FUNCNAME"
+		return 1
+	fi
+
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		kube_action="apply"
+		action_display="Installed"
+	elif [ "$KUBE_ACTION" == "delete" ] ; then
+		kube_action="delete --wait=false"
+		action_display="Deleted"
+	else
+		printf "%s: Error. Action (Parm1) %s unknown." \
+		       "$FUNCNAME" "$1"
+		printf " Must be \"install\" or \"delete\".\n"
+		return 1
+	fi
+
+	#### Make sure directory exists
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		[ -d "$path" ] || mkdir -p $path || return 1
+	fi
+	# when deleting we leave the data untouched !
+
+	#DEBUG# printf "Adding PV %s as %s:%s\n" "$share.$app.$stage" "$nfsserver" "$path"
+	#### Setup Persistent Volume
+	kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -f - <<-EOF &&
+		apiVersion: v1
+		kind: PersistentVolume
+		metadata:
+		  name: $share.$KUBE_APP.$KUBE_STAGE
+		  annotations:
+		    volume.beta.kubernetes.io/storage-class: "nafets"
+		  labels:
+		    state: "$KUBE_STAGE"
+		    app: "$KUBE_APP"
+		    share: "$share"
+		spec:
+		  capacity:
+		    storage: 100Mi
+		  accessModes:
+		    - ReadWriteMany
+		  hostPath:
+		    path: $path
+		  persistentVolumeReclaimPolicy: Retain
+
+		---
+
+		apiVersion: v1
+		kind: PersistentVolumeClaim
+		metadata:
+		  name: $share.$KUBE_APP
+		  namespace: $KUBE_NAMESPACE
+		  annotations:
+		    volume.beta.kubernetes.io/storage-class: "nafets"
+		  labels:
+		    app: "$KUBE_APP"
+		    share: "$share"
+		spec:
+		  accessModes:
+		    - ReadWriteMany
+		  resources:
+		    requests:
+		      storage: 100Mi
+		  selector:
+		    matchLabels:
+		      state: "$KUBE_STAGE"
+		      app: "$KUBE_APP"
+		      share: "$share"
+		EOF
+        /bin/true || return 1
+
+        printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
+                "$action_display" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
+
+        return 0
+}
+
 ##### kube-inst_internal - install Kubernetes objects in kube/ subdir ##############
 # DEPRECATED
 #   This function is Deprecated, please use kube-inst_init and kube-inst_exec
