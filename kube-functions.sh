@@ -6,23 +6,6 @@
 #
 # (C) 2018 Stefan Schallenberg
 
-##### kube-getIP #############################################################
-function kube-getIP {
-	local result
-	result=$(dig +short $1)
-	rc=$?
-	if [ $rc != "0" ] ; then
-		printf "Error getting IP of %s.\n" "$1" >&2
-		return 1
-	elif [ -z "$result" ] ; then
-		printf "DNS name %s not defined.\n" "$1" >&2
-		return 1;
-	fi
-
-	printf "%s\n" "$result"
-	return 0
-}
-
 ##### kube-inst_init - Initialize Kubernetes Installation ####################
 # Parameter:
 #   1 - action [install|delete]
