@@ -151,7 +151,7 @@ function kube-inst_helm {
 		if helm status \
 				--kubeconfig $KUBE_CONFIGFILE \
 				--namespace $KUBE_NAMESPACE \
-				$release >/dev/null ; then
+				$release >/dev/null 2>/dev/null ; then
 			action=upgrade
 		else
 			action=install
