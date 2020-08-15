@@ -233,6 +233,21 @@ function inst-arch_baseos {
 	printf "Installing Arch Linux on %s for %s. \n\tExtra Packages: %s\n\tExtra Modules: %s\n" \
 		"$INSTALL_ROOT" "$name" "$extrapkg" "$extramod" >&2
 
+	# set Hostname, locale and root password. Do it befor installing the
+	# system because packages will already update passwd and shadow
+	# for german use: --locale=LANG=de_DE.UTF-8
+	mkdir $INSTALL_ROOT/etc
+	systemd-firstboot --root=$INSTALL_ROOT \
+		--hostname="$name" \
+		--locale="en_DK.UTF-8" \
+		--locale-messages="en_US.UTF-8" \
+		--keymap="de-latin1-nodeadkeys" \
+		--timezone="Europe/Berlin" \
+		--copy-root-password \
+		--copy-root-shell \
+		--setup-machine-id \
+	|| return 1
+
 	#Bootstrap the new system
 	pacstrap -c -d $INSTALL_ROOT base openssh grub linux linux-firmware pacutils $extrapkg || return 1
 	genfstab -U -p $INSTALL_ROOT >$INSTALL_ROOT/etc/fstab || return 1
@@ -243,19 +258,6 @@ function inst-arch_baseos {
 			"s/(MODULES=[\\(\"])(.*)([\\)\"]\$)/\\1\\2$extramod\\3/" \
 			$INSTALL_ROOT/etc/mkinitcpio.conf
 	fi
-
-	# set Hostname, locale and root password
-	# for german use: --locale=LANG=de_DE.UTF-8
-	rm $INSTALL_ROOT/etc/{machine-id,localtime,hostname,shadow,locale.conf}
-	systemd-firstboot --root=$INSTALL_ROOT \
-		--hostname="$name" \
-		--locale="en_DK.UTF-8" \
-		--locale-messages="en_US.UTF-8" \
-		--keymap="de-latin1-nodeadkeys" \
-		--timezone="Europe/Berlin" \
-		--copy-root-password \
-		--setup-machine-id \
-	|| return 1
 
 	cat >>$INSTALL_ROOT/etc/locale.gen <<-EOF
 
