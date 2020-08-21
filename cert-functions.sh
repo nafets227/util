@@ -299,10 +299,10 @@ function cert_get_cert {
 
 	if [ ! -f $CERT_STORE_DIR/$name.crt ] ; then
 		# CERT does not exist yet
-		cert_create_cert "$name" "$caname" "$req" || return 1
+		cert_create_cert "$name" "$caname" "$req" >&2 || return 1
 	else
 		# CERT does already exist
-		cert_update_cert "$name" "$caname" "$req" || return 1
+		cert_update_cert "$name" "$caname" "$req" >&2 || return 1
 	fi
 	printf "%s\n" "$CERT_STORE_DIR/$name.crt"
 
