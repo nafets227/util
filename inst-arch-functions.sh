@@ -344,7 +344,9 @@ function inst-arch_baseos {
 function inst-arch_basearm {
 	# Parameters:
 	#    1 - hostname
+	#    2 - time to run autoupdate [default=blank means disabled]
 	local name="$1"
+	local updatetim="$2"
 
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
@@ -439,6 +441,25 @@ function inst-arch_basearm {
 	##### pacman $PACMAN_ARGS -Suy \
 	##### pacman $PACMAN_ARGS -S --needed openssh $extrapkg \
 	##### || return 1
+
+	# Configure an autoupdate Service and timer.
+	# if updatetim is blank, disable it
+	printf "Configuring nafetsde-autoupdate at %s on %s\n" \
+		"$updatetim" "$INSTALL_ROOT" >&2
+
+	install-timer \
+		"nafetsde-autoupdate" \
+		"/bin/bash -c \"pacman -Suy --noconfirm $pkgs_ignore && systemctl reboot\"" \
+		"" \
+		"" \
+                "*-*-* ${updatetim-1:00}" \
+	|| return 1
+
+	if [ -z "$updatetim" ] ; then
+		systemctl --root $INSTALL_ROOT \
+			disable nafetsde-autoupdate.timer \
+		|| return 1
+	fi
 
 	return 0
 }
