@@ -13,24 +13,24 @@ function install-timer {
 	onCalendar="$5"
 	user="${6:-root}"
 
-        #----- Input checks --------------------------------------------------
-        if [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
 	elif [ "$#" -lt 1 ] ; then
 		printf "%s: Internal Error. Got %s parms (Exp=1+)\n" \
 			"$FUNCNAME" "$#"
 		return 1
-	elif [ -z "$onBootSec" ] && \
-	     [ -z "$onUnitActiveSec" ] && \
-	     [ -z "$onCalendar" ] ; then
+	elif	[ -z "$onBootSec" ] && \
+			[ -z "$onUnitActiveSec" ] && \
+			[ -z "$onCalendar" ] ; then
 		printf "%s: Internal Error. Neither parm 3,4 or 5 are set.\n" \
 			"$FUNCNAME"
 		return 1
-        fi
+	fi
 
-        #----- Real Work -----------------------------------------------------
+	#----- Real Work -----------------------------------------------------
 	FNTIMER="$INSTALL_ROOT/etc/systemd/system/${name}.timer"
 	cat >$FNTIMER <<-EOF
 		# nafetsde-${name}.timer
@@ -69,12 +69,11 @@ function install-timer {
 		EOF
 
 	systemctl --root=$INSTALL_ROOT enable ${name}.timer
-	
-        #----- Closing  ------------------------------------------------------
+
+	#----- Closing  ------------------------------------------------------
 	printf "Timer %s to call %s as %s [%s, %s, %s] uccessfully setup.\n" \
 		"$name" "$script" "$user" \
 		"$onBootSec" "$onUnitActiveSec" "$onCalendar"
 
 	return 0
 }
-

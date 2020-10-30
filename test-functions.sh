@@ -87,7 +87,6 @@ function test_putImap {
 		--user "$mail_adr:$mail_pw" \
 		-T $TESTSETDIR/testmsg &&
 
-
 	curl --ssl --silent --show-error \
 		"imap://$mail_srv/INBOX" \
 		--user "$mail_adr:$mail_pw" \
@@ -143,7 +142,7 @@ function test_exec_simple {
 		>$TESTSETDIR/$testnr.out
 	eval $1 >>$TESTSETDIR/$testnr.out 2>&1
 	TESTRC=$?
-	
+
 	if [ $TESTRC -ne $rc_exp ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
 		printf "CMD: %s\n" "$1"
@@ -172,7 +171,7 @@ function test_exec_url {
 	testnr=$(( ${testnr-0} + 1))
 	testexecnr=$testnr
 	printf "Executing Test %d ... " "$testnr"
-	
+
 	local url="$1"
 	local rc_exp=${2-200}
 	shift 2
@@ -321,7 +320,6 @@ function test_assert_vars {
 	testsetok=$(( ${testsetok-0} + 1))
 	return $TESTRC
 }
-
 
 function test_assert_files {
 	testnr=$(( ${testnr-0} + 1))

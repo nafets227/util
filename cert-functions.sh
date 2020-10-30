@@ -13,7 +13,7 @@ function cert_create_key {
 	# Parameters:
 	#    1 - name of the key
 	# Output:
-        #    $CERT_PRIVATE_DIR/$certname.key.insecure
+	#    $CERT_PRIVATE_DIR/$certname.key.insecure
 	local name="$1"
 
 	if [ -z "$name" ] ; then
@@ -52,7 +52,7 @@ function cert_get_key {
 	# Parameters:
 	#    1 - name of the key
 	# Output:
-        #    $CERT_PRIVATE_DIR/$certname.key.insecure
+	#    $CERT_PRIVATE_DIR/$certname.key.insecure
 
 	local name="$1"
 
@@ -61,8 +61,8 @@ function cert_get_key {
 		return 1
 	fi
 
-	if [ -f "$CERT_PRIVATE_DIR/$name.key" ] &&
-	   [ -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
+	if		[ -f "$CERT_PRIVATE_DIR/$name.key" ] &&
+			[ -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
 		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key.insecure"
 	else
 		cert_create_key "$name" >&2 || return 1
@@ -75,7 +75,6 @@ function cert_get_key {
 ##### cert_create_ca #########################################################
 function cert_create_ca {
 	# @TODO to be implemented
-
 
 	## CA erzeugen
 	#openssl genrsa -des3 -out ca.key 4096
@@ -326,12 +325,12 @@ function cert_read_pw {
 
 ##### Main ###################################################################
 # Verify all needed config variables are set
-if [ -z "$CERT_PRIVATE_DIR" ] ||
-   [ -z "$CERT_STORE_DIR" ] ||
-   [ -z "$CERT_ARCHIVE_DIR" ] ; then
+if		[ -z "$CERT_PRIVATE_DIR" ] ||
+		[ -z "$CERT_STORE_DIR" ] ||
+		[ -z "$CERT_ARCHIVE_DIR" ] ; then
 	printf "Not all CERT_ config variables are set.\n"
 	exit 1
-fi 
+fi
 
 ##############################################################################
 # Useful information:
@@ -350,4 +349,3 @@ fi
 
 ## recreate csr from crt
 #openssl x509 -x509toreq -in nafets.dyndns.eu-20xx.crt -out nafets.dyndns.eu.csr -signkey nafets.dyndns.eu.key
-

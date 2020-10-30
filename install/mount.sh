@@ -60,5 +60,5 @@ function install-mount_bind {
 		return 1
 	fi
 
-	install-mount "$1" "$2" "none bind 0 0" 
+	install-mount "$1" "$2" "none bind 0 0"
 }

@@ -40,14 +40,14 @@ function install-net_macvlan {
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -ne 2 ] ; then
-                printf "Internal Error: %s got %s parms (exp=2)\n" \
-                        "$FUNCNAME" "$#" >&2
-                return 1
-        elif [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
-        fi
+		printf "Internal Error: %s got %s parms (exp=2)\n" \
+			"$FUNCNAME" "$#" >&2
+			return 1
+	elif [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
 
 	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
@@ -65,10 +65,10 @@ function install-net_macvlan {
 		EOF
 
 	if [ ! -z $virt ] ; then
-	    cat >>$cfgfile <<-EOF
-		[Match]
-		Virtualization=$virt
-		EOF
+		cat >>$cfgfile <<-EOF
+			[Match]
+			Virtualization=$virt
+			EOF
 	fi
 
 	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service
@@ -89,14 +89,14 @@ function install-net_ipvlan {
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -ne 2 ] ; then
-                printf "Internal Error: %s got %s parms (exp=2)\n" \
-                        "$FUNCNAME" "$#" >&2
-                return 1
-        elif [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
-        fi
+		printf "Internal Error: %s got %s parms (exp=2)\n" \
+			"$FUNCNAME" "$#" >&2
+		return 1
+	elif [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
 
 	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
@@ -115,10 +115,10 @@ function install-net_ipvlan {
 		EOF
 
 	if [ ! -z $virt ] ; then
-	    cat >>$cfgfile <<-EOF
-		[Match]
-		Virtualization=$virt
-		EOF
+		cat >>$cfgfile <<-EOF
+			[Match]
+			Virtualization=$virt
+			EOF
 	fi
 
 	systemctl --root=$INSTALL_ROOT enable systemd-networkd.service
@@ -141,14 +141,14 @@ function install-net_vlan {
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ] ; then
-                printf "Internal Error: %s got %s parms (exp=2+)\n" \
-                        "$FUNCNAME" "$#" >&2
-                return 1
-        elif [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
-        fi
+		printf "Internal Error: %s got %s parms (exp=2+)\n" \
+			"$FUNCNAME" "$#" >&2
+		return 1
+	elif [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
 
 	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
@@ -166,10 +166,10 @@ function install-net_vlan {
 		EOF
 
 	if [ ! -z $virt ] ; then
-	    cat >>$cfgfile <<-EOF
-		[Match]
-		Virtualization=$virt
-		EOF
+		cat >>$cfgfile <<-EOF
+			[Match]
+			Virtualization=$virt
+			EOF
 	fi
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up vlan %s with ID %s " \
@@ -181,6 +181,7 @@ function install-net_vlan {
 
 	return 0
 }
+
 ##### install_net_static ( ipaddr, [ifache="eth0"], [virt=""] ################
 function install-net_static {
 	local ipaddr="$1"
@@ -195,13 +196,13 @@ function install-net_static {
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
 		printf "Internal Error: %s got %s parms (exp=2++)\n" \
-                        "$FUNCNAME" "$#" >&2
+			"$FUNCNAME" "$#" >&2
 		return 1
-        elif [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
-        fi
+	elif [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
 
 	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
@@ -216,9 +217,9 @@ function install-net_static {
 		EOF
 
 	if [ ! -z $virt ] ; then
-	    cat >>$cfgfile <<-EOF
-		Virtualization=$virt
-		EOF
+		cat >>$cfgfile <<-EOF
+			Virtualization=$virt
+			EOF
 	fi
 
 	# enable Multicast on all interfaces that are configured with an
@@ -272,7 +273,7 @@ function install-net_static {
 			IPv6AcceptRA=no
 			EOF
 	fi
-	
+
 	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
 		cat >>$cfgfile <<-EOF
 			VLAN=$f
@@ -297,15 +298,14 @@ function install-net_static {
 		EOF
 	done; fi
 
-	if [ ! -z "$forward" ] ; then 
+	if [ ! -z "$forward" ] ; then
 		cat >>$cfgfile <<-EOF
 			IPForward=$forward
 		EOF
 	fi
 
-
 	if [ -f $INSTALL_ROOT/etc/resolv.conf ] || [ -l $INSTALL_ROOT/etc/resolv.conf ]; then
-	    rm $INSTALL_ROOT/etc/resolv.conf
+		rm $INSTALL_ROOT/etc/resolv.conf
 	fi
 	ln -s /run/systemd/resolve/resolv.conf $INSTALL_ROOT/etc/resolv.conf
 
@@ -341,7 +341,7 @@ function install-net_static {
 # Install a secondary network interface that is somehow restricted
 # Parameter:
 #      iface               - name of interface, wildcards allowed
-#      hostname [optional] - hostname to use to get address via DHCP 
+#      hostname [optional] - hostname to use to get address via DHCP
 #      virt                - restrict to virtualisation [yes/no], both if empty
 function install-net_dhcp {
 	local iface=${1:-""}
@@ -396,10 +396,10 @@ function install-net_dhcp {
 
 	printf "Setting up Network %s [dhcp" "$iface"
 	if [ ! -z $hostname ] ; then
-	    printf ", hostname=%s" "$hostname"
+		printf ", hostname=%s" "$hostname"
 	fi
 	if [ ! -z $virt ] ; then
-	    printf ", virtualisation=%s" "$virt"
+		printf ", virtualisation=%s" "$virt"
 	fi
 	printf "] completed.\n"
 }
@@ -418,13 +418,13 @@ function install-net_wlan {
 	#----- Input checks --------------------------------------------------
 	if [ $# -ne 3 ]; then
 		printf "Internal Error: %s got %s parms (exp=3)\n" \
-                        "$FUNCNAME" "$#" >&2
+			"$FUNCNAME" "$#" >&2
 		return 1
-        elif [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
-        fi
+	elif [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	fi
 
 	#----- Real Work -----------------------------------------------------
 	iface_fname=${iface//\*/_}

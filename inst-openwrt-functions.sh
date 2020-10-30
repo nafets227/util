@@ -28,27 +28,27 @@ function inst-openwrt_init {
 
 	# Create partitions and root Filesystems and mount it
 	if [ -e "$diskdev" ] ; then
-                wipefs --all --force $diskdev || return 1
-        fi
+		wipefs --all --force $diskdev || return 1
+	fi
 	gunzip -c $openwrt_imggz >$diskdev || return 1
 
-        parts=$(kpartx -asv "$(realpath "$diskdev")" | \
-                sed -n -e 's:^add map \([A-Za-z0-9\-]*\).*:\1:p') &&
-        part_boot=$(head -1 <<<$parts) &&
-        part_root=$(tail -1 <<<$parts) \
-        || return 1
+	parts=$(kpartx -asv "$(realpath "$diskdev")" | \
+		sed -n -e 's:^add map \([A-Za-z0-9\-]*\).*:\1:p') &&
+	part_boot=$(head -1 <<<$parts) &&
+	part_root=$(tail -1 <<<$parts) \
+	|| return 1
 
-        INSTALL_FINALIZE_CMD="kpartx -d $(realpath "$diskdev")"
+	INSTALL_FINALIZE_CMD="kpartx -d $(realpath "$diskdev")"
 
 	# create tempdir to temporary mount the filesystems
 	INSTALL_ROOT=$(mktemp --directory --tmpdir inst-arch.XXXXXXXXXX) || return 1
 
-        # Important: export INSTALL_ROOT now to let the caller do cleanup with
-        # the funtion inst-arch_finalize
-        export INSTALL_ROOT
+	# Important: export INSTALL_ROOT now to let the caller do cleanup with
+	# the funtion inst-arch_finalize
+	export INSTALL_ROOT
 
 	mount /dev/mapper/$part_root $INSTALL_ROOT >&2 || return 1
-	# not needed: 
+	# not needed:
 	# mount /dev/mapper/$part_boot $INSTALL_ROOT/boot >&2 || return 1
 
 	return 0
@@ -56,26 +56,25 @@ function inst-openwrt_init {
 
 #### chroot into system, enabling network ####################################
 function inst-openwrt_chroot {
-	if [ -z "$INSTALL_ROOT" ] ||
-	   [ ! -d "$INSTALL_ROOT" ] ; then
+	if		[ -z "$INSTALL_ROOT" ] ||
+			[ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
-        touch $INSTALL_ROOT/tmp/resolv.conf &&
-        mount --bind -o ro \
-                $(realpath /etc/resolv.conf) \
-                $INSTALL_ROOT/tmp/resolv.conf &&
-        chroot $INSTALL_ROOT /bin/ash -s -c \
+	touch $INSTALL_ROOT/tmp/resolv.conf &&
+	mount --bind -o ro \
+		$(realpath /etc/resolv.conf) \
+		$INSTALL_ROOT/tmp/resolv.conf &&
+	chroot $INSTALL_ROOT /bin/ash -s -c \
 		'export PATH="/usr/sbin:/usr/bin:/sbin:/bin"' &&
-        umount $INSTALL_ROOT/tmp/resolv.conf &&
-        rm $INSTALL_ROOT/tmp/resolv.conf \
+	umount $INSTALL_ROOT/tmp/resolv.conf &&
+	rm $INSTALL_ROOT/tmp/resolv.conf \
 	|| return 1
 
 	return 0
 }
-
 
 #### Tear down filesystems ###################################################
 function inst-openwrt_finalize {
@@ -100,14 +99,14 @@ function inst-openwrt_finalize {
 	#	printf "Skipping expire root password\n"
 	# fi
 
-        umount --recursive --detach-loop "$INSTALL_ROOT"
+	umount --recursive --detach-loop "$INSTALL_ROOT"
 
-        if [ ! -z "$INSTALL_FINALIZE_CMD" ] ; then
-                $INSTALL_FINALIZE_CMD
-        fi
+	if [ ! -z "$INSTALL_FINALIZE_CMD" ] ; then
+		$INSTALL_FINALIZE_CMD
+	fi
 
-        unset INSTALL_ROOT
+	unset INSTALL_ROOT
 
-        return 0
+	return 0
 }
 

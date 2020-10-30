@@ -6,7 +6,7 @@
 ##### install-ssh_getUserData ################################################
 function install-ssh_getUserData {
 	user="$1"
-	
+
 	if [ "$#" != "1" ] ; then
 		printf "%s: Internal Error. Got %s parameters (Exp=1)\n" \
 			"$FUNCNAME" "$#" >&2
@@ -24,7 +24,7 @@ function install-ssh_getUserData {
 			"$FUNCNAME" "$user" >&2
 		return 1
 	fi
-	
+
 	IFS=":" read -a passwd_a <<<$passwd
 	# Field 0 is username
 	# Field 1 is password, not exposed for security reasons
@@ -33,14 +33,14 @@ function install-ssh_getUserData {
 	# Field 4 is User Name or comment
 	INSTSSH_HOME="${passwd_a[5]}"
 	# Field 6 is optional user command interpreter
-	
+
 	return 0
 }
 
 ##### install-ssh_allow-root-pw ##############################################
 function install-ssh_allow-root-pw {
 
- 	#----- Input checks --------------------------------------------------
+	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
@@ -50,7 +50,7 @@ function install-ssh_allow-root-pw {
 		printf "Setting up SSH Root Access with Password skipped.\n" >&2
 		return 0
 	fi
- 	
+
 	#----- Real Work -----------------------------------------------------
 	cat >>$INSTALL_ROOT/etc/ssh/sshd_config <<-"EOF"
 
@@ -69,8 +69,8 @@ function install-ssh_allow-root-pw {
 function install-ssh_trust {
 	fname="$1"
 	user="${2:-root}"
-	
- 	#----- Input checks --------------------------------------------------
+
+	#----- Input checks --------------------------------------------------
 	if [ "$#" -lt "1" ] ; then
 		printf "Internal Error: %s got %s parms (exp=1+)\n" \
 			"$FUNCNAME" "$#" >&2
@@ -84,10 +84,10 @@ function install-ssh_trust {
 			"$FUNCNAME" "$fname" >&2
 		return 1
 	fi
- 	
+
 	#----- Real Work -----------------------------------------------------
 	install-ssh_getUserData "$user" || return 1
-	
+
 	install -o $INSTSSH_UID -g $INSTSSH_GID \
 		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && \
 	install -o $INSTSSH_UID -g $INSTSSH_GID \
@@ -114,7 +114,7 @@ function install-ssh_trust {
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up SSH Trust from %s to %s completed.\n" \
 		"$fname" "$user" >&2
-	
+
 	return 0
 }
 
@@ -123,7 +123,7 @@ function install-ssh_key {
 	fname="$1"
 	user="${2:-root}"
 
- 	#----- Input checks --------------------------------------------------
+	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
@@ -136,9 +136,9 @@ function install-ssh_key {
 
 	#----- Real Work -----------------------------------------------------
 	install-ssh_getUserData "$user" || return 1
-	
+
 	install -o $INSTSSH_UID -g $INSTSSH_GID \
-		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && 
+		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh &&
 	if [ ! -z "${fname/*:*/}" ] ; then
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
@@ -150,10 +150,10 @@ function install-ssh_key {
 		rm /tmp/$(basename $fname) &&
 		true || return 1
 	fi
-	
+
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up SSH Key %s for %s completed.\n" "$fname" "$user" >&2
-	
+
 	return 0
 }
 

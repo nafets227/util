@@ -43,7 +43,7 @@ function install_setup_service () {
 		[Install]
 		WantedBy=multi-user.target
 		EOF
-		
+
 	arch-chroot $1 <<-EOF
 		systemctl enable nafetsde-install.service
 	EOF
@@ -52,7 +52,7 @@ function install_setup_service () {
 
 ##### install_easeofuse ######################################################
 function install_ease-of-use {
- 	#----- Input checks --------------------------------------------------
+	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
@@ -110,10 +110,11 @@ function install_instinfo {
 #### Install Nafets Standards ################################################
 function install_nafets-std {
 	# SSL Zertifikat der eigenen CA installieren.
-#	install_ssl_ca
+	# install_ssl_ca
+
 	# Root logon in SSH erlauben
-	install-ssh_allow-root-pw && 
-	install_ease-of-use && 
+	install-ssh_allow-root-pw &&
+	install_ease-of-use &&
 	install_instinfo
 
 	return $?

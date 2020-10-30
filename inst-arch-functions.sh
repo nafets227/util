@@ -15,9 +15,9 @@ function inst-arch_chroot-helper() {
 	# ^Z has been pressed, i.e. prompting "[1] has been stopped" and user
 	# would have to enter "fg" to resume the stopped job.
 	local rc=0
-        cat >$1/inst-arch_chroot-helper-temp &&
-        chmod +x $1/inst-arch_chroot-helper-temp &&
-        arch-chroot "$@" /inst-arch_chroot-helper-temp
+		cat >$1/inst-arch_chroot-helper-temp &&
+		chmod +x $1/inst-arch_chroot-helper-temp &&
+		arch-chroot "$@" /inst-arch_chroot-helper-temp
 	rc=$?
 	rm $1/inst-arch_chroot-helper-temp
 	return $rc
@@ -38,7 +38,7 @@ function inst-arch_init() {
 	printf "About to install Arch Linux for %s\n" "$name" >&2
 	if [ -z "$bootdev" ]; then
 		printf "Root-Device: %s (%s)\n" \
-		       	"$rootdev" "$(realpath $rootdev)" >&2
+			"$rootdev" "$(realpath $rootdev)" >&2
 		printf "Warning: All data on %s will be DELETED!\n" \
 			"$rootdev" >&2
 	else
@@ -287,11 +287,11 @@ function inst-arch_baseos {
 	cat >$INSTALL_ROOT/boot/grub/grub.cfg <<-EOFGRUB || return 1
 		# by $OURSELVES
 		menuentry 'Arch Linux for XEN pygrub' {
-		    set root='hd0,msdos1'
-		    echo    'Loading Linux core repo kernel ...'
-		    linux   /boot/vmlinuz-linux root=/dev/xvda1 ro
-		    echo    'Loading initial ramdisk ...'
-		    initrd  /boot/initramfs-linux.img
+			set root='hd0,msdos1'
+			echo    'Loading Linux core repo kernel ...'
+			linux   /boot/vmlinuz-linux root=/dev/xvda1 ro
+			echo    'Loading initial ramdisk ...'
+			initrd  /boot/initramfs-linux.img
 		}
 		EOFGRUB
 
@@ -299,11 +299,11 @@ function inst-arch_baseos {
 	# We insert parameters for console to be able to use it
 	# when starting as virtual machine.
 	mkdir -p $INSTALL_ROOT/boot/grub2/grub 2>/dev/null
-        # does not work when starting bare-metal: 
+	# does not work when starting bare-metal:
 	# kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
-        sed_cmd="s:"
-        sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
-        sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":p"
+	sed_cmd="s:"
+	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
+	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":p"
 	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub
 	#cat >>$INSTALL_ROOT/etc/default/grub <<-EOF
 	#
@@ -327,7 +327,7 @@ function inst-arch_baseos {
 		"/bin/bash -c \"pacman -Suy --noconfirm $pkgs_ignore && systemctl reboot\"" \
 		"" \
 		"" \
-                "*-*-* ${updatetim-1:00}" \
+		"*-*-* ${updatetim-1:00}" \
 	|| return 1
 
 	if [ -z "$updatetim" ] ; then
@@ -335,7 +335,6 @@ function inst-arch_baseos {
 			disable nafetsde-autoupdate.timer \
 		|| return 1
 	fi
-
 
 	return 0
 }
@@ -427,7 +426,7 @@ function inst-arch_basearm {
 		--gpgdir $INSTALL_ROOT/etc/pacman.d/gnupg \
 	|| return 1
 
-	# Executing pacman fails as the hooks would executed with the wrong 
+	# Executing pacman fails as the hooks would executed with the wrong
 	# architecture and thus fail.
 	# So we dont allow additional packages here, instead they need to be
 	# in stalled using ssh later once the system is up and running.
@@ -532,8 +531,8 @@ function inst-arch_bootmgr-grubraw {
 		printf "Autoproved Raw Device to INSTALL_DEV=%s\n" "$rawdev" >&2
 	elif [ -z "$rawdev" ] ; then
 		rawdev=$(cat /proc/mounts \
-		       | grep "$INSTALL_ROOT " \
-		       | cut -d" " -f 1)
+			| grep "$INSTALL_ROOT " \
+			| cut -d" " -f 1)
 		printf "Autoprobed Raw Device to %s\n" "$rawdev" >&2
 	fi
 
@@ -665,4 +664,3 @@ function inst-arch_fixverpkg () {
 ##### main ####################################################################
 
 # do nothing
-

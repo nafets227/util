@@ -5,27 +5,27 @@
 
 ##### install-nfs_server #####################################################
 function install-nfs_server {
-        #----- Input checks --------------------------------------------------
-        if [ ! -d "$INSTALL_ROOT" ] ; then
-                printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-                        "$FUNCNAME" "$INSTALL_ROOT" >&2
-                return 1
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
 	elif [ -f $INSTALL_ROOT/etc/exports ] && \
-			fgrep "Standard NFS Setup in nafets.de" $INSTALL_ROOT/etc/exports >/dev/null ; then
+		fgrep "Standard NFS Setup in nafets.de" $INSTALL_ROOT/etc/exports >/dev/null ; then
 		printf "%s: Error NFS Setup was already done before (see /etc/exports).\n"
 		return 1
-        fi
+	fi
 
-        #----- Real Work -----------------------------------------------------
+	#----- Real Work -----------------------------------------------------
 	arch-chroot $INSTALL_ROOT \
 		pacman -S --needed --noconfirm nfs-utils
 	if [ "$?" != "0" ] ; then return 1 ; fi
 
 	if [ ! -d $INSTALL_ROOT/srv/nfs4 ]; then
-	    mkdir -p $INSTALL_ROOT/srv/nfs4 || return 1
+		mkdir -p $INSTALL_ROOT/srv/nfs4 || return 1
 	fi
 
-	cat >>$INSTALL_ROOT/etc/exports <<-EOF 
+	cat >>$INSTALL_ROOT/etc/exports <<-EOF
 		# Standard NFS Setup in nafets.de
 		# (C) 2015-2018 Stefan Schallenberg
 
@@ -38,19 +38,19 @@ function install-nfs_server {
 		/\[Gneral\]/ { global=1; print; next }
 		/Domain/ { next }
 		/\[/ {
-		    if (global==1) {
-		        print "Domain = intranet.nafets.de"
-		        print ""
-		        global=2
-		        }
-		    }
+			if (global==1) {
+				print "Domain = intranet.nafets.de"
+				print ""
+				global=2
+				}
+			}
 		{ print }
 		EOF
 	if [ "$?" != "0" ] ; then return 1 ; fi
 
 	systemctl --root=$INSTALL_ROOT enable rpcbind.service nfs-server.service || return 1
-	
-        #----- Closing  ------------------------------------------------------
+
+	#----- Closing  ------------------------------------------------------
 	printf "Setting up NFS Server completed.\n"
 
 	return 0
@@ -69,7 +69,7 @@ function install-nfs_export {
 	options="$3"
 	nets="${4:-192.168.108.0/24}"
 
-        #----- Input checks --------------------------------------------------
+	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
 		printf "%s: Internal Error: Got %s Parms (Exp=2+)\n" \
 			"$FUNCNAME" "$#" >&2
@@ -79,14 +79,14 @@ function install-nfs_export {
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	elif [ ! -z "$exportname" ] &&
-	     fgrep "/srv/nfs4/$exportname" $INSTALL_ROOT/etc/exports >&/dev/null ; then
+		fgrep "/srv/nfs4/$exportname" $INSTALL_ROOT/etc/exports >&/dev/null ; then
 		printf "%s: Error %s already exportet (see /etc/exports)\n" \
 			"$FUNCNAME" "$exportname" >&2
 		return 1
 	fi
 
-        #----- Real Work -----------------------------------------------------
-	case $options in 
+	#----- Real Work -----------------------------------------------------
+	case $options in
 		"" | "ro" )
 			exportopt="ro,no_subtree_check,nohide,no_root_squash"
 			;;
@@ -115,30 +115,30 @@ function install-nfs_export {
 		/srv/nfs4/$exportname $netopt
 		EOF
 
-        #----- Closing  ------------------------------------------------------
+	#----- Closing  ------------------------------------------------------
 	printf "Added NFS Export %s from %s (%s)\n" \
 		"$exportname" "$path" "$exportopt"
-	
+
 	return 0
 }
 
 ##### install-nfs_client #####################################################
 function install-nfs_client {
 
-        #----- Input checks --------------------------------------------------
+	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
-        #----- Real Work -----------------------------------------------------
+	#----- Real Work -----------------------------------------------------
 	arch-chroot $INSTALL_ROOT \
 		pacman -S --needed --noconfirm nfs-utils
 
 	systemctl --root=$INSTALL_ROOT enable rpcbind.service nfs-client.target remote-fs.target || return 1
 
-        #----- Closing  ------------------------------------------------------
+	#----- Closing  ------------------------------------------------------
 	printf "Setting up NFS Client completed.\n"
 
 	return 0

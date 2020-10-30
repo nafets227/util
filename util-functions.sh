@@ -24,7 +24,7 @@ function util_loadfunc-or-exit {
 
 	if [ "$#" -ne 1 ] ; then
 		printf "util_loadfunc-or-exit: wrong # parms: %s (exp=1)\n" \
-		       "$#" >&2
+			"$#" >&2
 		exit 99
 	elif [ -z "$1" ] ; then
 		printf "util_loadfunc-or-exit: unexpected empty parm\n" >&2
@@ -46,12 +46,12 @@ function util_loadfunc-or-exit {
 
 	. $fname
 	rc=$?; if [ $rc -ne 0 ] ; then
-	        printf "util_loadfunc-or-exit: file %s return Error %s\n" \
+		printf "util_loadfunc-or-exit: file %s return Error %s\n" \
 			"$fname" "$rc" >&2
-	        exit 99
+		exit 99
 	fi
 
-	return 0	
+	return 0
 }
 
 ##### util_download  #########################################################
@@ -59,25 +59,25 @@ function util_download {
 	local readonly URL="$1"
 	local readonly CACHFIL="${2:-/var/cache/nafets-util/$(basename $URL)}"
 
-        printf "Downloading %s to %s\n" "$URL" "$CACHFIL" >&2
+	printf "Downloading %s to %s\n" "$URL" "$CACHFIL" >&2
 
 	test -d "$(dirname $CACHFIL)" ||
-		mkdir -p "$(dirname $CACHFIL)" ||
-		return 1
+	mkdir -p "$(dirname $CACHFIL)" ||
+	return 1
 
-        if [ -f $CACHFIL ] ; then
-                CURL_OPT="--time-cond $CACHFIL --time-cond -$CACHFIL"
-        else
-                CURL_OPT=""
-        fi
-        curl \
-                --location \
-                --remote-time \
-                --output $CACHFIL \
-                $CURL_OPT \
-                $URL \
+	if [ -f $CACHFIL ] ; then
+		CURL_OPT="--time-cond $CACHFIL --time-cond -$CACHFIL"
+	else
+		CURL_OPT=""
+	fi
+	curl \
+		--location \
+		--remote-time \
+		--output $CACHFIL \
+		$CURL_OPT \
+		$URL \
 		>&2 \
-        || return 1
+	|| return 1
 
 	printf "%s\n" "$CACHFIL"
 	return 0
@@ -132,4 +132,3 @@ function util-get1IP {
 
 ##### Main ###################################################################
 # do nothing
-

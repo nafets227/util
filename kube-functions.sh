@@ -28,9 +28,9 @@ function kube-inst_init {
 
 	if [ "$action" == "install" ] || [ "$action" == "delete" ] ; then
 		KUBE_ACTION="$action"
-	elif [ "$action" == "config" ] ||
-	     [ "$action" == "test" ] ||
-	     [ "$action" == "none" ] ; then
+	elif	[ "$action" == "config" ] ||
+			[ "$action" == "test" ] ||
+			[ "$action" == "none" ] ; then
 		# may lead to errors if calling subsequent functiond
 		KUBE_ACTION="$action"
 		action=config
@@ -67,11 +67,11 @@ function kube-inst_init {
 
 ##### kube-inst_internal-verify-initialised ##################################
 function kube-inst_internal-verify-initialised {
-	if  [ ! -r "$KUBE_CONFIGFILE" ] ||
-	    [ -z "$KUBE_ACTION" ] ||
-	    [ -z "$KUBE_NAMESPACE" ] ||
-	    [ -z "$KUBE_STAGE" ] ||
-	    [ -z "$KUBE_APP" ] ; then
+	if 	 [ ! -r "$KUBE_CONFIGFILE" ] ||
+			[ -z "$KUBE_ACTION" ] ||
+			[ -z "$KUBE_NAMESPACE" ] ||
+			[ -z "$KUBE_STAGE" ] ||
+			[ -z "$KUBE_APP" ] ; then
 		printf "kube-inst_init has not been called. \n"
 		printf "KUBE_CONFIGFILE, KUBE_ACTION, KUBE_NAMESPACE, "
 		printf "KUBE_STAGE or KUBE_APP is not set.\n"
@@ -187,7 +187,7 @@ function kube-inst_tls-secret {
 		action_display="Deleting"
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
-		       "$FUNCNAME" "$1"
+			"$FUNCNAME" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
@@ -196,8 +196,8 @@ function kube-inst_tls-secret {
 	printf "creating secret %s ... " "$secretname"
 
 	local cert_key_fname cert_fname
-        cert_key_fname=$(cert_get_key $secretname) &&
-        cert_fname=$(cert_get_cert $secretname $caname) &&
+	cert_key_fname=$(cert_get_key $secretname) &&
+	cert_fname=$(cert_get_cert $secretname $caname) &&
 
 	kubectl --kubeconfig $KUBE_CONFIGFILE \
 		create secret tls $secretname \
@@ -243,7 +243,7 @@ function kube-inst_generic-secret {
 		action_display="Deleting"
 	else
 		printf "%s: Error. Action \$KUBE_ACTION=%s unknown." \
-		       "$FUNCNAME" "$1"
+			"$FUNCNAME" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
@@ -297,7 +297,7 @@ function kube-inst_configmap {
 		action_display="Deleting"
 	else
 		printf "%s: Error. Action \$KUBE_ACTION=%s unknown." \
-		       "$FUNCNAME" "$1"
+			"$FUNCNAME" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
@@ -348,12 +348,12 @@ function kube-inst_nfs-volume {
 		action_display="Deleted"
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
-		       "$FUNCNAME" "$1"
+			"$FUNCNAME" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
 
-        #### Make sure directory exists on server
+	#### Make sure directory exists on server
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		ssh $nfsserver \
 			"test -d /srv/nfs4/$nfspath" \
@@ -409,12 +409,12 @@ function kube-inst_nfs-volume {
 		      app: "$KUBE_APP"
 		      share: "$share"
 		EOF
-        true || return 1
+		true || return 1
 
-        printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
-                "$action_display" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
+		printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
+			"$action_display" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
 
-        return 0
+		return 0
 }
 
 ##### kube-inst_host-volume - Install Host Volume
@@ -442,7 +442,7 @@ function kube-inst_host-volume {
 		action_display="Deleted"
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
-		       "$FUNCNAME" "$1"
+		   "$FUNCNAME" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
@@ -499,23 +499,23 @@ function kube-inst_host-volume {
 		      app: "$KUBE_APP"
 		      share: "$share"
 		EOF
-        true || return 1
+		true || return 1
 
-        printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
-                "$action_display" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
+		printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
+			"$action_display" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
 
-        return 0
+		return 0
 }
 
 ##### kube-inst_internal - install Kubernetes objects in kube/ subdir ##############
 # DEPRECATED
 #   This function is Deprecated, please use kube-inst_init and kube-inst_exec
 #   instead
-# Parameter: 
+# Parameter:
 #   1 - action [ install | delete ]
 #   2 - app Application name to be assigned to kubernetes tag
 #   3 - ns  Namespace for kubernetes objects [default:test]
-#   4 - confdir Directory containing all yamls and templates 
+#   4 - confdir Directory containing all yamls and templates
 #       [default=./kube]
 #   5 - envnames [ default=none ]
 #       you can  give alist of names to be environized. All words in .template files
@@ -555,11 +555,10 @@ function kube-inst_internal {
 		action_display="Deleting"
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
-		       "$FUNCNAME" "$1"
+			"$FUNCNAME" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
-
 
 	if [ ! -d $confdir ] ; then
 		printf "%s: Error confdir \"%s\" is no directory.\n"
@@ -585,7 +584,7 @@ function kube-inst_internal {
 	printf "%s kube-app \"%s\" in namespace \"%s\"" \
 		"$action_display" "$app" "$ns"
 	printf " (Env: %s) from \"%s\".\n" \
-       		"$envnames" "$confdir"
+		"$envnames" "$confdir"
 	for f in $envnames ; do
 		eval "value=\$$f"
 		printf "\t %s=%s\n" "$f" "$value"

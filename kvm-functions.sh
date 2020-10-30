@@ -22,7 +22,7 @@ function kvm_expect_value () {
 ##### parseParm - parse Parameters and set global variables ##################
 function kvm_parseParm () {
 	local readonly def_memory="1024M"
-	
+
 	if [ "$#" -lt 1 ] ; then
 		printf "Error: no machine name supplied\n" >&2
 		return 1
@@ -41,7 +41,7 @@ function kvm_parseParm () {
 			value=""
 		fi
 		shift
-		
+
 		#DEBUG printf "DEBUG: parm %s value \"%s\"\n" "$parm" "$value" >&2
 		case "$parm" in
 			--disk | --root | --dev* )
@@ -110,7 +110,7 @@ function kvm_parseParm () {
 			*)
 				printf "Error: unknown Parameter %s with value %s\n" \
 					"$parm" "$value"
-				return 1				
+				return 1
 		esac
 	done
 
@@ -130,7 +130,6 @@ function kvm_getDefaultAuto () {
 
 	return 0
 }
-
 
 ##### getDefaultOS ###########################################################
 # Parameters:
@@ -385,8 +384,8 @@ function kvm_create-vm () {
 			"$vmname" >&2
 		exit 1
 	else
-	       kvm_delete-vm $vmname
-	       # We dont honor return code here!
+		kvm_delete-vm $vmname
+		# We dont honor return code here!
 	fi
 	echo virt-install $virt_prms
 
@@ -410,32 +409,31 @@ function kvm_delete-vm {
 		return 1
 	fi
 	vmname="$1"
-	
+
 	local domstate=$(virsh domstate $vmname 2>/dev/null)
 
-	if [ -z "$domstate" ] ||
-	   [ "$domstate" == " " ] ; then
+	if		[ -z "$domstate" ] ||
+			[ "$domstate" == " " ] ; then
 		# Domain is not existing
 		return 0
-	elif [ "$domstate" == "running" ] ||
-	     [ "$domstate" == "idle" ] ; then
+	elif	[ "$domstate" == "running" ] ||
+			[ "$domstate" == "idle" ] ; then
 		virsh shutdown "$vmname"
 		virsh destroy "$vmname"
 		virsh undefine --nvram "$vmname"
-	elif [ "$domstate" == "paused" ] ||
-	     [ "$domstate" == "pmsuspended" ] ||
-	     [ "$domstate" == "in shutdown" ] ; then
+	elif	[ "$domstate" == "paused" ] ||
+			[ "$domstate" == "pmsuspended" ] ||
+			[ "$domstate" == "in shutdown" ] ; then
 		virsh destroy "$vmname"
 		virsh undefine --nvram "$vmname"
-	elif [ "$domstate" == "shut off" ] ||
-	     [ "$domstate" == "crashed" ] ; then
+	elif	[ "$domstate" == "shut off" ] ||
+			[ "$domstate" == "crashed" ] ; then
 		virsh undefine --nvram "$vmname"
 	else
 		printf "Unknown State \"%s\" of existing machine %s.\n" \
 			" $state" "$vmname" >&2
 		return 1
 	fi
-   
 }
 
 ##### kvm_start-vm ##########################################################
@@ -515,6 +513,4 @@ function kvm_start_vm {
 }
 
 ##### Main ###################################################################
-
 # do nothing
-
