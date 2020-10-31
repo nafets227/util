@@ -8,7 +8,7 @@
 
 ##### kube-inst_init - Initialize Kubernetes Installation ####################
 # Parameter:
-#   1 - action [install|delete]
+#   1 - action [install|delete|config]
 #   2 - stage [prod|preprod|test|testtest] where to install
 #   3 - app Application name to be assigne to kubernetes tag
 #   4 - namespace (only use if non-stan dard, standard is based on stage)
@@ -26,14 +26,10 @@ function kube-inst_init {
 	local ns="$4"
 	local configfile="$5"
 
-	if [ "$action" == "install" ] || [ "$action" == "delete" ] ; then
+	if		[ "$action" == "install" ] ||
+			[ "$action" == "delete" ] ||
+			[ "$action" == "config" ] ; then
 		KUBE_ACTION="$action"
-	elif	[ "$action" == "config" ] ||
-			[ "$action" == "test" ] ||
-			[ "$action" == "none" ] ; then
-		# may lead to errors if calling subsequent functiond
-		KUBE_ACTION="$action"
-		action=config
 	else
 		printf "Invalid Action %s\n" "$action"
 		return 1
