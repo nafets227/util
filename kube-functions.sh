@@ -107,6 +107,7 @@ function kube-inst_exec {
 #   1 - release (=name) of helm chart
 #   2 - url of source
 #   3ff - [optional] variables to set (var=value)
+#   stdin - yaml file for values
 function kube-inst_helm {
 	local release="$1"
 	local sourceurl="$2"
@@ -134,6 +135,7 @@ function kube-inst_helm {
 			--kubeconfig $KUBE_CONFIGFILE \
 			--namespace $KUBE_NAMESPACE \
 			$parms \
+			--values - \
 			$release \
 			$sourceurl &&
 		true || return 1
