@@ -323,9 +323,12 @@ function kube-inst_configmap {
 # Parametets:
 #   1 - share
 #   2 - path [optional, default depends on share]
+#   3 - owner [optional] - set owner of share
+#       e.g. root:root or 1000:1000 or 1000 or :1000
 function kube-inst_nfs-volume {
 	local share="$1"
 	local path="$2"
+	local owner="$3"
 
 	local readonly nfsserver="${path%%:*}"
 	local readonly nfspath="${path##*:}"
@@ -359,6 +362,12 @@ function kube-inst_nfs-volume {
 			|| return 1
 	fi
 	# when deleting we leave the data untouched !
+
+	if [ ! -z "$owner" ] ; then
+		ssh $nfsserver \
+			"chown -R $owner /srv/nfs4/$nfspath" \
+			|| return 1
+	fi
 
 	#DEBUG# printf "Adding PV %s as %s:%s\n" "$share.$app.$stage" "$nfsserver" "$path"
 	#### Setup Persistent Volume
