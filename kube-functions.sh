@@ -116,22 +116,12 @@ function kube-inst_helm {
 	kube-inst_internal-verify-initialised || return 1
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
-		local action=""
-		if helm status \
-				--kubeconfig $KUBE_CONFIGFILE \
-				--namespace $KUBE_NAMESPACE \
-				$release >/dev/null 2>/dev/null ; then
-			action=upgrade
-		else
-			action=install
-		fi
-
 		local parms=""
 		for p in $* ; do
 			parms+=" --set $p"
 		done
 
-		helm $action \
+		helm upgrade --install \
 			--kubeconfig $KUBE_CONFIGFILE \
 			--namespace $KUBE_NAMESPACE \
 			$parms \
