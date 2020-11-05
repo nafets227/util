@@ -451,7 +451,7 @@ function inst-arch_basearm {
 		"/bin/bash -c \"pacman -Suy --noconfirm $pkgs_ignore && systemctl reboot\"" \
 		"" \
 		"" \
-                "*-*-* ${updatetim-1:00}" \
+		"*-*-* ${updatetim-1:00}" \
 	|| return 1
 
 	if [ -z "$updatetim" ] ; then
