@@ -161,6 +161,8 @@ function install-ssh_key {
 function install-ssh_remove-known-host {
 	host="$1"
 
+	# if known_hosts does not exit create it to prevent errors in ssh-keygen
+	[ -f ~/.ssh/known_hosts ] || touch ~/.ssh/known_hosts
 	ssh-keygen -R "$host"
 
 	return $?
