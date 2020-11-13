@@ -283,24 +283,25 @@ function kvm_create-vm () {
 
 	# Action !
 	local virt_prms="
+		--check disk_size=off
 		--name $vmname
 		--virt-type $prm_virt
 		--memory $prm_mem
 		--vcpus=$prm_cpu
 		--import
-		--disk $prm_disk,format=raw,bus=$diskbustype
+		--disk $prm_disk,format=raw,bus=$diskbustype,size=10
 		--events on_crash=restart
 		--noautoconsole
 		--noreboot
 		"
 	if [ ! -z "$prm_disk2" ] ; then
 		virt_prms="$virt_prms
-			--disk $prm_disk2,format=raw,bus=$diskbustype
+			--disk $prm_disk2,format=raw,bus=$diskbustype,size=10
 			"
 	fi
 	if [ ! -z "$prm_disk3" ] ; then
 		virt_prms="$virt_prms
-			--disk $prm_disk3,format=raw,bus=$diskbustype
+			--disk $prm_disk3,format=raw,bus=$diskbustype,size=10
 			"
 	fi
 	if [ "$prm_auto" == "1" ] ; then
