@@ -94,7 +94,7 @@ function kvm_parseParm () {
 				;;
 			--net | --net[1-8] )
 				kvm_expect_value "$parm" "$value" || return 1
-				eval prm_${parm:2}="$value"
+				eval "prm_${parm:2}='$value'"
 				;;
 			--cpuhost )
 				prm_cpuhost="${value:-1}"
@@ -328,14 +328,31 @@ function kvm_create-vm () {
 			eval thisprmnet=\$\{prm_net$n\}
 			if [ ! -z "$thisprmnet" ] ; then
 				thisprmnet_src=${thisprmnet%%,*}
+				thisprmnet_type=${thisprmnet_src%%:*}
+				thisprmnet_type=${thisprmnet_type:-defaulttype}
+				thisprmnet_src=${thisprmnet_src##*:}
 				thisprmnet_mac=${thisprmnet##*,}
 				if [ -z $thisprmnet_src ] || [ -z %thisprmnet_mac ] ; then
 					printf "invalid net parm %s for net%s.\n" "$thisprmnet" "$n"
 					return 1
+				elif
+						[ "$thisprmnet_type" != "net" ] &&
+						[ "$thisprmnet_type" != "direct" ] ; then
+					printf "invalid net parm %s for net%s (type not net,direct)\n" \
+						"$thisprmnet" "$n"
+					return 1
 				fi
-				virt_prms="$virt_prms
-					--network type=direct,source=$thisprmnet_src,source_mode=bridge,model=$nettype,mac=$thisprmnet_mac,trustGuestRxFilters=yes
-				"
+
+				if [ "$thisprmnet_type" == "net" ] ; then
+					virt_prms="$virt_prms
+						--network network=$thisprmnet_src"
+				elif [ "$thisprmnet_type" == "direct" ] ; then
+					virt_prms="$virt_prms
+						--network type=direct,source=$thisprmnet_src,source_mode=bridge"
+				else
+					return 1 # this should never be reached
+				fi
+				virt_prms="$virt_prms,model=$nettype,mac=$thisprmnet_mac,trustGuestRxFilters=yes"
 			fi
 		done
 	fi
