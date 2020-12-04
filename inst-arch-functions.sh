@@ -423,8 +423,9 @@ function inst-arch_basearm {
 		--gpgdir $INSTALL_ROOT/etc/pacman.d/gnupg &&
 	pacman-key --populate $(basename $INSTALL_ROOT)/archlinuxarm \
 		--config $INSTALL_ROOT/etc/pacman.conf.installroot \
-		--gpgdir $INSTALL_ROOT/etc/pacman.d/gnupg \
-	|| return 1
+		--gpgdir $INSTALL_ROOT/etc/pacman.d/gnupg &&
+	killall "gpg-agent" -u root &&
+	true || return 1
 
 	# Executing pacman fails as the hooks would executed with the wrong
 	# architecture and thus fail.
