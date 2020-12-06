@@ -149,7 +149,7 @@ function kube-inst_helm {
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - name of secret
-#   2 - name of the CA (default: nafetsde-ca)
+#   2 - name of the CA
 # Prerequisites:
 #   $CERT_STORE_DIR/<caname>.crt
 #        our CA and its key
@@ -163,6 +163,10 @@ function kube-inst_tls-secret {
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
+			"$FUNCNAME"
+		return 1
+	elif [ -z "$caname" ] ; then
+		printf "%s: Error. Got no or empty ca name.\n" \
 			"$FUNCNAME"
 		return 1
 	fi

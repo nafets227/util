@@ -83,36 +83,11 @@ function cert_create_ca {
 	return 1
 }
 
-##### cert_query_ca ##########################################################
-function cert_query_ca {
-	# Parameters:
-	#    1 - name of the CA (default: nafetsde-ca)
-	# Prerequisites:
-	#    $CERT_STORE_DIR/<caname>.crt
-	#        our CA and its key
-	# Output:
-	#    $CERT_STORE_DIR/<caname>.crt
-	#        the location of the ca
-
-	local caname="${1:-"nafetsde-ca"}"
-
-	if [ ! -f "$CERT_STORE_DIR/$caname.crt" ] ; then
-		printf "Internal Error (%s): ca cert %s does not exist.\n" \
-			"$BASH_FUNC" \
-			"$CERT_STORE_DIR/$caname.crt"
-		return 1
-	fi
-
-	printf "%s\n" "$CERT_STORE_DIR/$caname.crt"
-
-	return 0
-}
-
 ##### cert_create_cert #######################################################
 function cert_create_cert {
 	# Parameters:
 	#    1 - name of certificate (without extension)
-	#    2 - name of the CA (default: nafetsde-ca)
+	#    2 - name of the CA
 	#    3 - serial (default:1)
 	#    4 - reqtxt file (default: "-" means read from stdin)
 	# Prerequisites:
@@ -131,12 +106,12 @@ function cert_create_cert {
 	#        the request config given by parm #3 or default.
 
 	local name="$1"
-	local caname="${2:-"nafetsde-ca"}"
+	local caname="$2"
 	local serial="${3:-"1"}"
 	local req="${4:-"-"}"
 
-	if [ -z "$name" ] ; then
-		printf "Internal Error (%s): No parm, expected >= 1\n" "$BASH_FUNC"
+	if [ -z "$name" ] || [ -z "$caname" ] ; then
+		printf "Internal Error (%s): Not enough parm, expected >= 2\n" "$BASH_FUNC"
 		return 1
 	elif [ "$req" != "-" ] && [ ! -f "$req" ] ; then
 		printf "Internal Error (%s): req %s is not - and does not exist.\n" \
@@ -204,7 +179,7 @@ function cert_create_cert {
 function cert_update_cert {
 	# Parameters:
 	#    1 - name of certificate (without extension)
-	#    2 - name of the CA (default: nafetsde-ca)
+	#    2 - name of the CA
 	#    3 - reqtxt file (default: "-" means read from stdin)
 	# Prerequisites:
 	#    $CERT_PRIVATE_DIR/<caname>.key
@@ -222,11 +197,11 @@ function cert_update_cert {
 	#        the updated certificate (including root cert)
 
 	local name="$1"
-	local caname="${2:-"nafetsde-ca"}"
+	local caname="$2"
 	local req="$3" # default handled in called function cert_create_cert
 
-	if [ -z "$name" ] ; then
-		printf "Internal Error (%s): No parm, expected >= 1\n" "$BASH_FUNC"
+	if [ -z "$name" ] || [ -z "$caname" ]; then
+		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$BASH_FUNC"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$name.crt" ] ; then
 		printf "Internal Error (%s): cert %s does not exist.\n" \
@@ -263,7 +238,7 @@ function cert_update_cert {
 	# following command. BUT we dont like it since it would ignore
 	# potential changes to .reqtxt since the creation of the csr
 	# openssl x509 -req -days 365 -in git.test.nafets.de.csr
-	#	-CA nafetsde-ca.crt -CAkey nafetsde-ca.key -set_serial 03
+	#	-CA ca.crt -CAkey ca.key -set_serial 03
 	#	-out git.test.nafets.de-2018.crt
 
 	return 0
@@ -273,7 +248,7 @@ function cert_update_cert {
 function cert_get_cert {
 	# Parameters:
 	#    1 - name of certificate (without extension)
-	#    2 - name of the CA (default: nafetsde-ca)
+	#    2 - name of the CA
 	#    3 - reqtxt file (default: "-" means read from stdin)
 	# Prerequisites:
 	#    $CERT_PRIVATE_DIR/<caname>.key
@@ -288,11 +263,11 @@ function cert_get_cert {
 	#        the updated certificate (including root cert)
 
 	local name="$1"
-	local caname="${2:-"nafetsde-ca"}"
+	local caname="$2"
 	local req="$3" # default will be handled by called functions
 
-	if [ -z "$name" ] ; then
-		printf "Internal Error (%s): No parm, expected >= 1\n" "$BASH_FUNC"
+	if [ -z "$name" ] || [ -z "$caname" ] ; then
+		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$BASH_FUNC"
 		return 1
 	fi
 
