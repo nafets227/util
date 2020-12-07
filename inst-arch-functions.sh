@@ -354,21 +354,10 @@ function inst-arch_basearm {
 	fi
 
 	# Download latest Image
-	# @TODO: use util-download
 	local readonly CACHDIR="/var/cache/archlinuxarm"
-	test -d "$CACHDIR" || mkdir -p "$CACHDIR" || return 1
-	printf "Downloading Arch linux ARM for PI\n"
-	if [ -f $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz ] ; then
-		CURL_OPT="--time-cond $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz"
-	else
-		CURL_OPT=""
-	fi
-	curl \
-		--location \
-		--remote-time \
-		--output $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
-		$CURL_OPT \
+	util_download \
 		http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-latest.tar.gz \
+		$CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
 	|| return 1
 
 	# Now start the installation after confirmation of the user
