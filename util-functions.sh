@@ -71,6 +71,7 @@ function util_download {
 		CURL_OPT=""
 	fi
 	curl \
+		--fail \
 		--location \
 		--remote-time \
 		--output $CACHFIL \
