@@ -70,15 +70,24 @@ function util_download {
 	else
 		CURL_OPT=""
 	fi
-	curl \
-		--fail \
-		--location \
-		--remote-time \
-		--output $CACHFIL \
-		$CURL_OPT \
-		$URL \
-		>&2 \
-	|| return 1
+
+	for i in 1 2 3 ; do
+		curl \
+			--fail \
+			--location \
+			--remote-time \
+			--output $CACHFIL \
+			$CURL_OPT \
+			$URL \
+			>&2
+		rc=$?
+		if [ "$rc" == "0" ] ; then
+			break
+		fi
+	done
+	if [ "$rc" != "0" ] ; then
+		return 1
+	fi
 
 	printf "%s\n" "$CACHFIL"
 	return 0
