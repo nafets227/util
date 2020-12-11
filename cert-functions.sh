@@ -110,7 +110,7 @@ function cert_create_cert {
 	local serial="${3:-"1"}"
 	local req="${4:-"-"}"
 
-	if [ -z "$name" ] || [ -z "$caname" ] ; then
+	if [ -z "$name" ] || [ -z "$caname" ] ; then
 		printf "Internal Error (%s): Not enough parm, expected >= 2\n" "$BASH_FUNC"
 		return 1
 	elif [ "$req" != "-" ] && [ ! -f "$req" ] ; then
@@ -200,7 +200,7 @@ function cert_update_cert {
 	local caname="$2"
 	local req="$3" # default handled in called function cert_create_cert
 
-	if [ -z "$name" ] || [ -z "$caname" ]; then
+	if [ -z "$name" ] || [ -z "$caname" ] ; then
 		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$BASH_FUNC"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$name.crt" ] ; then
@@ -266,7 +266,7 @@ function cert_get_cert {
 	local caname="$2"
 	local req="$3" # default will be handled by called functions
 
-	if [ -z "$name" ] || [ -z "$caname" ] ; then
+	if [ -z "$name" ] || [ -z "$caname" ] ; then
 		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$BASH_FUNC"
 		return 1
 	fi
