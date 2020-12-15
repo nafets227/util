@@ -350,7 +350,7 @@ function kube-inst_nfs-volume {
 
 	#### Make sure directory exists on server
 	if [ "$KUBE_ACTION" == "install" ] ; then
-		ssh $nfsserver \
+		ssh -o StrictHostKeyChecking=no $nfsserver \
 			"test -d /srv/nfs4/$nfspath" \
 			'||' "mkdir -p /srv/nfs4/$nfspath" \
 			|| return 1
@@ -358,7 +358,7 @@ function kube-inst_nfs-volume {
 	# when deleting we leave the data untouched !
 
 	if [ ! -z "$owner" ] ; then
-		ssh $nfsserver \
+		ssh -o StrictHostKeyChecking=no $nfsserver \
 			"chown -R $owner /srv/nfs4/$nfspath" \
 			|| return 1
 	fi
