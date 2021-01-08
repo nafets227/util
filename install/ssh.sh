@@ -142,12 +142,17 @@ function install-ssh_key {
 	if [ ! -z "${fname/*:*/}" ] ; then
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
+		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname.pub \
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa.pub &&
 		true || return 1
 	else
 		scp $fname /tmp/$(basename $fname) &&
+		scp $fname.pub /tmp/$(basename $fname).pub &&
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 /tmp/$(basename $fname) \
 			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa &&
-		rm /tmp/$(basename $fname) &&
+		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 /tmp/$(basename $fname).pub \
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/id_rsa.pub &&
+		rm /tmp/$(basename $fname) /tmp/$(basename $fname).pub &&
 		true || return 1
 	fi
 
