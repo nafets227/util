@@ -526,6 +526,12 @@ function kvm_start_vm {
 
 	printf "ERROR: Timed out waiting %s seconds for machine %s\n" \
 		"$sleepMax" "$MNAME"
+	if [ "$(head -1 <<<"$vmstatus")" == "degraded" ] ; then
+		printf "Following Services could not be started:\n"
+		ssh -o StrictHostKeyChecking=no "$dnsname" <<-EOF
+			/usr/bin/systemctl --failed --no-pager --plain --no-legend --full
+			EOF
+	fi
 
 	return 1
 }
