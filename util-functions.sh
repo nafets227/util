@@ -105,8 +105,13 @@ function util_make-local {
 	if [ ! -z "${fname/*:*/}" ] ; then
 		# fname contains no ":" so its already local
 		printf "%s\n" "$fname"
+	elif [ "${fname#http://*#}" ] || [ -z "${fname#https://*#}" ] ; then
+		# fname begins with "http://" or "https://" so its remote http(s)
+		local lfname
+		lfname=$(util_download $fname) || return 1
+		printf "%s\n" "$lfname"
 	else
-		# fname ontains A ":" so its remote
+		# fname contains ":" so its remote via scp
 		scp $fname /tmp/$(basename $fname) || return 1
 		printf "%s\n" "/tmp/$(basename $fname)"
 	fi

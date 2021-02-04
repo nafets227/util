@@ -598,8 +598,8 @@ function inst-arch_fixverpkg () {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
-	elif [ ! -d $PKGBASE ] ; then
-		printf "%s: Error PKSBASE %s does not exist\n" \
+	elif [ ! -z "${PKGBASE/*:*/}" ] && [ ! -d $PKGBASE ] ; then
+		printf "%s: Error PKGBASE %s does not exist\n" \
 			"$FUNCNAME" "$PKGBASE" >&2
 	elif [ ! -w $PACCONF ] ; then
 		printf "%s: Error /etc/pacman.conf does not exist or ist not writable\n" \
@@ -625,15 +625,19 @@ function inst-arch_fixverpkg () {
 
 	pkgnames=""
 	pkgslocal=""
+
 	for pkg in $pkgs ; do
-		if [ -f $PKGDIR/$pkg-$arch.pkg.tar.xz ] ; then
-			pkgfile=$PKGDIR/$pkg-$arch.pkg.tar.xz
-		elif [ -f $PKGDIR/$pkg-any.pkg.tar.xz ] ; then
-			pkgfile=$PKGDIR/$pkg-any.pkg.tar.xz
-		else
-			printf "Error: Package file %s not found.\n" "$pkg"
+		pkgfile=$(util_make-local "$PKGDIR/$pkg-$arch.pkg.tar.zst") ||
+		pkgfile=$(util_make-local "$PKGDIR/$pkg-any.pkg.tar.zst") ||
+		pkgfile=$(util_make-local "$PKGDIR/$pkg-$arch.pkg.tar.xz") ||
+		pkgfile=$(util_make-local "$PKGDIR/$pkg-any.pkg.tar.xz") ||
+		pkgfile=""
+
+		if [ -z "$pkgfile" ] ; then
+			printf "Error: Package file %s not found.\n" "$PKGDIR/$pkg-{$arch,any}.pkg.tar.{zst,xz}"
 			return 1
 		fi
+
 		pkgnames+=" $(pacman -Qp $pkgfile | cut -d" " -f 1)" &&
 		pkgslocal+=" /root/$(basename $pkgfile)" &&
 		cp -a $pkgfile $INSTALL_ROOT/root/ &&
