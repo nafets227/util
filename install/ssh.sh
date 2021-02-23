@@ -69,6 +69,7 @@ function install-ssh_allow-root-pw {
 function install-ssh_trust {
 	fname="$1"
 	user="${2:-root}"
+	lfname="${3:-$(basename $fname)}"
 
 	#----- Input checks --------------------------------------------------
 	if [ "$#" -lt "1" ] ; then
@@ -88,6 +89,12 @@ function install-ssh_trust {
 	#----- Real Work -----------------------------------------------------
 	install-ssh_getUserData "$user" || return 1
 
+	if [ -f $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/$lfname ] ; then
+		printf "%s: Error ssh trust %s already exists.\n" \
+			"$FUNCNAME" "$INSTSSH_HOME/.ssh/authorized_keys.d/$lfname" >&2
+		return 1
+	fi
+
 	install -o $INSTSSH_UID -g $INSTSSH_GID \
 		-d -m 700 $INSTALL_ROOT$INSTSSH_HOME/.ssh && \
 	install -o $INSTSSH_UID -g $INSTSSH_GID \
@@ -96,14 +103,14 @@ function install-ssh_trust {
 
 	if [ ! -z "${fname/*:*/}" ] ; then
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
-			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/$lfname &&
 		true || return 1
 	else
-		scp $fname /tmp/$(basename $fname) &&
+		scp $fname /tmp/$lfname &&
 		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 \
-			/tmp/$(basename $fname) \
-			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d &&
-		rm /tmp/$(basename $fname) && \
+			/tmp/$lfname \
+			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/$lfname &&
+		rm /tmp/$lfname && \
 		true || return 1
 	fi
 
