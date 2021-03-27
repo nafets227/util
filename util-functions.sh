@@ -65,22 +65,35 @@ function util_download {
 	mkdir -p "$(dirname $CACHFIL)" ||
 	return 1
 
-	if [ -f $CACHFIL ] ; then
-		CURL_OPT="--time-cond $CACHFIL --time-cond -$CACHFIL"
-	else
-		CURL_OPT=""
-	fi
-
 	for i in 1 2 3 ; do
-		curl \
-			--fail \
-			--location \
-			--remote-time \
-			--output $CACHFIL \
-			$CURL_OPT \
-			$URL \
-			>&2
-		rc=$?
+		if [ ! -f $CACHFIL ] ; then
+			curl \
+				--fail \
+				--location \
+				--remote-time \
+				--output $CACHFIL \
+				$URL \
+				>&2
+			rc=$?
+		else
+			curl \
+				--fail \
+				--location \
+				--remote-time \
+				--output $CACHFIL \
+				--time-cond $CACHFIL \
+				$URL \
+				>&2 &&
+			curl \
+				--fail \
+				--location \
+				--remote-time \
+				--output $CACHFIL \
+				--time-cond -$CACHFIL \
+				$URL \
+				>&2
+			rc=$?
+		fi
 		if [ "$rc" == "0" ] ; then
 			break
 		fi
