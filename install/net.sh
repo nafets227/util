@@ -286,13 +286,13 @@ function install-net_static {
 			EOF
 	done; fi
 
-	if [ ! -z $ipvlan ] ; then for f in $ipvlan ; do
+	if [ ! -z "$ipvlan" ] ; then for f in $ipvlan ; do
 		cat >>$cfgfile <<-EOF
 			IPVLAN=$f
 		EOF
 	done; fi
 
-	if [ ! -z $bridge ] ; then for f in $bridge ; do
+	if [ ! -z "$bridge" ] ; then for f in $bridge ; do
 		cat >>$cfgfile <<-EOF
 			Bridge=$f
 		EOF
