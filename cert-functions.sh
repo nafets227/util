@@ -17,16 +17,16 @@ function cert_create_key {
 	local name="$1"
 
 	if [ -z "$name" ] ; then
-		printf "Internal Error (%s): No parm, expected 1\n" "$BASH_FUNC"
+		printf "Internal Error (%s): No parm, expected 1\n" "$FUNCNAME"
 		return 1
 	elif [ -f "$CERT_PRIVATE_DIR/$name.key" ] ; then
 		printf "Internal Error (%s): cert key %s already exists.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_PRIVATE_DIR/$name.key"
 		return 1
 	elif [ -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
 		printf "Internal Error (%s): cert key %s already exists.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_PRIVATE_DIR/$name.key.insecure"
 		return 1
 	fi
@@ -57,7 +57,7 @@ function cert_get_key {
 	local name="$1"
 
 	if [ -z "$name" ] ; then
-		printf "Internal Error (%s): No parm, expected 1\n" "$BASH_FUNC" >&2
+		printf "Internal Error (%s): No parm, expected 1\n" "$FUNCNAME" >&2
 		return 1
 	fi
 
@@ -111,31 +111,31 @@ function cert_create_cert {
 	local req="${4:-"-"}"
 
 	if [ -z "$name" ] || [ -z "$caname" ] ; then
-		printf "Internal Error (%s): Not enough parm, expected >= 2\n" "$BASH_FUNC"
+		printf "Internal Error (%s): Not enough parm, expected >= 2\n" "$FUNCNAME"
 		return 1
 	elif [ "$req" != "-" ] && [ ! -f "$req" ] ; then
 		printf "Internal Error (%s): req %s is not - and does not exist.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$req"
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
 		printf "Internal Error (%s): cert key %s does not exist.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_PRIVATE_DIR/$name.key.insecure"
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$caname.key" ] ; then
 		printf "Internal Error (%s): ca key %s does not exist.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_PRIVATE_DIR/$caname.key"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$caname.crt" ] ; then
 		printf "Internal Error (%s): ca cert %s does not exist.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_STORE_DIR/$caname.crt"
 		return 1
 	elif [ -f "$CERT_STORE_DIR/$name.crt" ] ; then
 		printf "Internal Error (%s): cert %s already exists.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_STORE_DIR/$name.crt"
 		return 1
 	fi
@@ -201,16 +201,16 @@ function cert_update_cert {
 	local req="$3" # default handled in called function cert_create_cert
 
 	if [ -z "$name" ] || [ -z "$caname" ] ; then
-		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$BASH_FUNC"
+		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$FUNCNAME"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$name.crt" ] ; then
 		printf "Internal Error (%s): cert %s does not exist.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_STORE_DIR/$name.crt"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$name.csr" ] ; then
 		printf "Internal Error (%s): cert Signing request %s does not exists.\n" \
-			"$BASH_FUNC" \
+			"$FUNCNAME" \
 			"$CERT_STORE_DIR/$name.csr"
 		return 1
 	fi
@@ -267,7 +267,7 @@ function cert_get_cert {
 	local req="$3" # default will be handled by called functions
 
 	if [ -z "$name" ] || [ -z "$caname" ] ; then
-		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$BASH_FUNC"
+		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$FUNCNAME"
 		return 1
 	fi
 
