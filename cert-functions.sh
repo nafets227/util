@@ -83,13 +83,70 @@ function cert_get_key {
 
 ##### cert_create_ca #########################################################
 function cert_create_ca {
-	# @TODO to be implemented
+	# Parameters:
+	#    1 - name of the CA (without extension)
+	#    2 - validity of the CA in days
+	#    3 - serial (default:1)
+	#    4 - reqtxt file (default: "-" means read from stdin)
+	# Prerequisites:
+	#    $CERT_PRIVATE_DIR/<caname>.key
+	#
+	# Output:
+	#    $CERT_STORE_DIR/$caname.crt
+	#        the CA certificate (self-signed)
+	#    $CERT_STORE_DIR/$caname.reqtxt
+	#        the request config given by parm #3 or default.
+
+	local caname="$1"
+	local validity="$2"
+	local serial="${3:-"1"}"
+	local req="${4:-"-"}"
+
+	if [ -z "$caname" ] || [ -z "$validity" ] ; then
+		printf "Internal Error (%s): Not enough parm, expected >= 1\n" "$FUNCNAME"
+		return 1
+	elif [ "$req" != "-" ] && [ ! -f "$req" ] ; then
+		printf "Internal Error (%s): req %s is not - and does not exist.\n" \
+			"$FUNCNAME" \
+			"$req"
+		return 1
+	elif [ ! -f "$CERT_PRIVATE_DIR/$caname.key" ] ; then
+		printf "Internal Error (%s): ca key %s does not exist.\n" \
+			"$FUNCNAME" \
+			"$CERT_PRIVATE_DIR/$caname.key"
+		return 1
+	elif [ -f "$CERT_STORE_DIR/$caname.crt" ] ; then
+		printf "Internal Error (%s): cert %s already exists.\n" \
+			"$FUNCNAME" \
+			"$CERT_STORE_DIR/$caname.crt"
+		return 1
+	fi
+
+	cert_read_pw || return 1
+
+	if [ "$req" == "-" ] ; then
+		# store stdin to reqtxt file
+		cat >$CERT_STORE_DIR/$caname.reqtxt || return 1
+	else
+		cp -a $req $CERT_STORE_DIR/$caname.reqtxt || return 1
+	fi
 
 	## CA erzeugen
 	#openssl genrsa -des3 -out ca.key 4096
 	#openssl req -new -x509 -days 365 -key ca.key -out ca.crt
+	PW=$INST_CERT_CA_PW \
+	openssl req \
+		-new \
+		-x509 \
+		-key $CERT_PRIVATE_DIR/$caname.key \
+		-days $validity \
+		-passin env:PW \
+		-set_serial $serial \
+		-config $CERT_STORE_DIR/$caname.reqtxt \
+		-out $CERT_STORE_DIR/$caname.crt \
+	|| return 1
 
-	return 1
+	return 0
 }
 
 ##### cert_create_cert #######################################################
