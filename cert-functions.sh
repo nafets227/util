@@ -12,9 +12,11 @@ function cert_create_key {
 	# Create a Key; fails if it already exists
 	# Parameters:
 	#    1 - name of the key
+	#    2 - password of the key [default: empty = no password]
 	# Output:
 	#    $CERT_PRIVATE_DIR/$certname.key
 	local name="$1"
+	local pw="$2"
 
 	if [ -z "$name" ] ; then
 		printf "Internal Error (%s): No parm, expected 1\n" "$FUNCNAME"
@@ -26,8 +28,15 @@ function cert_create_key {
 		return 1
 	fi
 
+	if [ ! -z "$pw" ] ; then
+		TARGETPW="-des3 -passout env:PW"
+	else
+		TARGETPW=""
+	fi
+
+	PW=$pw \
 	openssl genrsa \
-		-nodes \
+		$TARGETPW \
 		-out $CERT_PRIVATE_DIR/$name.key \
 		4096 \
 	|| return 1
@@ -40,10 +49,12 @@ function cert_get_key {
 	# Create a Key if it does not exist yet. Return pathname of key
 	# Parameters:
 	#    1 - name of the key
+	#    2 - password of the key [default: empty = no password]
 	# Output:
 	#    $CERT_PRIVATE_DIR/$certname.key
 
 	local name="$1"
+	local pw="$2"
 
 	if [ -z "$name" ] ; then
 		printf "Internal Error (%s): No parm, expected 1\n" "$FUNCNAME" >&2
@@ -63,7 +74,7 @@ function cert_get_key {
 	elif [ -f "$CERT_PRIVATE_DIR/$name.key" ] ; then
 		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key"
 	else
-		cert_create_key "$name" >&2 || return 1
+		cert_create_key "$name" "$pw" >&2 || return 1
 		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key"
 	fi
 
