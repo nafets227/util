@@ -13,7 +13,7 @@ function cert_create_key {
 	# Parameters:
 	#    1 - name of the key
 	# Output:
-	#    $CERT_PRIVATE_DIR/$certname.key.insecure
+	#    $CERT_PRIVATE_DIR/$certname.key
 	local name="$1"
 
 	if [ -z "$name" ] ; then
@@ -24,23 +24,12 @@ function cert_create_key {
 			"$FUNCNAME" \
 			"$CERT_PRIVATE_DIR/$name.key"
 		return 1
-	elif [ -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
-		printf "Internal Error (%s): cert key %s already exists.\n" \
-			"$FUNCNAME" \
-			"$CERT_PRIVATE_DIR/$name.key.insecure"
-		return 1
 	fi
 
-	local readonly CERT_DUMMY_PW="UmcGZUu5AX2ettn2" &&
 	openssl genrsa \
-		-des3 \
-		-passout pass:$CERT_DUMMY_PW \
+		-nodes \
 		-out $CERT_PRIVATE_DIR/$name.key \
-		4096 &&
-	openssl rsa \
-		-passin pass:$CERT_DUMMY_PW \
-		-in $CERT_PRIVATE_DIR/$name.key \
-		-out $CERT_PRIVATE_DIR/$name.key.insecure \
+		4096 \
 	|| return 1
 
 	return 0
@@ -52,7 +41,7 @@ function cert_get_key {
 	# Parameters:
 	#    1 - name of the key
 	# Output:
-	#    $CERT_PRIVATE_DIR/$certname.key.insecure
+	#    $CERT_PRIVATE_DIR/$certname.key
 
 	local name="$1"
 
@@ -61,12 +50,21 @@ function cert_get_key {
 		return 1
 	fi
 
-	if		[ -f "$CERT_PRIVATE_DIR/$name.key" ] &&
-			[ -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
-		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key.insecure"
+	if [ -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
+		# old insecure key file exists
+		# we migrate to new by recreating the key
+		printf "Migrating Cert-Key %s\n" "$name" >&2
+		rm \
+			$CERT_PRIVATE_DIR/$name.key.insecure \
+			$CERT_PRIVATE_DIR/$name.key &&
+		cert_create_key "$name" "$pw" >&2 &&
+		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key" &&
+		true || return 1
+	elif [ -f "$CERT_PRIVATE_DIR/$name.key" ] ; then
+		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key"
 	else
 		cert_create_key "$name" >&2 || return 1
-		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key.insecure"
+		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key"
 	fi
 
 	return 0
@@ -94,7 +92,7 @@ function cert_create_cert {
 	#    $CERT_PRIVATE_DIR/<caname>.key
 	#    $CERT_STORE_DIR/<caname>.crt
 	#        our CA and its key
-	#    $CERT_PRIVATE_DIR/$certname.key.insecure
+	#    $CERT_PRIVATE_DIR/$certname.key
 	#        contains a valid private key.
 	#
 	# Output:
@@ -118,10 +116,10 @@ function cert_create_cert {
 			"$FUNCNAME" \
 			"$req"
 		return 1
-	elif [ ! -f "$CERT_PRIVATE_DIR/$name.key.insecure" ] ; then
+	elif [ ! -f "$CERT_PRIVATE_DIR/$name.key" ] ; then
 		printf "Internal Error (%s): cert key %s does not exist.\n" \
 			"$FUNCNAME" \
-			"$CERT_PRIVATE_DIR/$name.key.insecure"
+			"$CERT_PRIVATE_DIR/$name.key"
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$caname.key" ] ; then
 		printf "Internal Error (%s): ca key %s does not exist.\n" \
@@ -151,7 +149,7 @@ function cert_create_cert {
 
 	openssl req \
 		-new \
-		-key $CERT_PRIVATE_DIR/$name.key.insecure \
+		-key $CERT_PRIVATE_DIR/$name.key \
 		-config $CERT_STORE_DIR/$name.reqtxt \
 		-out $CERT_STORE_DIR/$name.csr &&
 	PW=$INST_CERT_CA_PW \
@@ -185,7 +183,7 @@ function cert_update_cert {
 	#    $CERT_PRIVATE_DIR/<caname>.key
 	#    $CERT_STORE_DIR/<caname>.crt
 	#        our CA and its key
-	#    $CERT_PRIVATE_DIR/$certname.key.insecure
+	#    $CERT_PRIVATE_DIR/$certname.key
 	#        contains a valid private key.
 	#    $CERT_STORE_DIR/$certname.crt
 	#        the old certificate (wused to read serial and increase it)
@@ -254,7 +252,7 @@ function cert_get_cert {
 	#    $CERT_PRIVATE_DIR/<caname>.key
 	#    $CERT_STORE_DIR/<caname>.crt
 	#        our CA and its key
-	#    $CERT_PRIVATE_DIR/$certname.key.insecure
+	#    $CERT_PRIVATE_DIR/$certname.key
 	#        contains a valid private key.
 	# Output:
 	#    $CERT_STORE_DIR/$certname.crt
