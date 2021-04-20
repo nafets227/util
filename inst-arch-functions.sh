@@ -354,10 +354,10 @@ function inst-arch_basearm {
 	fi
 
 	# Download latest Image
-	local readonly CACHDIR="/var/cache/archlinuxarm"
-	util_download \
+	local imgfile
+	imgfile=$(util_download \
 		http://os.archlinuxarm.org/os/ArchLinuxARM-rpi-latest.tar.gz \
-		$CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
+		) \
 	|| return 1
 
 	# Now start the installation after confirmation of the user
@@ -371,12 +371,12 @@ function inst-arch_basearm {
 	printf "Extracting root FS ... \n"
 	bsdtar \
 		--exclude=./boot \
-		-f $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
+		-f $imgfile \
 		-C $INSTALL_ROOT \
 		-xpz &&
 	bsdtar \
 		--no-fflags \
-		-f $CACHDIR/ArchLinuxARM-rpi-latest.tar.gz \
+		-f $imgfile \
 		-C $INSTALL_ROOT \
 		-xz \
 		./boot &&

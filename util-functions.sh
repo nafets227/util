@@ -57,7 +57,8 @@ function util_loadfunc-or-exit {
 ##### util_download  #########################################################
 function util_download {
 	local readonly URL="$1"
-	local readonly CACHFIL="${2:-/var/cache/nafets-util/$(basename $URL)}"
+	local readonly MY_CACHEDIR=${UTIL_CACHEDIR:-"/var/cache/nafets-util"}
+	local readonly CACHFIL="${2:-$UTIL_CACHEDIR/$(basename $URL)}"
 
 	printf "Downloading %s to %s\n" "$URL" "$CACHFIL" >&2
 
