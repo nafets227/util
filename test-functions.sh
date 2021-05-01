@@ -349,6 +349,7 @@ function test_expect_files {
 	# parm 2: nr of files (except . and ..)
 	local testdir="$1"
 	local testexpected="$2"
+	local testresult
 	local rc
 
 	if [ ${testdir:0:1} != "/" ] ; then
