@@ -382,6 +382,51 @@ function test_expect_files {
 	return 99
 }
 
+function test_expect_linkedfiles {
+	testnr=$(( ${testnr-0} + 1 ))
+	# not increasing testexecnr
+
+	# parm 1-n: files that should be hard-linked to each other
+
+	local fnam
+	local testexpected
+	local fnamexpected
+	local testresult
+	local rc
+
+	for fnam in "$@" ; do
+		if [ ${fnam:0:1} != "/" ] ; then
+			fnam="$TESTSETDIR/$fnam"
+		fi
+
+		testresult=$(
+			set -o pipefail ;
+			ls -1i $fnam 2>/dev/null | cut -f 1 -d " "
+			)
+		rc=$?
+
+		if [ "$rc" != 0 ] ; then
+			printf "\tCHECK %s FAILED. Cannot list file '%s'\n" \
+				"$testnr" "$fnam"
+			testsetfailed="$testsetfailed $testnr"
+			return 1
+		elif [ ! -z "$testexpected" ] && [ "$testresult" != "$testexpected" ] ; then
+			printf "\tCHECK %s FAILED. '%s' and '%s' have different INode\n" \
+				"$testnr" "$fnam" "$fnamexpected"
+			testsetfailed="$testsetfailed $testnr"
+			return 1
+		elif [ -z "$testexpected" ] ; then
+			testexpected="$testresult"
+			fnamexpected="$fnam"
+		fi
+	done
+
+	printf "\tCHECK %s OK.\n" "$testnr"
+	testsetok=$(( ${testsetok-0} + 1))
+
+	return 0
+}
+
 function testset_init {
 	printf "TESTS Starting.\n"
 	testsetok=0
