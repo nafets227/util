@@ -97,6 +97,22 @@ function test_putImap {
 	return 0
 }
 
+function test_exec_init {
+	local testdesc="$1"
+
+	testnr=$(( ${testnr-0} + 1))
+	testexecnr=$testnr
+
+	printf "Executing Test %d (%s:%s %s) ... " "$testnr" \
+		"${BASH_SOURCE[2]}" "${BASH_LINENO[1]}" "${FUNCNAME[2]} "
+
+	if [ ! -z "$testdesc" ] ; then
+		printf "\t%s\n" "$testdesc"
+	fi
+
+	return 0
+}
+
 function test_lastoutput_contains {
 	testnr=$(( ${testnr-0} + 1))
 	# not increasing testexecnr
@@ -132,9 +148,7 @@ function test_lastoutput_contains {
 #     2 - expected RC [default: 0]
 #     3 - optional message to be printed if test fails
 function test_exec_simple {
-	testnr=$(( ${testnr-0} + 1))
-	testexecnr=$testnr
-	printf "Executing Test %d ... " "$testnr"
+	test_exec_init || return 1
 
 	local rc_exp=${2-0}
 
@@ -168,9 +182,7 @@ function test_exec_simple {
 }
 
 function test_exec_url {
-	testnr=$(( ${testnr-0} + 1))
-	testexecnr=$testnr
-	printf "Executing Test %d ... " "$testnr"
+	test_exec_init || return 1
 
 	local url="$1"
 	local rc_exp=${2-200}
@@ -208,14 +220,12 @@ function test_exec_url {
 }
 
 function test_exec_recvmail {
-	testnr=$(( ${testnr-0} + 1))
-	testexecnr=$testnr
-
 	local url="$1"
 	local rc_exp="${2:-0}"
 	shift 2
 
-	printf "Executing Test %d (recvmail %s %s) ... " "$testnr" "$rc_exp" "$url"
+	test_exec_init "recvmail $rc_exp $url" || return 1
+
 	local readonly MAIL_STD_OPT="-e -n -vv -Sv15-compat -Snosave -Sexpandaddr=fail,-all,+addr"
 	# -SNosave is included in -d and generates error messages - so dont include it
 	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
@@ -252,7 +262,8 @@ function test_exec_sendmail {
 	shift 4
 	opts="$@"
 
-	printf "Executing Test %d (sendmail %s %s) ... " "$testnr" "$rc_exp" "$url"
+	test_exec_init "sendmail $rc_exp $url" || return 1
+
 	local readonly MAIL_STD_OPT="-n -vv -Sv15-compat -Ssendwait -Snosave -Sexpandaddr=fail,-all,+addr"
 	# -SNosave is included in -d and generates error messages - so dont include it
 	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
