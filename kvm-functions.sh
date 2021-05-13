@@ -161,9 +161,8 @@ function kvm_getDefaultOS () {
 #   --disk2=<device> [optional, autodetected]
 #   --disk3=<device> [optional, default=empty]
 #   --mem=<size> [default=1024MB]
-#   --cpu=<nr of config> [default: 3,cpuset=2-3]
-#         CPU #0 is intended for physical machine only
-#         CPU #1 is intende vor Vdr only
+#   --cpu=<nr of config> [optional, default=empty]
+#         example: --cpu=3,cpuset=2-3
 #   --id=internal ID, needs to be unique in whole system
 #   --replace replace existing VMs [default=no]
 #   --auto=1 [default=1] auto-start VM at boot
@@ -180,7 +179,7 @@ function kvm_getDefaultOS () {
 function kvm_create-vm () {
 	# Set Default values
 	local prm_mem="768"
-	local prm_cpu="3,cpuset=2-3"
+	local prm_cpu=""
 	local prm_replace="0"
 	local prm_dryrun="0"
 	local prm_virt="kvm"
