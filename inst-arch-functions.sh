@@ -219,10 +219,12 @@ function inst-arch_baseos {
 	#    2 - additional package [optional]
 	#    3 - additional Modules in initrd [optional]
 	#    4 - time to run autoupdate [default=blank means disabled]
+	#    5 - kernal parmeters [default=blank]
 	local name="$1"
 	local extrapkg="$2"
 	local extramod="$3"
 	local updatetim="$4"
+	local kernel_parm="$5"
 
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
@@ -303,7 +305,7 @@ function inst-arch_baseos {
 	# kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
 	sed_cmd="s:"
 	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
-	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":p"
+	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":"
 	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub
 	#cat >>$INSTALL_ROOT/etc/default/grub <<-EOF
 	#
