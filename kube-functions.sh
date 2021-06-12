@@ -77,7 +77,7 @@ function kube-inst_internal-verify-initialised {
 	fi
 }
 
-##### kube-inst_exec - Execute installation
+##### kube-inst_exec - Execute installation ##################################
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - confdir
@@ -101,7 +101,7 @@ function kube-inst_exec {
 	return $rc
 }
 
-##### kube-inst_helm - install Helm Chart #####
+##### kube-inst_helm - install Helm Chart from URL ###########################
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - release (=name) of helm chart
@@ -312,7 +312,7 @@ function kube-inst_configmap {
 	return 0
 }
 
-##### kube-inst_nfs-volume - Install NFS Volume
+##### kube-inst_nfs-volume - Install NFS Volume ##############################
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - share
@@ -418,7 +418,7 @@ function kube-inst_nfs-volume {
 		return 0
 }
 
-##### kube-inst_host-volume - Install Host Volume
+##### kube-inst_host-volume - Install Host Volume ############################
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - share
