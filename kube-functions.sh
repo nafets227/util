@@ -77,6 +77,39 @@ function kube-inst_internal-verify-initialised {
 	fi
 }
 
+##### kube-inst_internal-environize ##########################################
+# Environize stdin to stdout
+# Parameters:
+#	1 - envnames
+#	stdin - Input File (contains "${<envname>}" to be replaced)
+#	stdout - Output File (with replaced valued)
+function kube-inst_internal-environize {
+	local envnames="$1"
+
+	##### Prepare Environizing
+	sed_parms=""
+	if [ ! -z "$envnames" ] ; then  for f in $envnames ; do
+		if [[ -v $f ]] ; then
+			eval "value=\$$f"
+			sed_parms="$sed_parms -e 's/\${$f}/${value//\//\\\/}/g'"
+		else
+			printf "%s: variable for envname %s not defined.\n" \
+				"$FUNCNAME" "$f"
+		fi
+	done; fi
+	#DEBUG
+	#printf "sed_parms=%s\n" "$sed_parms"
+	#set -x
+
+	if [ ! -z "$sed_parms" ] ; then
+		eval sed $sed_parms || return 1
+	else
+		cat
+	fi
+
+	return 0
+}
+
 ##### kube-inst_exec - Execute installation ##################################
 # Prerequisite: kube-inst_init has been called
 # Parametets:
@@ -566,21 +599,6 @@ function kube-inst_internal {
 		return 1
 	fi
 
-	##### Prepare Environizing
-	sed_parms=""
-	if [ ! -z "$envnames" ] ; then  for f in $envnames ; do
-		if [[ -v $f ]] ; then
-			eval "value=\$$f"
-			sed_parms="$sed_parms -e 's/\${$f}/${value//\//\\\/}/g'"
-		else
-			printf "%s: variable for envname %s not defined.\n" \
-				"$FUNCNAME" "$f"
-		fi
-	done; fi
-	#DEBUG
-	#printf "sed_parms=%s\n" "$sed_parms"
-	#set -x
-
 	##### Action !
 	printf "%s kube-app \"%s\" in namespace \"%s\"" \
 		"$action_display" "$app" "$ns"
@@ -614,8 +632,8 @@ function kube-inst_internal {
 		for f in $confdir/*.yaml.template ; do
 			printf "Loading Kubeconfig %s ... " "$(basename $f)"
 			#debug printf "YAML with templace parms replaced: \n"
-			#debug eval sed $sed_parms <$f
-			eval sed $sed_parms <$f \
+			#debug kube-inst_internal-environize <$f
+			kube-inst_internal-environize "$envnames" <$f \
 			| kubectl $kube_action -n $ns -f - \
 			|| return 1
 		done
