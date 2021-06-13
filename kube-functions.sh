@@ -238,6 +238,7 @@ function kube-inst_exec {
 }
 
 ##### kube-inst_helm2 - install Helm Chart from repo #########################
+# A CronJob will also update the helm chart daily, if Version is not set
 # Parametets:
 #   1 - release =local instance name of helm chart (unique in Kube namespace)
 #   2 - repo URL
@@ -266,11 +267,13 @@ function kube-inst_helm2 {
 		return 1
 	fi
 
-	local prm_version
+	local prm_version cronjobsuspend
 	if [ ! -z "$version" ]; then
 		prm_version="--version $version"
+		cronjobsuspend="true"
 	else
 		prm_version=""
+		cronjobsuspend="false"
 	fi
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
@@ -310,6 +313,26 @@ function kube-inst_helm2 {
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
+
+	#----- Setup auto update CronJob
+	local cronjobname="helmupdate-$release"
+	local envnameshelmupdate=""
+	envnameshelmupdate+=" KUBE_NAMESPACE"
+	envnameshelmupdate+=" KUBE_APP"
+	envnameshelmupdate+=" cronjobname"
+	envnameshelmupdate+=" cronjobsuspend"
+	envnameshelmupdate+=" release"
+	envnameshelmupdate+=" reponame"
+	envnameshelmupdate+=" repourl"
+	envnameshelmupdate+=" chart"
+
+	kube-inst_configmap \
+		"$cronjobname" \
+		"helmupdate.sh=$(dirname "$BASH_SOURCE")/kube/helmupdate.sh" &&
+	kube-inst_internal-exec \
+		$(dirname "$BASH_SOURCE")/kube/helmupdate.cronjob.yaml.template \
+		"$envnameshelmupdate" \
+	|| return 1
 
 	return 0
 }
