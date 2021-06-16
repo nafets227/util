@@ -478,51 +478,9 @@ function kube-inst_nfs-volume {
 
 	#DEBUG# printf "Adding PV %s as %s:%s\n" "$share.$app.$stage" "$nfsserver" "$path"
 	#### Setup Persistent Volume
-	kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -f - <<-EOF &&
-		apiVersion: v1
-		kind: PersistentVolume
-		metadata:
-		  name: $share.$KUBE_APP.$KUBE_STAGE
-		  annotations:
-		    volume.beta.kubernetes.io/storage-class: "nafets"
-		  labels:
-		    state: "$KUBE_STAGE"
-		    app: "$KUBE_APP"
-		    share: "$share"
-		spec:
-		  capacity:
-		    storage: 100Mi
-		  accessModes:
-		    - ReadWriteMany
-		  nfs:
-		    path: $nfspath
-		    server: $nfsserver
-		  persistentVolumeReclaimPolicy: Retain
-
-		---
-
-		apiVersion: v1
-		kind: PersistentVolumeClaim
-		metadata:
-		  name: $share.$KUBE_APP
-		  namespace: $KUBE_NAMESPACE
-		  annotations:
-		    volume.beta.kubernetes.io/storage-class: "nafets"
-		  labels:
-		    app: "$KUBE_APP"
-		    share: "$share"
-		spec:
-		  accessModes:
-		    - ReadWriteMany
-		  resources:
-		    requests:
-		      storage: 100Mi
-		  selector:
-		    matchLabels:
-		      state: "$KUBE_STAGE"
-		      app: "$KUBE_APP"
-		      share: "$share"
-		EOF
+	kube-inst_internal-environize "KUBE_APP KUBE_STAGE share nfspath nfsserver KUBE_NAMESPACE" \
+		<$(dirname "$BASH_SOURCE")/kube/nfsVolume.yaml.template \
+	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -f - &&
 		true || return 1
 
 		printf "%s Volume %s (app=%s, stage=%s) for %s\n" \
@@ -569,50 +527,9 @@ function kube-inst_host-volume {
 
 	#DEBUG# printf "Adding PV %s as %s:%s\n" "$share.$app.$stage" "$nfsserver" "$path"
 	#### Setup Persistent Volume
-	kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -f - <<-EOF &&
-		apiVersion: v1
-		kind: PersistentVolume
-		metadata:
-		  name: $share.$KUBE_APP.$KUBE_STAGE
-		  annotations:
-		    volume.beta.kubernetes.io/storage-class: "nafets"
-		  labels:
-		    state: "$KUBE_STAGE"
-		    app: "$KUBE_APP"
-		    share: "$share"
-		spec:
-		  capacity:
-		    storage: 100Mi
-		  accessModes:
-		    - ReadWriteMany
-		  hostPath:
-		    path: $path
-		  persistentVolumeReclaimPolicy: Retain
-
-		---
-
-		apiVersion: v1
-		kind: PersistentVolumeClaim
-		metadata:
-		  name: $share.$KUBE_APP
-		  namespace: $KUBE_NAMESPACE
-		  annotations:
-		    volume.beta.kubernetes.io/storage-class: "nafets"
-		  labels:
-		    app: "$KUBE_APP"
-		    share: "$share"
-		spec:
-		  accessModes:
-		    - ReadWriteMany
-		  resources:
-		    requests:
-		      storage: 100Mi
-		  selector:
-		    matchLabels:
-		      state: "$KUBE_STAGE"
-		      app: "$KUBE_APP"
-		      share: "$share"
-		EOF
+	kube-inst_internal-environize "KUBE_APP KUBE_STAGE share path KUBE_NAMESPACE" \
+		<$(dirname "$BASH_SOURCE")/kube/hostVolume.yaml.template \
+	| kubectl --kubeconfig $KUBE_CONFIGFILE $kube_action -f - &&
 		true || return 1
 
 		printf "%s Volume %s (app=%s, stage=%s) for %s\n" \

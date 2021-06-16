@@ -1,0 +1,49 @@
+# nfsVolume.yaml.template
+#
+# Install NFS Volume
+#
+# (C) 2021 Stefan Schallenberg
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ${share}.${KUBE_APP}.${KUBE_STAGE}
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "nafets"
+  labels:
+    state: "${KUBE_STAGE}"
+    app: "${KUBE_APP}"
+    share: "${share}"
+spec:
+  capacity:
+    storage: 100Mi
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    path: ${nfspath}
+    server: ${nfsserver}
+  persistentVolumeReclaimPolicy: Retain
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${share}.${KUBE_APP}
+  namespace: ${KUBE_NAMESPACE}
+  annotations:
+    volume.beta.kubernetes.io/storage-class: "nafets"
+  labels:
+    app: "${KUBE_APP}"
+    share: "${share}"
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 100Mi
+  selector:
+    matchLabels:
+      state: "${KUBE_STAGE}"
+      app: "${KUBE_APP}"
+      share: "${share}"
