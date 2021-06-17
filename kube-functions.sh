@@ -134,7 +134,87 @@ function kube-inst_exec {
 	return $rc
 }
 
+##### kube-inst_helm2 - install Helm Chart from repo #########################
+# Parametets:
+#   1 - release =local instance name of helm chart (unique in Kube namespace)
+#   2 - repo URL
+#	3 - repo Local Name (must be unique across all projects!)
+#   4 - chart (name in repo)
+#	5 - Version [optional, default=""]
+#	    if set, install this version of chart and dont auto-update
+#   6 - envnames [optional, default=""]
+#   stdin - yaml file for values
+function kube-inst_helm2 {
+	local release="$1"
+	local repourl="$2"
+	local reponame="$3"
+	local chart="$4"
+	local version="$5"
+	local envnames="$6"
+
+	kube-inst_internal-verify-initialised || return 1
+
+	if		[ -z "$release" ] ||
+			[ -z "$repourl" ] ||
+			[ -z "$reponame" ] ||
+			[ -z "$chart" ] ; then
+		printf "Error: Empty parms \"%s\"  \"%s\" \"%s\" \"%s\"\n" \
+			"$release" "$repourl" "$reponame" "$chart"
+		return 1
+	fi
+
+	local prm_version
+	if [ ! -z "$version" ]; then
+		prm_version="--version $version"
+	else
+		prm_version=""
+	fi
+
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		helm repo add "$reponame" "$repourl" && # does not fail if already exists
+		helm repo update &&
+		true || return 1
+
+		if ! inputyaml=$(kube-inst_internal-environize "$envnames") ; then
+			printf "Error environizing HELM values\n"
+			return 1
+		fi
+
+		if ! helm upgrade --install \
+			--kubeconfig $KUBE_CONFIGFILE \
+			--namespace $KUBE_NAMESPACE \
+			--values - \
+			$prm_version \
+			"$release" \
+			"$reponame/$chart" \
+			<<<"$inputyaml"
+		then
+			printf "Error in helm upgrade --install %s\n" \
+				"$release $reponame/$chart"
+			printf "\tValues File:\n%s\n" "$inputyaml"
+			return 1
+		fi
+	elif [ "$KUBE_ACTION" == "delete" ] ; then
+		# do not stop on error, try to delete everything
+		helm uninstall \
+			--kubeconfig $KUBE_CONFIGFILE \
+			--namespace $KUBE_NAMESPACE \
+			$release
+		helm repo remove $reponame
+	else
+		printf "%s: Error. Action (Parm1) %s unknown." \
+			"$FUNCNAME" "$1"
+		printf " Must be \"install\" or \"delete\".\n"
+		return 1
+	fi
+
+	return 0
+}
+
 ##### kube-inst_helm - install Helm Chart from URL ###########################
+# DEPRECATED
+#   This function is deprecated, please use kube-inst_helm2
+#   instead
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - release (=name) of helm chart
