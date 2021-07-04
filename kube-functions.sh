@@ -415,23 +415,32 @@ function kube-inst_tls-secret {
 		return 1
 	fi
 
-
 	# @TODO handle delete correctly, do not create a new cert !
-	printf "creating secret %s ... " "$secretname"
+	printf "%s secret %s ... " "$KUBE_ACTION_DISP" "$secretname"
 
-	local cert_key_fname cert_fname
-	cert_key_fname=$(cert_get_key $secretname) &&
-	cert_fname=$(cert_get_cert $secretname $caname) &&
+	if [ "$KUBE_ACTION" == "delete" ] ; then
+		kubectl --kubeconfig $KUBE_CONFIGFILE \
+			delete secret tls $secretname \
+			--save-config \
+			--dry-run \
+			-o yaml \
+		| kube-inst_internal-exec "-" "" \
+		|| return 1
+	elif [ "$KUBE_ACTION" == "install" ] ; then
+		local cert_key_fname cert_fname
+		cert_key_fname=$(cert_get_key $secretname) &&
+		cert_fname=$(cert_get_cert $secretname $caname) &&
 
-	kubectl --kubeconfig $KUBE_CONFIGFILE \
-		create secret tls $secretname \
-		--cert=$cert_fname \
-		--key=$cert_key_fname \
-		--save-config \
-		--dry-run \
-		-o yaml \
-	| kube-inst_internal-exec "-" "" \
-	|| return 1
+		kubectl --kubeconfig $KUBE_CONFIGFILE \
+			create secret tls $secretname \
+			--cert=$cert_fname \
+			--key=$cert_key_fname \
+			--save-config \
+			--dry-run \
+			-o yaml \
+		| kube-inst_internal-exec "-" "" \
+		|| return 1
+	fi
 
 	return 0
 }
