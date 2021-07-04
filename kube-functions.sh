@@ -148,7 +148,12 @@ function kube-inst_internal-exec {
 			"$@" \
 			-f -
 
-	return $?
+	rc=$?
+	if [ "$KUBE_ACTION" == "delete" ] ; then
+		return 0 # never fail on delete
+	fi
+
+	return $rc
 }
 
 ##### kube-inst_exec - Execute installation ##################################
@@ -425,7 +430,7 @@ function kube-inst_tls-secret {
 		--save-config \
 		--dry-run \
 		-o yaml \
-	| kubectl --kubeconfig $KUBE_CONFIGFILE $KUBE_CLI_ACTION -n $KUBE_NAMESPACE -f - \
+	| kube-inst_internal-exec "-" "" \
 	|| return 1
 
 	return 0
@@ -467,7 +472,7 @@ function kube-inst_generic-secret {
 		--save-config \
 		--dry-run \
 		-o yaml \
-	| kubectl --kubeconfig $KUBE_CONFIGFILE $KUBE_CLI_ACTION -n $KUBE_NAMESPACE -f - \
+	| kube-inst_internal-exec "-" "" \
 	|| return 1
 
 	return 0
@@ -509,7 +514,7 @@ function kube-inst_configmap {
 		--save-config \
 		--dry-run \
 		-o yaml \
-	| kubectl --kubeconfig $KUBE_CONFIGFILE $KUBE_CLI_ACTION -n $KUBE_NAMESPACE -f - \
+	| kube-inst_internal-exec "-" "" \
 	|| return 1
 
 	return 0
