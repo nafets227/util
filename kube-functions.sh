@@ -487,13 +487,18 @@ function kube-inst_generic-secret {
 	return 0
 }
 
-##### kube-inst_configmap - install Kubernetes Configmap ####################
+
+##### kube-inst_configmap2 - install Kubernetes Configmap ####################
+# Also in the files environizing will be executed
 # Prerequisite: kube-inst_init has been called
 # Parametets:
-#   1 - name of configmap
-#   2ff - name of file(s)
-function kube-inst_configmap {
+#   1 - name of configmap2
+#   2 - envnames [optional, default=""]
+#   3ff - name of file(s)
+function kube-inst_configmap2 {
 	local cmapname="$1"
+	shift
+	local envnames="$1"
 	shift
 
 	kube-inst_internal-verify-initialised || return 1
@@ -510,7 +515,7 @@ function kube-inst_configmap {
 	# it may be also a directory or a string like logicalname=realname
 	fi
 
-	printf "%s configmap %s ... " "$KUBE_ACTION_DISP" "$secretname"
+	printf "%s configmap %s ... " "$KUBE_ACTION_DISP" "$cmapname"
 
 	local fromfilearg=""
 	for a in "$@" ; do
@@ -523,10 +528,27 @@ function kube-inst_configmap {
 		--save-config \
 		--dry-run \
 		-o yaml \
-	| kube-inst_internal-exec "-" "" \
+	| kube-inst_internal-exec "-" "$envnames" \
 	|| return 1
 
 	return 0
+}
+
+##### kube-inst_configmap - install Kubernetes Configmap ####################
+# DEPRECATED
+#   This function is deprecated, please use kube-inst_configmap2
+#   instead
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - name of configmap
+#   2ff - name of file(s)
+function kube-inst_configmap {
+	local cmapname="$1"
+	shift
+
+	kube-inst_configmap2 "$cmapname" "" "$@"
+
+	return $?
 }
 
 ##### kube-inst_nfs-volume - Install NFS Volume ##############################
