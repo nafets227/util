@@ -110,7 +110,7 @@ function kube-inst_internal-environize {
 			sed_parms="$sed_parms -e 's/\${$f}/${value//\//\\\/}/g'"
 		else
 			printf "%s: variable for envname %s not defined.\n" \
-				"$FUNCNAME" "$f"
+				"$FUNCNAME" "$f" >&2
 		fi
 	done; fi
 	#DEBUG
