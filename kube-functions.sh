@@ -422,7 +422,7 @@ function kube-inst_tls-secret {
 		kubectl --kubeconfig $KUBE_CONFIGFILE \
 			delete secret tls $secretname \
 			--save-config \
-			--dry-run \
+			--dry-run=client \
 			-o yaml \
 		| kube-inst_internal-exec "-" "" \
 		|| return 1
@@ -436,7 +436,7 @@ function kube-inst_tls-secret {
 			--cert=$cert_fname \
 			--key=$cert_key_fname \
 			--save-config \
-			--dry-run \
+			--dry-run=client \
 			-o yaml \
 		| kube-inst_internal-exec "-" "" \
 		|| return 1
@@ -479,7 +479,7 @@ function kube-inst_generic-secret {
 		create secret generic $secretname \
 		$fromfilearg \
 		--save-config \
-		--dry-run \
+		--dry-run=client \
 		-o yaml \
 	| kube-inst_internal-exec "-" "" \
 	|| return 1
@@ -526,7 +526,7 @@ function kube-inst_configmap2 {
 		create configmap $cmapname \
 		$fromfilearg \
 		--save-config \
-		--dry-run \
+		--dry-run=client \
 		-o yaml \
 	| kube-inst_internal-exec "-" "$envnames" \
 	|| return 1
