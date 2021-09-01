@@ -515,8 +515,8 @@ function kvm_start_vm {
 			fi
 			EOF
 			tail -1) &&
-		[ "$vmstatus" == "running" ] &&
-		return 0
+		[ "$vmstatus" == "running" ] && return 0
+		[ "$vmstatus" == "degraded" ] && return 1
 
 		printf "Waiting another %s seconds for machine %s to appear (%s/%s) %s\n" \
 			"$sleepNext" "$vmname" "$slept" "$sleepMax" "$vmstatus"
