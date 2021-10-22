@@ -177,8 +177,9 @@ function kube-inst_internal-exec {
 #           ip=myipvalue
 #       before the yaml file will be processed by kubernetes.
 function kube-inst_exec {
-	local confdir="$(realpath ${1:-./kube})"
-	local envnames="$2 KUBE_APP"
+	local confdir envnames
+	confdir="$(realpath ${1:-./kube})" || return 1
+	envnames="$2 KUBE_APP"
 
 	kube-inst_internal-verify-initialised || return 1
 
