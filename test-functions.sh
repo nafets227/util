@@ -104,7 +104,7 @@ function test_exec_init {
 	testexecnr=$testnr
 
 	printf "Executing Test %d (%s:%s %s) ... " "$testnr" \
-		"${BASH_SOURCE[2]}" "${BASH_LINENO[1]}" "${FUNCNAME[2]} "
+		"${BASH_SOURCE[2]}" "${BASH_LINENO[1]}" "${FUNCNAME[2]}"
 
 	if [ ! -z "$testdesc" ] ; then
 		printf "\t%s\n" "$testdesc"
@@ -386,7 +386,7 @@ function test_expect_files {
 		testdir="$TESTSETDIR/$testdir"
 	fi
 
-	testresult=$( set -o pipefail ; ls -1A $testdir | wc -l)
+	testresult=$( set -o pipefail ; ls -1A $testdir 2>/dev/null | wc -l)
 	rc=$?
 
 	if [ "$rc" != 0 ] ; then
