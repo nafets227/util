@@ -291,6 +291,25 @@ function test_exec_sendmail {
 	fi
 }
 
+function test_assert {
+	testnr=$(( ${testnr-0} + 1))
+
+	printf "Executing Assert %d (Manual %s:%s %s) ... " "$testnr" \
+		"${BASH_SOURCE[1]}" "${BASH_LINENO[0]}" "${FUNCNAME[1]}"
+
+	if [ "$1" != "0" ] ; then
+		printf "FAILED: %s\n" "$2"
+		TESTRC=1
+		testsetfailed="$testsetfailed $testnr"
+		return $TESTRC
+	fi
+
+	printf "OK\n"
+	TESTRC=0
+	testsetok=$(( ${testsetok-0} + 1))
+	return $TESTRC
+}
+
 function test_assert_tools {
 	testnr=$(( ${testnr-0} + 1))
 
