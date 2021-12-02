@@ -371,6 +371,41 @@ function test_assert_files {
 	return $TESTRC
 }
 
+function test_expect_file_missing {
+	testnr=$(( ${testnr-0} + 1))
+	# not increasing testexecnr
+
+	# parm 1: file
+	local testfile="$1"
+	local rc
+
+	if [ ${testfile:0:1} != "/" ] ; then
+		testfile="$TESTSETDIR/$testfile"
+	fi
+
+	testresult=$(ls -1A $testfile 2>/dev/null )
+	rc=$?
+
+	if [ "$rc" == "1" ] || [ "$rc" == "2" ]; then
+		printf "\tCHECK %s OK.\n" "$testnr"
+		testsetok=$(( ${testsetok-0} + 1))
+		return 0
+	elif [ "$rc" == "0" ] ; then
+		printf "\tCHECK %s FAILED. File '%s' exists\n" \
+			"$testnr" "$1"
+		testsetfailed="$testsetfailed $testnr"
+		return 0
+	else
+		printf "\tCHECK %s FAILED. Cannot get files in '%s'\n" \
+			"$testnr" "$1"
+		testsetfailed="$testsetfailed $testnr"
+		return 1
+	fi
+
+	# should not reach this
+	return 99
+}
+
 function test_expect_files {
 	testnr=$(( ${testnr-0} + 1))
 	# not increasing testexecnr
