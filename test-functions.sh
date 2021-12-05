@@ -371,6 +371,30 @@ function test_assert_files {
 	return $TESTRC
 }
 
+function test_expect_value {
+	testnr=$(( ${testnr-0} + 1))
+	# not increasing testexecnr
+
+	# parm 1: file
+	local testvalue="$1"
+	local testvalexpected="$2"
+	local rc
+
+	if [ "$testvalue" == "$testvalexpected" ] ; then
+		printf "\tCHECK %s OK.\n" "$testnr"
+		testsetok=$(( ${testsetok-0} + 1))
+		return 0
+	else
+		printf "\tCHECK %s FAILED. Value='%s' (exp='%s')\n" \
+			"$testnr" "$testvalue" "$testvalexpected"
+		testsetfailed="$testsetfailed $testnr"
+		return 0
+	fi
+
+	# should not reach this
+	return 99
+}
+
 function test_expect_file_missing {
 	testnr=$(( ${testnr-0} + 1))
 	# not increasing testexecnr
