@@ -117,11 +117,13 @@ function test_lastoutput_contains {
 	testnr=$(( ${testnr-0} + 1))
 	# not increasing testexecnr
 	local search="$1"
-	local extension="${2-.out}"
+	local extension="${2:-.out}"
+	local grepopts="$3"
+	local altsearch="$4"
 
 	local grep_cnt
-	grep_cnt=$(grep -z -c "$search" <$TESTSETDIR/$testexecnr$extension)
-	if [ $? -ne 0 ] ; then
+	grep_cnt=$(grep -c $grepopts "$search" <$TESTSETDIR/$testexecnr$extension)
+	if [ $? -gt 1 ] ; then
 		# grep error
 		printf "ERROR checking %s. Search: '%s'\n" \
 			"$testnr" "$search"
@@ -131,9 +133,11 @@ function test_lastoutput_contains {
 		# expected text not in output.
 		printf "CHECK %s FAILED. '%s' not found in output of test %s\n" \
 			"$testnr" "$search" "$testexecnr"
-		printf "========== Output Test %d Begin ==========\n" "$testexecnr"
-		cat $TESTSETDIR/$testexecnr.out
-		printf "========== Output Test %d End ==========\n" "$testexecnr"
+		if [ ! -z "$altsearch" ] ; then
+			printf "========== Selected Output Test %d Begin ==========\n" "$testexecnr"
+			grep "$altsearch" $TESTSETDIR/$testexecnr$extension
+			printf "========== Selected Output Test %d End ==========\n" "$testexecnr"
+		fi
 		testsetfailed="$testsetfailed $testnr"
 	else
 		# expected text in output -> OK
