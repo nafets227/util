@@ -16,7 +16,7 @@ subjects:
   name: ${cronjobname}
   namespace: ${KUBE_NAMESPACE}
 ---
-apiVersion: batch/v1beta1
+apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: ${cronjobname}
