@@ -383,7 +383,7 @@ function kvm_create-vm () {
 	# !!! --boot must be last to avoid deleting the ''
 	if [ "$prm_efi" == "1" ] ; then
 		virt_prms="$virt_prms
-			--boot loader=/usr/share/ovmf/x64/OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/usr/share/ovmf/x64/OVMF_VARS.fd,loader_secure=no
+			--boot uefi
 			"
 	elif [ ! -r "$prm_boot" ] ; then
 		virt_prms="$virt_prms
