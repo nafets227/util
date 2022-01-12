@@ -278,45 +278,23 @@ function inst-arch_baseos {
 		mkinitcpio -p linux
 		EOF
 
-	# Concfigure Grub for both XEN ( in /boot/grub/grub.cfg) and
-	# EFI or raw boot ( in /boot/grub2/grub/grub.cfg )
+	# Configure Grub for EFI or raw boot ( in /boot/grub/grub.cfg )
 	printf "Configuring Grub on %s\n" "$INSTALL_ROOT" >&2
-
-	# Install grub.cfg for XEN booting.
-	# This is a minimum file to serve as input for pygrub during
-	# XEN loading of image.
-	mkdir -p $INSTALL_ROOT/boot/grub 2>/dev/null
-	cat >$INSTALL_ROOT/boot/grub/grub.cfg <<-EOFGRUB || return 1
-		# by $OURSELVES
-		menuentry 'Arch Linux for XEN pygrub' {
-			set root='hd0,msdos1'
-			echo    'Loading Linux core repo kernel ...'
-			linux   /boot/vmlinuz-linux root=/dev/xvda1 ro
-			echo    'Loading initial ramdisk ...'
-			initrd  /boot/initramfs-linux.img
-		}
-		EOFGRUB
 
 	# Install grub2 Config for booting efi or raw.
 	# We insert parameters for console to be able to use it
 	# when starting as virtual machine.
-	mkdir -p $INSTALL_ROOT/boot/grub2/grub 2>/dev/null
+	mkdir -p $INSTALL_ROOT/boot/grub 2>/dev/null
+
 	# does not work when starting bare-metal:
 	# kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
 	sed_cmd="s:"
 	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
 	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":"
 	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub
-	#cat >>$INSTALL_ROOT/etc/default/grub <<-EOF
-	#
-	#	## Serial console
-	#	## by $OURSELVES
-	#	GRUB_TERMINAL=serial
-	#	GRUB_SERIAL_COMMAND="serial --speed=38400 --unit=0 --word=8 --parity=no --stop=1"
-	#	EOF
-	#
+
 	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
-		grub-mkconfig >/boot/grub2/grub/grub.cfg || exit 1
+		grub-mkconfig >/boot/grub/grub.cfg || exit 1
 		EOFGRUB
 
 	# Configure an autoupdate Service and timer.
@@ -469,7 +447,6 @@ function inst-arch_bootmgr-grubefi {
 		pacman -S --needed --noconfirm efibootmgr || exit 1
 		grub-install \
 			--target=x86_64-efi \
-			--boot-directory=/boot/grub2 \
 			--efi-directory=/boot/efi/ \
 			--no-bootsector \
 			--no-nvram \
@@ -504,13 +481,13 @@ function inst-arch_bootmgr-grubefi {
 	return 0
 }
 
-##### Install Grub for efi ###################################################
+##### Install Grub for raw ###################################################
 function inst-arch_bootmgr-grubraw {
 	# Parameters:
 	#    1 - rawdev [optional, autoprobed to device of INSTALL_ROOT]
-	#    2 - bootdir [optional, default /boot/grub2]
+	#    2 - bootdir [optional, default /boot]
 	local rawdev="$1"
-	local bootdir="${2-/boot/grub2}"
+	local bootdir="${2-/boot}"
 
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
