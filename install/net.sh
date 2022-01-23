@@ -192,6 +192,7 @@ function install-net_static {
 	local ipvlan="${6:-""}"
 	local bridge="${7:-""}"
 	local forward="${8:-""}"
+	local ip6token="${9:-""}"
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
@@ -304,6 +305,12 @@ function install-net_static {
 		EOF
 	fi
 
+	if [ ! -z "$ip6token" ] ; then
+		cat >>$cfgfile <<-EOF
+			IPv6Token=$ip6token
+		EOF
+	fi
+
 	if [ -f $INSTALL_ROOT/etc/resolv.conf ] || [ -l $INSTALL_ROOT/etc/resolv.conf ]; then
 		rm $INSTALL_ROOT/etc/resolv.conf
 	fi
@@ -332,6 +339,12 @@ function install-net_static {
 	fi
 	if [ ! -z "$bridge" ] ; then
 		printf "\tBridges=%s\n" "$bridge"
+	fi
+	if [ ! -z "$forward" ] ; then
+		printf "\tForward=%s\n" "$forward"
+	fi
+	if [ ! -z "$ip6token" ] ; then
+		printf "\tIPv6Token=%s\n" "$ip6token"
 	fi
 
 	return 0
