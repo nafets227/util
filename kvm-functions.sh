@@ -515,8 +515,17 @@ function kvm_start_vm {
 			fi
 			EOF
 			tail -1) &&
-		[ "$vmstatus" == "running" ] && return 0
-		[ "$vmstatus" == "degraded" ] && return 1
+		if [ "$vmstatus" == "running" ] ; then
+			return 0
+		elif [ "$vmstatus" == "degraded" ] ; then
+			printf "ERROR: machine %s did not completely start (degraded)\n" \
+				"$MNAME"
+			printf "Following Services could not be started:\n"
+			ssh -o StrictHostKeyChecking=no -q "$dnsname" <<-EOF
+				/usr/bin/systemctl --failed --no-pager --plain --no-legend --full
+				EOF
+			return 1
+		fi
 
 		printf "Waiting another %s seconds for machine %s to appear (%s/%s) %s\n" \
 			"$sleepNext" "$vmname" "$slept" "$sleepMax" "$vmstatus"
@@ -525,12 +534,6 @@ function kvm_start_vm {
 
 	printf "ERROR: Timed out waiting %s seconds for machine %s\n" \
 		"$sleepMax" "$MNAME"
-	if [ "$(head -1 <<<"$vmstatus")" == "degraded" ] ; then
-		printf "Following Services could not be started:\n"
-		ssh -o StrictHostKeyChecking=no "$dnsname" <<-EOF
-			/usr/bin/systemctl --failed --no-pager --plain --no-legend --full
-			EOF
-	fi
 
 	return 1
 }
