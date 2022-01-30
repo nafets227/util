@@ -435,6 +435,10 @@ function inst-arch_basearm {
 
 ##### Install Grub for efi ###################################################
 function inst-arch_bootmgr-grubefi {
+	# Parameters:
+	#    1 - EFI Workaround (default: 1)
+	local efibugfix="${1:-1}"
+
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
@@ -453,30 +457,32 @@ function inst-arch_bootmgr-grubefi {
 			|| exit 1
 		EOFGRUB
 
-	# Bugfix EFI buggy BIOS - will be redone by systemd ervice
-	# nafetsde-efiboot on each shutdown
-	mkdir -p $INSTALL_ROOT/boot/efi/EFI/BOOT 2>/dev/null
-	cp -a	$INSTALL_ROOT/boot/efi/EFI/arch/grubx64.efi \
-		$INSTALL_ROOT/boot/efi/EFI/BOOT/BOOTx64.EFI \
-		|| return 1
+	if [ "$efibugfix" == "1" ] ; then
+		# Bugfix EFI buggy BIOS - will be redone by systemd ervice
+		# nafetsde-efiboot on each shutdown
+		mkdir -p $INSTALL_ROOT/boot/efi/EFI/BOOT 2>/dev/null
+		cp -a	$INSTALL_ROOT/boot/efi/EFI/arch/grubx64.efi \
+			$INSTALL_ROOT/boot/efi/EFI/BOOT/BOOTx64.EFI \
+			|| return 1
 
-	cat >$INSTALL_ROOT/etc/systemd/system/nafetsde-efiboot.service <<-"EOF" || return 1
-		# nafetsde-efiboot.service
-		#
-		# (C) 2015 Stefan Schallenberg
-		#
-		[Unit]
-		Description="efiboot Updates on Shutdown for Buggy EFI-BIOS"
+		cat >$INSTALL_ROOT/etc/systemd/system/nafetsde-efiboot.service <<-"EOF" || return 1
+			# nafetsde-efiboot.service
+			#
+			# (C) 2015 Stefan Schallenberg
+			#
+			[Unit]
+			Description="efiboot Updates on Shutdown for Buggy EFI-BIOS"
 
-		[Service]
-		Type=oneshot
-		RemainAfterExit=yes
-		ExecStop=/usr/bin/cp -a /boot/efi/EFI/arch/grubx64.efi /boot/efi/EFI/BOOT/BOOTx64.EFI
+			[Service]
+			Type=oneshot
+			RemainAfterExit=yes
+			ExecStop=/usr/bin/cp -a /boot/efi/EFI/arch/grubx64.efi /boot/efi/EFI/BOOT/BOOTx64.EFI
 
-		[Install]
-		WantedBy=multi-user.target
-		EOF
-	systemctl --root=$INSTALL_ROOT enable nafetsde-efiboot.service
+			[Install]
+			WantedBy=multi-user.target
+			EOF
+		systemctl --root=$INSTALL_ROOT enable nafetsde-efiboot.service
+	fi
 
 	return 0
 }
