@@ -260,9 +260,9 @@ function install-net_static {
 		if [ "$ip_net" == "192.168.108" ] ; then
 			cat >>$cfgfile <<-EOF
 				Gateway=$ip_net.250
-				DNS=$ip_net.1
+				DNS=$ip_net.10
 				DNS=$ip_net.250
-				NTP=$ip_net.1
+				NTP=$ip_net.250
 				Domains=$dom
 				EOF
 		fi
