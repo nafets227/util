@@ -82,18 +82,15 @@ function inst-arch_init-fulldisk () {
 		wipefs --all --force $diskdev || return 1
 	fi
 
-	parted -s -- "$diskdev" mklabel gpt &&
-	parted -s -- "$diskdev" mkpart primary fat32 128M 256M &&
-	parted -s -- "$diskdev" set 1 esp on &&
-	parted -s -- "$diskdev" mkpart primary 384M 512M &&
-	parted -s -- "$diskdev" set 2 bios_grub on &&
-	parted -s -- "$diskdev" mkpart primary ext4 512M 100% \
-	|| return 1
+	sfdisk $diskdev <<-EOF || return 1
+		label: gpt
+		1 : size=256M, type="EFI System", name="$name-efi"
+		2 : type="Linux root (x86-64)", name="$name-root"
+		EOF
 
 	parts=$(kpartx -asv "$(realpath "$diskdev")" | \
 		sed -n -e 's:^add map \([A-Za-z0-9\-]*\).*:\1:p') &&
 	part_efi=$(head -1 <<<$parts) &&
-	part_bios=$(head -2 <<<$parts | tail -1) &&
 	part_root=$(tail -1 <<<$parts) \
 	|| return 1
 
