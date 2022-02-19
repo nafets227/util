@@ -531,6 +531,42 @@ function inst-arch_bootmgr-grubraw {
 	return 0
 }
 
+#### inst-arch_bootmgr-systemd ###############################################
+function inst-arch_bootmgr-systemd {
+	# Parameters:
+	#    1 - efidir [optional, default /boot/efi]
+	local efidir="${1:-/boot/efi}"
+
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	elif [ ! -w $INSTALL_ROOT/etc/mkinitcpio.d/linux.preset ] ; then
+		printf "%s: Error %s  does not exist or ist not writable\n" \
+			"$FUNCNAME"  "/etc/mkinitcpio.d/linux.preset" >&2
+		return 1
+	fi
+
+	#----- Real Work -----------------------------------------------------
+	cat >>$INSTALL_ROOT/etc/mkinitcpio.d/linux.preset <<-EOF &&
+		default_efi_image="$efidir/EFI/Linux/archlinux-linux.efi"
+		default_options="-A systemd"
+		fallback_efi_image="$efidir/EFI/Linux/archlinux-linux-fallback.efi"
+		fallback_options="-S autodetect -A systemd"
+
+		ALL_microcode=(/boot/*-ucode.img)
+		EOF
+
+	touch $INSTALL_ROOT/etc/kernel/cmdline
+	arch-chroot $INSTALL_ROOT bootctl install --no-variables &&
+	arch-chroot $INSTALL_ROOT mkinitcpio -p linux &&
+	systemctl enable systemd-boot-update.service &&
+	true || return 1
+
+	return 0
+}
+
 #### inst-arch_add_repo ######################################################
 function inst-arch_add_repo () {
 	local readonly PACCONF=$INSTALL_ROOT/etc/pacman.conf
