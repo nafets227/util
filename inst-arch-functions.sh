@@ -275,28 +275,12 @@ function inst-arch_baseos {
 		mkinitcpio -p linux
 		EOF
 
-	# Configure Grub for EFI or raw boot ( in /boot/grub/grub.cfg )
-	printf "Configuring Grub on %s\n" "$INSTALL_ROOT" >&2
-
-	# Install grub2 Config for booting efi or raw.
-	# We insert parameters for console to be able to use it
-	# when starting as virtual machine.
-	mkdir -p $INSTALL_ROOT/boot/grub 2>/dev/null
-
+	# We insert parameters for console to be able to use it when starting as
+	# virtual machine. But it does not work when starting bare-metal:
+	# kernel_parm+=" consoleblank=0 console=ttyS0,115200n8 console=tty0"
 	cat >$INSTALL_ROOT/etc/kernel/cmdline <<-EOF || return 1
 		${kernel_parm}
 		EOF
-
-	# does not work when starting bare-metal:
-	# kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
-	sed_cmd="s:"
-	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
-	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\$(cat /etc/kernel/cmdline) \\1\":"
-	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub
-
-	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
-		grub-mkconfig >/boot/grub/grub.cfg || exit 1
-		EOFGRUB
 
 	# Configure an autoupdate Service and timer.
 	# if updatetim is blank, disable it
@@ -434,6 +418,28 @@ function inst-arch_basearm {
 	return 0
 }
 
+##### create Grub Config #####################################################
+function inst-arch_bootmgr-grubconfig {
+	# Configure Grub for EFI or raw boot ( in /boot/grub/grub.cfg )
+	printf "Configuring Grub on %s\n" "$INSTALL_ROOT" >&2
+
+	# Install grub2 Config for booting efi or raw.
+	mkdir -p $INSTALL_ROOT/boot/grub 2>/dev/null &&
+
+	sed_cmd="s:"
+	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
+	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\$(cat /etc/kernel/cmdline) \\1\":"
+	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub &&
+
+	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" &&
+		grub-mkconfig >/boot/grub/grub.cfg || exit 1
+		EOFGRUB
+
+	true || return 1
+
+	return 0
+}
+
 ##### Install Grub for efi ###################################################
 function inst-arch_bootmgr-grubefi {
 	# Parameters:
@@ -446,7 +452,9 @@ function inst-arch_bootmgr-grubefi {
 		return 1
 	fi
 
-	printf "Installing Grub-EFI on %s\n" "$INSTALL_ROOT" >&2
+	inst-arch_bootmgr-grubconfig || return 1
+
+	printf "Installing Grub-EFI on %s in %s\n" "$INSTALL_ROOT" "$efidir" >&2
 
 	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
 		pacman -S --needed --noconfirm efibootmgr || exit 1
@@ -516,6 +524,8 @@ function inst-arch_bootmgr-grubraw {
 		printf "Raw Device %s is no block device.\n" "$rawdev" >&2
 		return 1
 	fi
+
+	inst-arch_bootmgr-grubconfig || return 1
 
 	printf "Installing Grub-Raw on %s (%s) for %s\n" \
 		"$INSTALL_ROOT" "$rawdev" "$bootdir" >&2
