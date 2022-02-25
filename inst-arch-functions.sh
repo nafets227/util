@@ -283,11 +283,15 @@ function inst-arch_baseos {
 	# when starting as virtual machine.
 	mkdir -p $INSTALL_ROOT/boot/grub 2>/dev/null
 
+	cat >$INSTALL_ROOT/etc/kernel/cmdline <<-EOF || return 1
+		${kernel_parm}
+		EOF
+
 	# does not work when starting bare-metal:
 	# kernel_parm="consoleblank=0 console=ttyS0,115200n8 console=tty0"
 	sed_cmd="s:"
 	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
-	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"${kernel_parm}\\1\":"
+	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\$(cat /etc/kernel/cmdline) \\1\":"
 	sed -i.orig -e "$sed_cmd" $INSTALL_ROOT/etc/default/grub
 
 	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
