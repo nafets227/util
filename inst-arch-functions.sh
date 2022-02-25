@@ -60,8 +60,10 @@ function inst-arch_init-fulldisk () {
 	# Parameters:
 	#    1 - hostname
 	#    2 - device
+	#    3 - boot mount point [options, default /boot/efi]
 	local name="$1"
 	local diskdev="$2"
+	local bootmnt="${3-/boot/efi}"
 
 	printf "About to install Arch Linux for %s\n" "$name" >&2
 	printf "Disk-Device: %s (%s)\n" \
@@ -101,7 +103,7 @@ function inst-arch_init-fulldisk () {
 	INSTALL_FINALIZE_CMD="kpartx -d $(realpath "$diskdev")"
 
 	inst-arch_initinternal "$name" "/dev/mapper/$part_root" \
-		"/dev/mapper/$part_efi" "/boot/efi" \
+		"/dev/mapper/$part_efi" "$bootmnt" \
 		|| return 1
 
 	return 0
@@ -172,6 +174,9 @@ function inst-arch_initinternal () {
 	# the funtion inst-arch_finalize
 	export INSTALL_ROOT
 
+	INSTALL_BOOT="$bootmnt" || return 1
+	export INSTALL_BOOT || return 1
+
 	# Create root Filesystems and mount it
 	wipefs --all --force $rootdev || return 1
 	mkfs.ext4 $rootdev >&2 || return 1
@@ -204,7 +209,7 @@ function inst-arch_finalize {
 		$INSTALL_FINALIZE_CMD
 	fi
 
-	unset INSTALL_ROOT
+	unset INSTALL_ROOT INSTALL_BOOT
 
 	return 0
 }
@@ -450,17 +455,21 @@ function inst-arch_bootmgr-grubefi {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
+	elif [ -z "$INSTALL_BOOT" ] ; then
+		printf "%s: Error \$INSTALL_BOOT is not set\n" \
+			"$FUNCNAME" >&2
+		return 1
 	fi
 
 	inst-arch_bootmgr-grubconfig || return 1
 
-	printf "Installing Grub-EFI on %s in %s\n" "$INSTALL_ROOT" "$efidir" >&2
+	printf "Installing Grub-EFI on %s in %s\n" "$INSTALL_ROOT" "$INSTALL_BOOT" >&2
 
-	inst-arch_chroot-helper $INSTALL_ROOT <<-"EOFGRUB" || return 1
+	inst-arch_chroot-helper $INSTALL_ROOT <<-EOFGRUB || return 1
 		pacman -S --needed --noconfirm efibootmgr || exit 1
 		grub-install \
 			--target=x86_64-efi \
-			--efi-directory=/boot/efi/ \
+			--efi-directory=$INSTALL_BOOT \
 			--no-bootsector \
 			--no-nvram \
 			|| exit 1
@@ -469,12 +478,12 @@ function inst-arch_bootmgr-grubefi {
 	if [ "$efibugfix" == "1" ] ; then
 		# Bugfix EFI buggy BIOS - will be redone by systemd ervice
 		# nafetsde-efiboot on each shutdown
-		mkdir -p $INSTALL_ROOT/boot/efi/EFI/BOOT 2>/dev/null
-		cp -a	$INSTALL_ROOT/boot/efi/EFI/arch/grubx64.efi \
-			$INSTALL_ROOT/boot/efi/EFI/BOOT/BOOTx64.EFI \
+		mkdir -p $INSTALL_ROOT/$INSTALL_BOOT/EFI/BOOT 2>/dev/null
+		cp -a	$INSTALL_ROOT/$INSTALL_BOOT/EFI/arch/grubx64.efi \
+			$INSTALL_ROOT/$INSTALL_BOOT/EFI/BOOT/BOOTx64.EFI \
 			|| return 1
 
-		cat >$INSTALL_ROOT/etc/systemd/system/nafetsde-efiboot.service <<-"EOF" || return 1
+		cat >$INSTALL_ROOT/etc/systemd/system/nafetsde-efiboot.service <<-EOF || return 1
 			# nafetsde-efiboot.service
 			#
 			# (C) 2015 Stefan Schallenberg
@@ -485,7 +494,7 @@ function inst-arch_bootmgr-grubefi {
 			[Service]
 			Type=oneshot
 			RemainAfterExit=yes
-			ExecStop=/usr/bin/cp -a /boot/efi/EFI/arch/grubx64.efi /boot/efi/EFI/BOOT/BOOTx64.EFI
+			ExecStop=/usr/bin/cp -a $INSTALL_BOOT/EFI/arch/grubx64.efi $INSTALL_BOOT/EFI/BOOT/BOOTx64.EFI
 
 			[Install]
 			WantedBy=multi-user.target
@@ -544,14 +553,15 @@ function inst-arch_bootmgr-grubraw {
 
 #### inst-arch_bootmgr-systemd ###############################################
 function inst-arch_bootmgr-systemd {
-	# Parameters:
-	#    1 - efidir [optional, default /boot/efi]
-	local efidir="${1:-/boot/efi}"
 
 	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
+		return 1
+	elif [ -z "$INSTALL_BOOT" ] ; then
+		printf "%s: Error \$INSTALL_BOOT is not set\n" \
+			"$FUNCNAME" >&2
 		return 1
 	elif [ ! -w $INSTALL_ROOT/etc/mkinitcpio.d/linux.preset ] ; then
 		printf "%s: Error %s  does not exist or ist not writable\n" \
@@ -561,9 +571,9 @@ function inst-arch_bootmgr-systemd {
 
 	#----- Real Work -----------------------------------------------------
 	cat >>$INSTALL_ROOT/etc/mkinitcpio.d/linux.preset <<-EOF &&
-		default_efi_image="$efidir/EFI/Linux/archlinux-linux.efi"
+		default_efi_image="$INSTALL_BOOT/EFI/Linux/archlinux-linux.efi"
 		default_options="-A systemd"
-		fallback_efi_image="$efidir/EFI/Linux/archlinux-linux-fallback.efi"
+		fallback_efi_image="$INSTALL_BOOT/EFI/Linux/archlinux-linux-fallback.efi"
 		fallback_options="-S autodetect -A systemd"
 
 		ALL_microcode=(/boot/*-ucode.img)
