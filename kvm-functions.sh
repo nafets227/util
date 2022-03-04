@@ -292,6 +292,7 @@ function kvm_create-vm () {
 		--events on_crash=restart
 		--noautoconsole
 		--noreboot
+		--osinfo=linux2020
 		"
 	if [ ! -z "$prm_disk2" ] ; then
 		virt_prms="$virt_prms
