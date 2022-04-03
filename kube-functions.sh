@@ -343,6 +343,58 @@ function kube-inst_helm2 {
 	return 0
 }
 
+##### kube-inst_testhelm2 - test helm chart installed ########################
+#   1 - release =local instance name of helm chart (unique in Kube namespace)
+function kube-inst_testhelm2 {
+	local release="$1"
+
+	kube-inst_internal-verify-initialised || return 1
+
+	if [ -z "$release" ] ; then
+		printf "Error: Empty value for parm release\n"
+		return 1
+	elif [ "$KUBE_ACTION" != "install" ] ; then
+		printf "Error: testhelm only allowed in install phase\n"
+		return 1
+	fi
+
+	# wait for chart install to complete
+	# currently disabled as first example, jenkins, does this inside the chart tests
+	# helm status \
+	#	--kubeconfig $KUBE_CONFGIGFILE \
+	#	--namespace $KUBE_NAMESPACE \
+	#	$release -o json | \
+	# jq  -r '.info.status'
+	# should return "deployed".
+
+	helm test \
+		--kubeconfig $KUBE_CONFIGFILE \
+		--namespace $KUBE_NAMESPACE \
+		"$release"
+	rc="$?"
+	if [ "$rc" != "0" ] ; then
+		# helm test --logs currently (2022-04) does not work
+		# maybe https://github.com/helm/helm/pull/10603 will solve it.
+		# So we workaround identifying the pods ourselves.
+		pods=$( kubectl get pods \
+			--kubeconfig $KUBE_CONFIGFILE \
+			--namespace $KUBE_NAMESPACE \
+			--output jsonpath='{.items[?(@.metadata.annotations.helm\.sh/hook=="test-success")].metadata.name}'
+		) &&
+		for pod in $pods ; do
+			printf -- "----- Logs of Pod $pod -----\n"
+			kubectl logs \
+				--kubeconfig $KUBE_CONFIGFILE \
+				--namespace $KUBE_NAMESPACE \
+				--all-containers \
+				$pod
+			printf -- "----- End of Logs of Pod $pod -----\n"
+			done
+	fi
+
+	return $rc
+}
+
 ##### kube-inst_helm - install Helm Chart from URL ###########################
 # DEPRECATED
 #   This function is deprecated, please use kube-inst_helm2
