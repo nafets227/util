@@ -198,6 +198,16 @@ function inst-arch_finalize {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
+	elif [ -z "$INSTALL_BOOT" ] ; then
+		printf "%s: Error \$INSTALL_BOOT is not set\n" \
+			"$FUNCNAME" >&2
+		return 1
+	fi
+
+	# / and /efi are automatically mounted by systemd, so we ignore them here.
+	if [ "$INSTALL_BOOT" != "/efi" ] ; then
+		genfstab -U -p -f $INSTALL_ROOT$INSTALL_BOOT $INSTALL_ROOT \
+			>>$INSTALL_ROOT/etc/fstab || return 1
 	fi
 
 	# From here on we do not do any error handling.
@@ -254,7 +264,6 @@ function inst-arch_baseos {
 
 	#Bootstrap the new system
 	pacstrap -c -d $INSTALL_ROOT base openssh grub linux linux-firmware pacutils $extrapkg || return 1
-	genfstab -U -p $INSTALL_ROOT >$INSTALL_ROOT/etc/fstab || return 1
 
 	# Now include the needed modules in initcpio
 	if [ ! -z "$extramod" ] ; then
