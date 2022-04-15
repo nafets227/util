@@ -303,7 +303,7 @@ function inst-arch_baseos {
 
 	install-timer \
 		"nafetsde-autoupdate" \
-		"/bin/bash -c \"pacman -Suy --noconfirm $pkgs_ignore && systemctl reboot\"" \
+		"/bin/bash -c \"ls $INSTALL_BOOT && pacman -Suy --noconfirm $pkgs_ignore && systemctl reboot\"" \
 		"" \
 		"" \
 		"*-*-* ${updatetim-1:00}" \
