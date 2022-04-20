@@ -118,7 +118,7 @@ function kube-inst_internal-environize {
 	#set -x
 
 	if [ ! -z "$sed_parms" ] ; then
-		eval sed $sed_parms || return 1
+		eval sed ${sed_parms//$'\n'/\\n} || return 1
 	else
 		cat
 	fi
