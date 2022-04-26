@@ -540,6 +540,45 @@ function kube-inst_generic-secret {
 	return 0
 }
 
+##### kube-inst_text-secret - install Kubernetes Secret using cert* helper ########
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - name of secret
+#   2 - content (text) of the secret
+function kube-inst_text-secret {
+	local secretname="$1"
+	shift
+
+	kube-inst_internal-verify-initialised || return 1
+
+	if [ -z "$secretname" ] ; then
+		printf "%s: Error. Got no or empty secret name.\n" \
+			"$FUNCNAME"
+		return 1
+	elif [ -z "$1" ] ; then
+		printf "%s: Error. Got no or empty content.\n" \
+			"$FUNCNAME"
+		return 1
+	fi
+
+	printf "%s secret %s ... " "$KUBE_ACTION_DISP" "$secretname"
+
+	local fromliteralarg=""
+	for a in "$@" ; do
+		fromliteralarg+=" --from-literal=$a"
+	done
+
+	kubectl --kubeconfig $KUBE_CONFIGFILE \
+		create secret generic $secretname \
+		$fromliteralarg \
+		--save-config \
+		--dry-run=client \
+		-o yaml \
+	| kube-inst_internal-exec "-" "" \
+	|| return 1
+
+	return 0
+}
 
 ##### kube-inst_configmap2 - install Kubernetes Configmap ####################
 # Also in the files environizing will be executed
