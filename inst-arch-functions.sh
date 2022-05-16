@@ -672,6 +672,7 @@ function inst-arch_fixverpkg () {
 		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') &&
 	printf "Arch=%s\n" "$arch" &&
 	PKGDIR="$PKGBASE/community/os/$arch" &&
+	PKGDIR2="$PKGBASE/extra/os/$arch" &&
 	true || return 1
 
 	pkgnames=""
@@ -682,6 +683,10 @@ function inst-arch_fixverpkg () {
 		pkgfile=$(util_make-local "$PKGDIR/$pkg-any.pkg.tar.zst") ||
 		pkgfile=$(util_make-local "$PKGDIR/$pkg-$arch.pkg.tar.xz") ||
 		pkgfile=$(util_make-local "$PKGDIR/$pkg-any.pkg.tar.xz") ||
+		pkgfile=$(util_make-local "$PKGDIR2/$pkg-$arch.pkg.tar.zst") ||
+		pkgfile=$(util_make-local "$PKGDIR2/$pkg-any.pkg.tar.zst") ||
+		pkgfile=$(util_make-local "$PKGDIR2/$pkg-$arch.pkg.tar.xz") ||
+		pkgfile=$(util_make-local "$PKGDIR2/$pkg-any.pkg.tar.xz") ||
 		pkgfile=""
 
 		if [ -z "$pkgfile" ] ; then

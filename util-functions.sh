@@ -118,6 +118,9 @@ function util_make-local {
 	#----- Action -------------------------------------------------------
 	if [ ! -z "${fname/*:*/}" ] ; then
 		# fname contains no ":" so its already local
+		if [ ! -r "$fname" ] ; then
+			return 1
+		fi
 		printf "%s\n" "$fname"
 	elif [ "${fname#http://*#}" ] || [ -z "${fname#https://*#}" ] ; then
 		# fname begins with "http://" or "https://" so its remote http(s)
