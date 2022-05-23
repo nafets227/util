@@ -588,7 +588,7 @@ function inst-arch_bootmgr-systemd {
 		ALL_microcode=(/boot/*-ucode.img)
 		EOF
 
-	touch $INSTALL_ROOT/etc/kernel/cmdline
+	touch $INSTALL_ROOT/etc/kernel/cmdline &&
 	arch-chroot $INSTALL_ROOT bootctl install --no-variables &&
 	arch-chroot $INSTALL_ROOT mkinitcpio -p linux &&
 	systemctl enable systemd-boot-update.service &&
