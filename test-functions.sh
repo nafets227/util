@@ -476,6 +476,39 @@ function test_expect_files {
 	return 99
 }
 
+function test_expect_file_contains {
+	testnr=$(( ${testnr-0} + 1))
+	# not increasing testexecnr
+
+	# parm 1: file
+	# parm 2: text to search for
+	local testfile="$1"
+	local testexpected="$2"
+	local testresult
+	local rc
+
+	if [ ${testfile:0:1} != "/" ] ; then
+		testfile="$TESTSETDIR/$testfile"
+	fi
+
+	testresult=$(fgrep "$testexpected" "$testfile")
+	rc=$?
+
+	if [ "$rc" != 0 ] ; then
+		printf "\tCHECK %s FAILED. %s does not contain '%s'\n" \
+			"$testnr" "$1" "$2"
+		testsetfailed="$testsetfailed $testnr"
+		return 1
+	else
+		printf "\tCHECK %s OK.\n" "$testnr"
+		testsetok=$(( ${testsetok-0} + 1))
+		return 0
+	fi
+
+	# should not reach this
+	return 99
+}
+
 function test_expect_linkedfiles {
 	testnr=$(( ${testnr-0} + 1 ))
 	# not increasing testexecnr
