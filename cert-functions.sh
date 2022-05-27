@@ -303,9 +303,9 @@ function cert_update_cert {
 	# If we would like to reuse the cst we could use something like the
 	# following command. BUT we dont like it since it would ignore
 	# potential changes to .reqtxt since the creation of the csr
-	# openssl x509 -req -days 365 -in git.test.nafets.de.csr
+	# openssl x509 -req -days 365 -in example.test.nafets.de.csr
 	#	-CA ca.crt -CAkey ca.key -set_serial 03
-	#	-out git.test.nafets.de-2018.crt
+	#	-out example.test.nafets.de-2018.crt
 
 	return 0
 }
