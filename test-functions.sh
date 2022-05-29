@@ -228,6 +228,7 @@ function test_exec_recvmail {
 	local rc_exp="${2:-0}"
 	shift 2
 
+	[ -z "$TEST_SNAIL" ] && return 1
 	test_exec_init "recvmail $rc_exp $url" || return 1
 
 	local readonly MAIL_STD_OPT="-e -n -vv -Sv15-compat -Snosave -Sexpandaddr=fail,-all,+addr"
@@ -236,7 +237,7 @@ function test_exec_recvmail {
 	local MAIL_OPT="-S 'folder=$url'"
 
 	LC_ALL=C MAILRC=/dev/null \
-		eval mail $MAIL_STD_OPT $MAIL_OPT "$@" \
+		eval $TEST_SNAIL $MAIL_STD_OPT $MAIL_OPT "$@" \
 		>$TESTSETDIR/$testnr.mailout \
 		2>&1 \
 		</dev/null
@@ -244,7 +245,7 @@ function test_exec_recvmail {
 	if [ $TESTRC -ne $rc_exp ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
 		printf "test_exec_recvmail(%s,%s,%s)\n" "$url" "$rc_exp" "$@"
-		printf "CMD: mail %s %s %s\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*"
+		printf "CMD: $TEST_SNAIL %s %s %s\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.mailout
 		printf "========== Output Test %d End ==========\n" "$testnr"
@@ -266,6 +267,7 @@ function test_exec_sendmail {
 	shift 4
 	opts="$@"
 
+	[ -z "$TEST_SNAIL" ] && return 1
 	test_exec_init "sendmail $rc_exp $url" || return 1
 
 	local readonly MAIL_STD_OPT="-n -vv -Sv15-compat -Ssendwait -Snosave -Sexpandaddr=fail,-all,+addr"
@@ -276,7 +278,7 @@ function test_exec_sendmail {
 	MAIL_OPT="$MAIL_OPT -r '$from'"
 
 	LC_ALL=C MAILRC=/dev/null \
-		eval mail $MAIL_STD_OPT $MAIL_OPT "$@" '$to' \
+		eval $TEST_SNAIL $MAIL_STD_OPT $MAIL_OPT "$@" '$to' \
 		>$TESTSETDIR/$testnr.mailout \
 		2>&1 \
 		<<<"Text TestMail $testnr"
@@ -284,7 +286,7 @@ function test_exec_sendmail {
 	if [ $TESTRC -ne $rc_exp ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
 		printf "send_testmail(%s,%s,%s,%s,%s)\n" "$rc_exp" "$url" "$from" "$to" "$*"
-		printf "CMD: mailx %s %s %s '%s'\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*" "$to"
+		printf "CMD: $TEST_SNAIL %s %s %s '%s'\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*" "$to"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.mailout
 		printf "========== Output Test %d End ==========\n" "$testnr"
@@ -560,6 +562,15 @@ function testset_init {
 	testnr=0
 	testexecnr=0
 	testsetfailed=""
+
+	if [[ "$OSTYPE" =~ darwin* ]] ; then
+		printf "Activating MacOS workaround.\n"
+		TEST_RSYNCOPT="--rsync-path=/usr/local/bin/rsync"
+		TEST_SNAIL=/usr/local/bin/s-nail
+	else
+		TEST_RSYNCOPT=""
+		TEST_SNAIL=mailx
+	fi
 
 	TESTSETLOG=0
 	TESTSETNAME="TestSet"
