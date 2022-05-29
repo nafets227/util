@@ -242,8 +242,8 @@ function test_exec_recvmail {
 		</dev/null
 	TESTRC=$?
 	if [ $TESTRC -ne $rc_exp ] ; then
-		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
-		printf "test_exec_recvmail(%s,%s,%s)\n" "$rc_exp" "$url" "$@"
+		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
+		printf "test_exec_recvmail(%s,%s,%s)\n" "$url" "$rc_exp" "$@"
 		printf "CMD: mail %s %s %s\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat $TESTSETDIR/$testnr.mailout
