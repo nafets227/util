@@ -70,7 +70,7 @@ function cert_get_key {
 			$CERT_PRIVATE_DIR/$name.key &&
 		cert_create_key "$name" "$pw" >&2 &&
 		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key" &&
-		true || return 1
+		true || return 1
 	elif [ -f "$CERT_PRIVATE_DIR/$name.key" ] ; then
 		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key"
 	else

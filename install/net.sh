@@ -224,7 +224,7 @@ function install-net_static {
 	fi
 
 	# enable Multicast on all interfaces that are configured with an
-	# IP adress (e.g. NOT vlan´s etc.)
+	# IP adress (e.g. NOT vlan's etc.)
 	if [ ! -z "$ipaddr" ] ; then
 		cat >>$cfgfile <<-EOF
 			[Link]
