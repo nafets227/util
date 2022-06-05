@@ -182,17 +182,12 @@ function install-net_vlan {
 	return 0
 }
 
-##### install_net_static ( ipaddr, [ifache="eth0"], [virt=""] ################
-function install-net_static {
+##### install_net_static2 ( ipaddr, [ifache="eth0"], [virt=""] ###############
+function install-net_static2 {
 	local ipaddr="$1"
 	local iface="$2"
 	local virt="${3:-""}"
-	local vlan="${4:-""}"
-	local macvlan="${5:-""}"
-	local ipvlan="${6:-""}"
-	local bridge="${7:-""}"
-	local forward="${8:-""}"
-	local ip6token="${9:-""}"
+	local addparms=$(cat /dev/stdin) # cat stdin for optional parms
 
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
@@ -249,23 +244,6 @@ function install-net_static {
 			fi
 			echo "Address=$f" >>$cfgfile
 		done
-		local primary_ip=${ipaddr%% *}
-		local ip_net=${primary_ip%.*}
-		local dom="dom.nafets.de intranet.nafets.de"
-		# @TODO: Find a better way to detect if we have a test machine
-		if [ ! -z $virt ] && [ $virt == "yes" ] ; then
-			local dom="test.nafets.de $dom"
-		fi
-		# @TODO: Find a better way to detect the main Interface
-		if [ "$ip_net" == "192.168.108" ] ; then
-			cat >>$cfgfile <<-EOF
-				Gateway=$ip_net.250
-				DNS=$ip_net.10
-				DNS=$ip_net.250
-				NTP=$ip_net.250
-				Domains=$dom
-				EOF
-		fi
 	else
 		cat <<-EOF >>$cfgfile || return 1
 			IPv6AcceptRouterAdvertisements=false
@@ -275,41 +253,9 @@ function install-net_static {
 			EOF
 	fi
 
-	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
-		cat >>$cfgfile <<-EOF
-			VLAN=$f
-			EOF
-	done; fi
-
-	if [ ! -z "$macvlan" ] ; then for f in $macvlan ; do
-		cat >>$cfgfile <<-EOF
-			MACVLAN=$f
-			EOF
-	done; fi
-
-	if [ ! -z "$ipvlan" ] ; then for f in $ipvlan ; do
-		cat >>$cfgfile <<-EOF
-			IPVLAN=$f
+	cat <<-EOF >>$cfgfile || return 1
+		$addparms
 		EOF
-	done; fi
-
-	if [ ! -z "$bridge" ] ; then for f in $bridge ; do
-		cat >>$cfgfile <<-EOF
-			Bridge=$f
-		EOF
-	done; fi
-
-	if [ ! -z "$forward" ] ; then
-		cat >>$cfgfile <<-EOF
-			IPForward=$forward
-		EOF
-	fi
-
-	if [ ! -z "$ip6token" ] ; then
-		cat >>$cfgfile <<-EOF
-			IPv6Token=$ip6token
-		EOF
-	fi
 
 	if [ -f $INSTALL_ROOT/etc/resolv.conf ] || [ -l $INSTALL_ROOT/etc/resolv.conf ]; then
 		rm $INSTALL_ROOT/etc/resolv.conf
@@ -328,26 +274,85 @@ function install-net_static {
 	if [ ! -z "$virt" ] ; then
 		printf "\tVirt=%s\n" "$virt"
 	fi
-	if [ ! -z "$vlan" ] ; then
-		printf "\tVLANs=%s\n" "$vlan"
-	fi
-	if [ ! -z "$macvlan" ] ; then
-		printf "\tMACVLANs=%s\n" "$macvlan"
-	fi
-	if [ ! -z "$ipvlan" ] ; then
-		printf "\tIPVLANs=%s\n" "$ipvlan"
-	fi
-	if [ ! -z "$bridge" ] ; then
-		printf "\tBridges=%s\n" "$bridge"
-	fi
-	if [ ! -z "$forward" ] ; then
-		printf "\tForward=%s\n" "$forward"
-	fi
-	if [ ! -z "$ip6token" ] ; then
-		printf "\tIPv6Token=%s\n" "$ip6token"
+	if [ ! -z "$addparms" ] ; then
+		printf "\t%s\n" "$addparms"
 	fi
 
 	return 0
+}
+##### install_net_static ( ipaddr, [ifache="eth0"], [virt=""] ################
+##### DEPRECATED, use install_net_static2 instead ############################
+function install-net_static {
+	local ipaddr="$1"
+	local iface="$2"
+	local virt="${3:-""}"
+	local vlan="${4:-""}"
+	local macvlan="${5:-""}"
+	local ipvlan="${6:-""}"
+	local bridge="${7:-""}"
+	local forward="${8:-""}"
+	local ip6token="${9:-""}"
+
+	#----- Input checks --------------------------------------------------
+	if [ $# -lt 2 ]; then
+		printf "Internal Error: %s got %s parms (exp=2++)\n" \
+			"$FUNCNAME" "$#" >&2
+		return 1
+	fi
+	# $INSTALL_ROOT to be checked by install-net_static2
+
+	#----- Real Work -----------------------------------------------------
+	local ipparm=""
+	if [ ! -z "$ipaddr" ] ; then
+		local primary_ip=${ipaddr%% *}
+		local ip_net=${primary_ip%.*}
+		local dom="dom.nafets.de intranet.nafets.de"
+		# @TODO: Find a better way to detect if we have a test machine
+		if [ ! -z $virt ] && [ $virt == "yes" ] ; then
+			local dom="test.nafets.de $dom"
+		fi
+		# @TODO: Find a better way to detect the main Interface
+		if [ "$ip_net" == "192.168.108" ] ; then
+			ipparm=$(cat <<-EOF
+				Gateway=$ip_net.250
+				DNS=$ip_net.10
+				DNS=$ip_net.250
+				NTP=$ip_net.250
+				Domains=$dom
+				EOF
+			)
+		fi
+	fi
+
+	if [ ! -z "$vlan" ] ; then for f in $vlan ; do
+		ipparm+="VLAN=$f"$'\n'
+	done; fi
+
+	if [ ! -z "$macvlan" ] ; then for f in $macvlan ; do
+		ipparm+="MACVLAN=$f"$'\n'
+	done; fi
+
+	if [ ! -z "$ipvlan" ] ; then for f in $ipvlan ; do
+		ipparm+="IPVLAN=$f"$'\n'
+	done; fi
+
+	if [ ! -z "$bridge" ] ; then for f in $bridge ; do
+		ipparm+="Bridge=$f"$'\n'
+	done; fi
+
+	if [ ! -z "$forward" ] ; then
+		ipparm+="IPForward=$forward"$'\n'
+	fi
+
+	if [ ! -z "$ip6token" ] ; then
+		ipparm+="IPv6Token=$ip6token"$'\n'
+	fi
+
+	install-net_static2 "$ipaddr" "$iface" "$virt" <<-EOF
+		$ipparm
+		EOF
+
+	return $?
 }
 
 ##### install_net_dhcp #######################################################
