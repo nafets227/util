@@ -24,7 +24,7 @@ function install_setup_service () {
 		return 0
 	fi
 	printf "Installing Install-Service for machine type %s.\n" "$2" >&2
-	cat >>$1/etc/systemd/system/nafetsde-install.service <<-EOF
+	cat >>$1/etc/systemd/system/nafetsde-install.service <<-EOF &&
 		# nafetsde-install.service
 		#
 		# (C) 2017 Stefan Schallenberg
@@ -44,10 +44,13 @@ function install_setup_service () {
 		WantedBy=multi-user.target
 		EOF
 
-	arch-chroot $1 <<-EOF
+	arch-chroot $1 <<-EOF &&
 		systemctl enable nafetsde-install.service
 	EOF
 
+	true || return 1
+
+	return 0
 }
 
 ##### install_easeofuse ######################################################
@@ -60,7 +63,7 @@ function install_ease-of-use {
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	cat >$INSTALL_ROOT/etc/profile.d/nafets_de.sh <<-"EOF"
+	cat >$INSTALL_ROOT/etc/profile.d/nafets_de.sh <<-"EOF" &&
 		#!/bin/sh
 		#
 		# (C) 2014-2018 Stefan Schallenberg
@@ -72,14 +75,15 @@ function install_ease-of-use {
 		eval "`dircolors`"
 		export EDITOR="vim"
 		EOF
-	chmod 755 $INSTALL_ROOT/etc/profile.d/nafets_de.sh
+	chmod 755 $INSTALL_ROOT/etc/profile.d/nafets_de.sh &&
 
+	true || return 1
 	# Enable Syntax highlighting in vim
 	if \
 		[ -e $INSTALL_ROOT/etc/vimrc ]  &&
 		! fgrep "syntax enable" $INSTALL_ROOT/etc/vimrc >/dev/null
 	then
-		printf "syntax enable\n" >>$INSTALL_ROOT/etc/vimrc
+		printf "syntax enable\n" >>$INSTALL_ROOT/etc/vimrc || return 1
 	fi
 
 	#----- Closing  ------------------------------------------------------
@@ -98,13 +102,13 @@ function install_instinfo {
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	git log -n 1 >$INSTALL_ROOT/root/instinfo.gitrev
-	git diff HEAD >$INSTALL_ROOT/root/instinfo.gitdiff
+	git log -n 1 >$INSTALL_ROOT/root/instinfo.gitrev &&
+	git diff HEAD >$INSTALL_ROOT/root/instinfo.gitdiff &&
 
 	#----- Closing  ------------------------------------------------------
-	printf "Noted script revision to /root/instinfo.*\n"
+	printf "Noted script revision to /root/instinfo.*\n" &&
 
-	return 0
+	return $?
 }
 
 #### Install Nafets Standards ################################################
