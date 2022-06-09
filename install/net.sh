@@ -201,10 +201,13 @@ function install-net_static2 {
 	fi
 
 	#----- Real Work -----------------------------------------------------
+	iface_fname=${iface//\*/_}
+	iface_fname=${iface_fname// /_}
+
 	if [ -z $virt ] ; then
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface.network"
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname.network"
 	else
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface-$virt.network"
+		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname-$virt.network"
 	fi
 
 	cat >$cfgfile <<-EOF
