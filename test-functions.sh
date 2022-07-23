@@ -257,9 +257,6 @@ function test_exec_recvmail {
 }
 
 function test_exec_sendmail {
-	testnr=$(( ${testnr-0} + 1))
-	testexecnr=$testnr
-
 	local url="$1"
 	local rc_exp="${2:-0}"
 	local from="$3"
