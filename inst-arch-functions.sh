@@ -265,6 +265,9 @@ function inst-arch_baseos {
 	#Bootstrap the new system
 	pacstrap -c -d $INSTALL_ROOT base openssh grub linux linux-firmware pacutils $extrapkg || return 1
 
+	# Workaround a bug in Archlinux that /dev cannot be unmounted at the end of pacstrap without raising an error
+	umount $INSTALL_ROOT/dev # do not check the RC here!
+
 	# Now include the needed modules in initcpio
 	if [ ! -z "$extramod" ] ; then
 		sed -i -re \
