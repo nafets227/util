@@ -102,8 +102,10 @@ function install_instinfo {
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	git log -n 1 >$INSTALL_ROOT/root/instinfo.gitrev &&
-	git diff HEAD >$INSTALL_ROOT/root/instinfo.gitdiff &&
+	git -C $(dirname $BASH_SOURCE)/.. log -n 1 \
+		>$INSTALL_ROOT/root/instinfo.gitrev &&
+	git -C $(dirname $BASH_SOURCE)/.. diff HEAD \
+		>$INSTALL_ROOT/root/instinfo.gitdiff &&
 
 	#----- Closing  ------------------------------------------------------
 	printf "Noted script revision to /root/instinfo.*\n" &&
