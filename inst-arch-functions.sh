@@ -263,7 +263,7 @@ function inst-arch_baseos {
 	|| return 1
 
 	#Bootstrap the new system
-	pacstrap -c -d $INSTALL_ROOT base openssh grub linux linux-firmware pacutils $extrapkg || return 1
+	pacstrap -c $INSTALL_ROOT base openssh grub linux linux-firmware pacutils $extrapkg || return 1
 
 	# Workaround a bug in Archlinux that /dev cannot be unmounted at the end of pacstrap without raising an error
 	umount $INSTALL_ROOT/dev # do not check the RC here!
