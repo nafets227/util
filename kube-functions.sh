@@ -468,16 +468,13 @@ function kube-inst_tls-secret {
 		return 1
 	fi
 
-	# @TODO handle delete correctly, do not create a new cert !
 	printf "%s secret %s ... " "$KUBE_ACTION_DISP" "$secretname"
 
 	if [ "$KUBE_ACTION" == "delete" ] ; then
 		kubectl --kubeconfig $KUBE_CONFIGFILE \
-			delete secret tls $secretname \
-			--save-config \
-			--dry-run=client \
-			-o yaml \
-		| kube-inst_internal-exec "-" "" \
+			$KUBE_CLI_ACTION \
+			-n $KUBE_NAMESPACE \
+			secret $secretname \
 		|| return 1
 	elif [ "$KUBE_ACTION" == "install" ] ; then
 		local cert_key_fname cert_fname
