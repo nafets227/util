@@ -564,7 +564,14 @@ function testset_init {
 		printf "Activating MacOS workaround.\n"
 		TEST_RSYNCOPT="--rsync-path=/usr/local/bin/rsync"
 		TEST_SNAIL=/usr/local/bin/s-nail
+	elif [ "$(awk -F= '/^NAME/{print $2}' /etc/os-release)" == "\"Ubuntu\"" ] ; then
+		printf "Activating Ubuntu settings.\n"
+		TEST_RSYNCOPT=""
+		TEST_SNAIL=s-nail
 	else
+		printf "Using default OS (OSTYPE=%s, os-release/NAME=%s\n" \
+			"$OSTYPE" \
+			"$(awk -F= '/^NAME/{print $2}' /etc/os-release)"
 		TEST_RSYNCOPT=""
 		TEST_SNAIL=mailx
 	fi
