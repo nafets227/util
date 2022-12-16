@@ -729,6 +729,45 @@ function kube-inst_host-volume {
 	return $?
 }
 
+##### kube-inst_local-volume - Install Local Volume ##########################
+# Prerequisite: kube-inst_init has been called
+# Parametets:
+#   1 - share
+#   3 - hostname (no FQDN, just hostname)
+#   2 - path [optional, default depends on share]
+function kube-inst_local-volume {
+	local share="$1"
+	local hostname="$2"
+	local path="$3"
+
+	kube-inst_internal-verify-initialised || return 1
+
+	if [ -z "$share" ] ; then
+		printf "%s: Error. Got no or empty share name.\n" \
+			"$FUNCNAME"
+		return 1
+	elif [ -z "$hostname" ] ; then
+		printf "%s: Error. Got no or empty hostname.\n" \
+			"$FUNCNAME"
+		return 1
+	elif [ -z "$path" ] ; then
+		printf "%s: Error. Got no or empty path.\n" \
+			"$FUNCNAME"
+		return 1
+	fi
+
+	printf "%s Local Volume %s (app=%s, stage=%s) for %s : %s \n" \
+		"$KUBE_ACTION_DISP" "$share" "$KUBE_APP" "$KUBE_STAGE" \
+		"$hostname" "$path"
+
+	kube-inst_internal-exec \
+		$(dirname "$BASH_SOURCE")/kube/localVolume.yaml.template \
+		"KUBE_APP KUBE_STAGE share hostname path KUBE_NAMESPACE" \
+		$opt
+
+	return $?
+}
+
 ##### MAIN-template ##################################################################
 # This can be used as template for application specific install script
 function config-template {
