@@ -361,7 +361,7 @@ function kube-inst_testhelm2 {
 	# wait for chart install to complete
 	# currently disabled as first example, jenkins, does this inside the chart tests
 	# helm status \
-	#	--kubeconfig $KUBE_CONFGIGFILE \
+	#	--kubeconfig $KUBE_CONFIGFILE \
 	#	--namespace $KUBE_NAMESPACE \
 	#	$release -o json | \
 	# jq  -r '.info.status'
