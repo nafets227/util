@@ -652,9 +652,6 @@ function inst-arch_fixverpkg () {
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"$FUNCNAME" "$INSTALL_ROOT" >&2
 		return 1
-	elif [ ! -z "${PKGBASE/*:*/}" ] && [ ! -d $PKGBASE ] ; then
-		printf "%s: Error PKGBASE %s does not exist\n" \
-			"$FUNCNAME" "$PKGBASE" >&2
 	elif [ ! -w $PACCONF ] ; then
 		printf "%s: Error /etc/pacman.conf does not exist or ist not writable\n" \
 			"$FUNCNAME"  >&2
@@ -670,12 +667,13 @@ function inst-arch_fixverpkg () {
 	fi
 
 	#----- Real Work -----------------------------------------------------
+	local -r PKGURL="https://archive.archlinux.org/packages/.all"
 	local arch PKGDIR pkg pkgfile pkgnames pkgslocal
 	arch=$(arch-chroot $INSTALL_ROOT /usr/bin/pacconf |
 		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') &&
 	printf "Arch=%s\n" "$arch" &&
-	PKGDIR="$PKGBASE/community/os/$arch" &&
-	PKGDIR2="$PKGBASE/extra/os/$arch" &&
+	PKGDIR="$PKGURK/community/os/$arch" &&
+	PKGDIR2="$PKGURL/extra/os/$arch" &&
 	true || return 1
 
 	pkgnames=""
