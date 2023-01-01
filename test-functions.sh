@@ -231,7 +231,7 @@ function test_exec_recvmail {
 	[ -z "$TEST_SNAIL" ] && return 1
 	test_exec_init "recvmail $rc_exp $url" || return 1
 
-	local readonly MAIL_STD_OPT="-e -n -vv -Sv15-compat -Snosave -Sexpandaddr=fail,-all,+addr"
+	local -r MAIL_STD_OPT="-e -n -vv -Sv15-compat -Snosave -Sexpandaddr=fail,-all,+addr"
 	# -SNosave is included in -d and generates error messages - so dont include it
 	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
 	local MAIL_OPT="-S 'folder=$url'"
@@ -267,7 +267,7 @@ function test_exec_sendmail {
 	[ -z "$TEST_SNAIL" ] && return 1
 	test_exec_init "sendmail $rc_exp $url" || return 1
 
-	local readonly MAIL_STD_OPT="-n -vv -Sv15-compat -Ssendwait -Snosave -Sexpandaddr=fail,-all,+addr"
+	local -r MAIL_STD_OPT="-n -vv -Sv15-compat -Ssendwait -Snosave -Sexpandaddr=fail,-all,+addr"
 	# -SNosave is included in -d and generates error messages - so dont include it
 	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
 	MAIL_OPT="-S 'smtp=$url'"

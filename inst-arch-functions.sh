@@ -602,7 +602,7 @@ function inst-arch_bootmgr-systemd {
 
 #### inst-arch_add_repo ######################################################
 function inst-arch_add_repo () {
-	local readonly PACCONF=$INSTALL_ROOT/etc/pacman.conf
+	local -r PACCONF=$INSTALL_ROOT/etc/pacman.conf
 	repo="$1"
 	srv="${2:-"MIRROR"}"
 	sig="$3"
@@ -644,7 +644,7 @@ function inst-arch_add_repo () {
 
 #### inst-arch_fixverpkg #####################################################
 function inst-arch_fixverpkg () {
-	local readonly PACCONF=$INSTALL_ROOT/etc/pacman.conf
+	local -r PACCONF=$INSTALL_ROOT/etc/pacman.conf
 	pkgs="$@"
 
 	#----- Input checks --------------------------------------------------

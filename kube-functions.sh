@@ -652,8 +652,8 @@ function kube-inst_nfs-volume {
 	local path="$2"
 	local owner="$3"
 
-	local readonly nfsserver="${path%%:*}"
-	local readonly nfspath="${path##*:}"
+	local -r nfsserver="${path%%:*}"
+	local -r nfspath="${path##*:}"
 	local opt=""
 
 	kube-inst_internal-verify-initialised || return 1

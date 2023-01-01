@@ -21,7 +21,7 @@ function kvm_expect_value () {
 
 ##### parseParm - parse Parameters and set global variables ##################
 function kvm_parseParm () {
-	local readonly def_memory="1024M"
+	local -r def_memory="1024M"
 
 	if [ "$#" -lt 1 ] ; then
 		printf "Error: no machine name supplied\n" >&2
@@ -464,13 +464,13 @@ function kvm_start_vm {
 		printf "Error: no machine name supplied\n" >&2
 		return 1
 	fi
-	local readonly vmname="$1"
-	local readonly dnsname="${2:-$vmname}"
-	local readonly sleepMax=${3:-60}
-	local readonly waitDNS=${4:-0}
+	local -r vmname="$1"
+	local -r dnsname="${2:-$vmname}"
+	local -r sleepMax=${3:-60}
+	local -r waitDNS=${4:-0}
 
-	local readonly sleepFirst=5
-	local readonly sleepNext=5
+	local -r sleepFirst=5
+	local -r sleepNext=5
 
 	local slept=0 # beginning
 

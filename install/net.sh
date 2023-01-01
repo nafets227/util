@@ -51,9 +51,9 @@ function install-net_macvlan {
 
 	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
 	else
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
 	fi
 	cat >$cfgfile <<-EOF
 		[NetDev]
@@ -100,9 +100,9 @@ function install-net_ipvlan {
 
 	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
 	else
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
 	fi
 	cat >$cfgfile <<-EOF
 		[NetDev]
@@ -152,9 +152,9 @@ function install-net_vlan {
 
 	#----- Real Work -----------------------------------------------------
 	if [ -z $virt ] ; then
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name.netdev"
 	else
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$vlan_name-$virt.netdev"
 	fi
 	cat >$cfgfile <<-EOF
 		[NetDev]
@@ -205,9 +205,9 @@ function install-net_static2 {
 	iface_fname=${iface_fname// /_}
 
 	if [ -z $virt ] ; then
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname.network"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname.network"
 	else
-		local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname-$virt.network"
+		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname-$virt.network"
 	fi
 
 	cat >$cfgfile <<-EOF
@@ -373,11 +373,11 @@ function install-net_dhcp {
 	iface_fname=${iface_fname// /_}
 
 	if [ -z $virt ] ; then
-		local readonly cfgfilename="nafetsde-$iface_fname.network"
+		local -r cfgfilename="nafetsde-$iface_fname.network"
 	else
-		local readonly cfgfilename="nafetsde-$iface_fname-$virt.network"
+		local -r cfgfilename="nafetsde-$iface_fname-$virt.network"
 	fi
-	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/$cfgfilename"
+	local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/$cfgfilename"
 
 	if [ ! -z "$iface" ] ; then
 		cat >$cfgfile <<-EOF
@@ -451,8 +451,8 @@ function install-net_wlan {
 	iface_fname=${iface//\*/_}
 	iface_fname=${iface_fname// /_}
 
-	local readonly cfgfilename="nafetsde-$iface_fname.network"
-	local readonly cfgfile="$INSTALL_ROOT/etc/systemd/network/$cfgfilename"
+	local -r cfgfilename="nafetsde-$iface_fname.network"
+	local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/$cfgfilename"
 
 	pacman -S --sysroot $INSTALL_ROOT --needed --noconfirm wpa_supplicant &&
 
@@ -469,8 +469,8 @@ function install-net_wlan {
 		RouteMetric=2048
 	EOF
 
-	local readonly cfgdirwpa="$INSTALL_ROOT/etc/wpa_supplicant" &&
-	local readonly cfgfilewpa="$cfgdirwpa/wpa_supplicant-$iface_fname.conf" &&
+	local -r cfgdirwpa="$INSTALL_ROOT/etc/wpa_supplicant" &&
+	local -r cfgfilewpa="$cfgdirwpa/wpa_supplicant-$iface_fname.conf" &&
 	cat >$cfgfilewpa <<-EOF &&
 		ctrl_interface=/var/run/wpa_supplicant
 		ctrl_interface_group=wheel
