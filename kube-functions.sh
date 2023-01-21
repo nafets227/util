@@ -64,7 +64,7 @@ function kube-inst_init {
 			get namespace $KUBE_NAMESPACE &>/dev/null ||
 		kubectl \
 			--kubeconfig $KUBE_CONFIGFILE \
-			create namespace $KUBE_NAMESPACE &>/dev/null ||
+			create namespace $KUBE_NAMESPACE ||
 		return 1
 	fi
 
