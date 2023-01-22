@@ -223,6 +223,153 @@ function test_exec_url {
 	return 0
 }
 
+function test_internal_exec_kube {
+	local -r kubecmd="$1"
+	local -r kubecomment="$2"
+	local -r kubenolog="$3"
+	local cmd rc
+
+	cmd="kubectl"
+	cmd+=" --kubeconfig $KUBE_CONFIGFILE"
+	cmd+=" --namespace $KUBE_NAMESPACE"
+	cmd+=" $kubecmd"
+
+	if [ -n "$kubecomment" ] ; then
+		printf "#----- %s\n" \
+			"$kubecomment" \
+			>>$TESTSETDIR/$testnr.out
+	fi
+
+	if [ -z "$kubenolog" ] ; then
+		printf "#----- Command: %s\n" \
+			"$cmd" \
+			>>$TESTSETDIR/$testnr.out
+	fi
+
+	TEST_INTERNAL_EXEC_KUBE_OUTPUT=$(eval $cmd 2>&1)
+	rc=$?
+	if [ -z "$kubenolog" ] || [ "$rc" != 0 ] ; then
+		printf "%s\n" \
+			"$TEST_INTERNAL_EXEC_KUBE_OUTPUT" \
+			>>$TESTSETDIR/$testnr.out
+	fi
+
+	return $rc
+}
+
+
+# Parameters:
+#     1 - name of the cronjob
+#     2 - expected RC [default: 0], possible values:
+#         0 - OK
+#         1 - Job did run, but with error
+#         2 - Job timed out
+#         3 - Job could not be run (Kubernetes error when creating and scheduling)
+#     3 - optional message to be printed if test fails
+#     4 - Timeout in seconds [optional, default=240]
+function test_exec_kubecron {
+	test_exec_init || return 1
+	test_assert_tools "jq" || return 1
+
+	local -r cronjobname="$1"
+	local -r rc_exp="${2-0}"
+	local -r infomsg="$3"
+	local -r sleepMax=${4:-240}
+	local -r sleepNext=5
+
+	local kubestatus=""
+	local STATUS ACTIVE FAILED SUCCEEDED CONDSTATUS
+	local slept=0
+
+	TESTRC=
+
+	test_internal_exec_kube \
+		"delete job/$cronjobname-test" \
+		"try deleting previous jobs"
+	# Ignore errors here!
+
+	test_internal_exec_kube \
+		"create job $cronjobname-test --from=cronjob/$cronjobname" \
+		|| TESTRC=3
+
+	while [ -z "$TESTRC" ] ; do
+		test_internal_exec_kube \
+			"get job $cronjobname-test -o json| jq '.status'" \
+			"" "1" &&
+		STATUS="$TEST_INTERNAL_EXEC_KUBE_OUTPUT" &&
+		ACTIVE=$(jq '.active // 0' <<<"$STATUS" 2>&1) &&
+		FAILED=$(jq '.failed // 0' <<<"$STATUS" 2>&1) &&
+		SUCCEEDED=$(jq '.succeeded // 0' <<<"$STATUS" 2>&1) &&
+		CONDSTATUS=$(jq -r 'try .conditions[] | select(.status=="True").type' <<<"$STATUS" 2>&1)
+		if [ "$?" != 0 ] ; then
+			printf "%s\nACTIVE=%s\nFAILED=%s\nSUCCEEDED=%s\nCONDSTATUS=%s\n" \
+				"$STATUS" "$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
+				>>$TESTSETDIR/$testnr.out
+			TESTRC=3
+			break
+		elif [ "$CONDSTATUS" == "Complete" ] ; then
+			printf "  Completed Job: %s/%s/%s/%s (active/failed/succeeded/condition)\n" \
+				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
+				>>$TESTSETDIR/$testnr.out
+			TESTRC=0
+			break
+		elif [ "$CONDSTATUS" == "Failed" ] ; then
+			printf "     Failed Job: %s/%s/%s/%s (active/failed/succeeded/condition)\n" \
+				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
+				>>$TESTSETDIR/$testnr.out
+			TESTRC=1
+			break
+		elif [ "$slept" -gt "$sleepMax" ] ; then
+			printf "   TimedOut Job: %s/%s/%s/%s (active/failed/succeeded/condition)\n" \
+				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
+				>>$TESTSETDIR/$testnr.out
+			TESTRC=2
+			break
+		else
+			printf "Waiting for Job: %s/%s/%s/%s (active/failed/succeeded/condition)" \
+				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
+				>>$TESTSETDIR/$testnr.out
+			printf " sleep %s seconds (%s/%s)\n" \
+					"$sleepNext" "$slept" "$sleepMax" \
+					>>$TESTSETDIR/$testnr.out
+
+			sleep $sleepNext ; slept=$(( $slept + $sleepNext ))
+		fi
+	done
+
+	# Always try to print logs of Pods, even in case of errors
+	test_internal_exec_kube \
+		"logs job/$cronjobname-test --all-containers" \
+		|| TESTRC=2
+
+	if [ $TESTRC -ne $rc_exp ] ; then
+		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
+		if [ ! -z "$3" ] ; then
+			printf "Info: %s\n" "$3"
+		fi
+		printf "========== Output Test %d Begin ==========\n" "$testnr"
+		cat $TESTSETDIR/$testnr.out
+		printf "========== Output Test %d End ==========\n" "$testnr"
+		testsetfailed="$testsetfailed $testnr"
+	else
+		cmd="kubectl --kubeconfig $KUBE_CONFIGFILE --namespace $KUBE_NAMESPACE"
+		cmd+=" delete job/$cronjobname-test"
+		printf "#----- Delete Job\n#----- Command: %s\n" "$cmd" \
+			>>$TESTSETDIR/$testnr.out
+		eval $cmd >>$TESTSETDIR/$testnr.out 2>&1 # ignore if deleting job fails.
+
+		printf "OK\n"
+		testsetok=$(( ${testsetok-0} + 1))
+		if [ "$TESTSETLOG" == "1" ] ; then
+			printf "========== Output Test %d Begin ==========\n" "$testnr"
+			cat $TESTSETDIR/$testnr.out
+			printf "========== Output Test %d End ==========\n" "$testnr"
+		fi
+	fi
+
+	return 0
+}
+
 function test_exec_recvmail {
 	local url="$1"
 	local rc_exp="${2:-0}"
