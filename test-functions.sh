@@ -268,8 +268,8 @@ function test_internal_exec_kube {
 #     3 - optional message to be printed if test fails
 #     4 - Timeout in seconds [optional, default=240]
 function test_exec_kubecron {
-	test_exec_init || return 1
 	test_assert_tools "jq" || return 1
+	test_exec_init || return 1
 
 	local -r cronjobname="$1"
 	local -r rc_exp="${2-0}"
