@@ -733,12 +733,14 @@ function kube-inst_host-volume {
 # Prerequisite: kube-inst_init has been called
 # Parametets:
 #   1 - share
-#   3 - hostname (no FQDN, just hostname)
-#   2 - path [optional, default depends on share]
+#   2 - hostname (no FQDN, just hostname)
+#   3 - path [optional, default depends on share]
+#   4 - volume Mode [optional, default "Filesystem"]
 function kube-inst_local-volume {
 	local share="$1"
 	local hostname="$2"
 	local path="$3"
+	local volmode="${4-"Filesystem"}"
 
 	kube-inst_internal-verify-initialised || return 1
 
@@ -756,14 +758,13 @@ function kube-inst_local-volume {
 		return 1
 	fi
 
-	printf "%s Local Volume %s (app=%s, stage=%s) for %s : %s \n" \
-		"$KUBE_ACTION_DISP" "$share" "$KUBE_APP" "$KUBE_STAGE" \
+	printf "%s Local Volume %s (app=%s, stage=%s, mode=%s) for %s : %s \n" \
+		"$KUBE_ACTION_DISP" "$share" "$KUBE_APP" "$KUBE_STAGE" "$volmode" \
 		"$hostname" "$path"
 
 	kube-inst_internal-exec \
 		$(dirname "$BASH_SOURCE")/kube/localVolume.yaml.template \
-		"KUBE_APP KUBE_STAGE share hostname path KUBE_NAMESPACE" \
-		$opt
+		"KUBE_APP KUBE_STAGE share hostname path volmode KUBE_NAMESPACE" \
 
 	return $?
 }

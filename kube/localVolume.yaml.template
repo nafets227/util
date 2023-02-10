@@ -19,7 +19,7 @@ spec:
     storage: 100Mi
   accessModes:
     - ReadWriteMany
-###  volumeMode: Filesystem
+  volumeMode: ${volmode}
 ###   storageClassName: local-storage
   local:
     path: ${path}
@@ -51,6 +51,7 @@ spec:
   resources:
     requests:
       storage: 100Mi
+  volumeMode: ${volmode}
   selector:
     matchLabels:
       state: "${KUBE_STAGE}"
