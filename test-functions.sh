@@ -232,7 +232,6 @@ function test_internal_exec_kube {
 	cmd="kubectl"
 	cmd+=" --kubeconfig $KUBE_CONFIGFILE"
 	cmd+=" --namespace $KUBE_NAMESPACE"
-	cmd+=" $kubecmd"
 
 	if [ -n "$kubecomment" ] ; then
 		printf "#----- %s\n" \
@@ -242,11 +241,11 @@ function test_internal_exec_kube {
 
 	if [ -z "$kubenolog" ] ; then
 		printf "#----- Command: %s\n" \
-			"$cmd" \
+			"$cmd $kubecmd" \
 			>>$TESTSETDIR/$testnr.out
 	fi
 
-	TEST_INTERNAL_EXEC_KUBE_OUTPUT=$(eval $cmd 2>&1)
+	TEST_INTERNAL_EXEC_KUBE_OUTPUT=$(eval $cmd $kubecmd 2>&1)
 	rc=$?
 	if [ -z "$kubenolog" ] || [ "$rc" != 0 ] ; then
 		printf "%s\n" \
@@ -357,6 +356,56 @@ function test_exec_kubecron {
 			>>$TESTSETDIR/$testnr.out
 		eval $cmd >>$TESTSETDIR/$testnr.out 2>&1 # ignore if deleting job fails.
 
+		printf "OK\n"
+		testsetok=$(( ${testsetok-0} + 1))
+		if [ "$TESTSETLOG" == "1" ] ; then
+			printf "========== Output Test %d Begin ==========\n" "$testnr"
+			cat $TESTSETDIR/$testnr.out
+			printf "========== Output Test %d End ==========\n" "$testnr"
+		fi
+	fi
+
+	return 0
+}
+
+function test_exec_kubenode {
+	# Parameters:
+	#     1 - name of the node
+	#     2 - expected RC [default: 0], possible values:
+	#     3 - optional message to be printed if test fails
+	test_exec_init || return 1
+
+	local -r nodename="${1,,}" # lowercase
+	local -r rc_exp="${2-0}"
+
+	local bashcmd
+	bashcmd=""
+	bashcmd+=" set -x"
+	bashcmd+=" && ping -c 1 www.ibm.com"
+	bashcmd+=" && ping -c 1 192.168.108.10"
+
+	local kubecmd
+	kubecmd=""
+	kubecmd+="run kubenodetest"
+	kubecmd+=" --image alpine:latest"
+	kubecmd+=" --restart=Never"
+	kubecmd+=" --overrides='{ \"apiVersion\": \"v1\", \"spec\": { \"nodeName\": \"$nodename\" } }'"
+	kubecmd+=" --stdin"
+	kubecmd+=" --rm"
+
+	test_internal_exec_kube "$kubecmd" <<<"$bashcmd"
+	TESTRC=$?
+
+	if [ $TESTRC -ne $rc_exp ] ; then
+		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
+		if [ ! -z "$3" ] ; then
+			printf "Info: %s\n" "$3"
+		fi
+		printf "========== Output Test %d Begin ==========\n" "$testnr"
+		cat $TESTSETDIR/$testnr.out
+		printf "========== Output Test %d End ==========\n" "$testnr"
+		testsetfailed="$testsetfailed $testnr"
+	else
 		printf "OK\n"
 		testsetok=$(( ${testsetok-0} + 1))
 		if [ "$TESTSETLOG" == "1" ] ; then
