@@ -147,11 +147,11 @@ function test_lastoutput_contains {
 	return 0
 }
 
-# Parameters:
-#     1 - command to test
-#     2 - expected RC [default: 0]
-#     3 - optional message to be printed if test fails
 function test_exec_simple {
+	# Parameters:
+	#     1 - command to test
+	#     2 - expected RC [default: 0]
+	#     3 - optional message to be printed if test fails
 	test_exec_init || return 1
 
 	local rc_exp=${2-0}
@@ -257,17 +257,16 @@ function test_internal_exec_kube {
 	return $rc
 }
 
-
-# Parameters:
-#     1 - name of the cronjob
-#     2 - expected RC [default: 0], possible values:
-#         0 - OK
-#         1 - Job did run, but with error
-#         2 - Job timed out
-#         3 - Job could not be run (Kubernetes error when creating and scheduling)
-#     3 - optional message to be printed if test fails
-#     4 - Timeout in seconds [optional, default=240]
 function test_exec_kubecron {
+	# Parameters:
+	#     1 - name of the cronjob
+	#     2 - expected RC [default: 0], possible values:
+	#         0 - OK
+	#         1 - Job did run, but with error
+	#         2 - Job timed out
+	#         3 - Job could not be run (Kubernetes error when creating and scheduling)
+	#     3 - optional message to be printed if test fails
+	#     4 - Timeout in seconds [optional, default=240]
 	test_assert_tools "jq" || return 1
 	test_exec_init || return 1
 
@@ -607,9 +606,9 @@ function test_expect_files {
 		# nr of files differ from expected
 		printf "\tCHECK %s FAILED. nr of files in '%s' is %s (exp=%s)\n" \
 			"$testnr" "$1" "$testresult" "$testexpected"
-#		printf "========== Output Test %d Begin ==========\n" "$testexecnr"
-#		cat $TESTSETDIR/$testexecnr.out
-#		printf "========== Output Test %d End ==========\n" "$testexecnr"
+		# printf "========== Output Test %d Begin ==========\n" "$testexecnr"
+		# cat $TESTSETDIR/$testexecnr.out
+		# printf "========== Output Test %d End ==========\n" "$testexecnr"
 		testsetfailed="$testsetfailed $testnr"
 		return 0
 	else

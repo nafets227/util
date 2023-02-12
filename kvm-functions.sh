@@ -118,9 +118,9 @@ function kvm_parseParm () {
 }
 
 ##### getDefaultAuto #########################################################
-# set Default Auto-Start value
-# 0 for machine name *Test, 1 otherwise
 function kvm_getDefaultAuto () {
+	# set Default Auto-Start value
+	# 0 for machine name *Test, 1 otherwise
 	vmname="$1"
 	if [[ "$vmname" == *Test ]] ; then
 		printf "0\n"
@@ -132,9 +132,9 @@ function kvm_getDefaultAuto () {
 }
 
 ##### getDefaultOS ###########################################################
-# Parameters:
-# 1 - machinename [mandatory]
 function kvm_getDefaultOS () {
+	# Parameters:
+	# 1 - machinename [mandatory]
 	if [ "$#" -lt 1 ] ; then
 		printf "Error: no machine name supplied\n" >&2
 		return 1
@@ -142,10 +142,10 @@ function kvm_getDefaultOS () {
 	local vmname="$1"
 
 	case $vmname in
-# currently all auto.-detection is disabled
-# if we want a specific OS it has to be given by commandline
-#		vWin   ) os="win10" ;;
-#		vKube* ) os="" ;; # CoreOS: no entry, use blank
+		# currently all auto.-detection is disabled
+		# if we want a specific OS it has to be given by commandline
+		#		vWin   ) os="win10" ;;
+		#		vKube* ) os="" ;; # CoreOS: no entry, use blank
 		*      ) os="" ;; # ArchLinux: no entry, use blank
 	esac
 
@@ -154,29 +154,30 @@ function kvm_getDefaultOS () {
 }
 
 ##### kvm_create-vm ##########################################################
-# Parameters:
-# 1 - machinename [mandatory]
-# Options:
-#   --disk=<device> [optional, autodetected]
-#   --disk2=<device> [optional, autodetected]
-#   --disk3=<device> [optional, default=empty]
-#   --mem=<size> [default=1024MB]
-#   --cpu=<nr of config> [optional, default=empty]
-#         example: --cpu=3,cpuset=2-3
-#   --id=internal ID, needs to be unique in whole system
-#   --replace replace existing VMs [default=no]
-#   --auto=1 [default=1] auto-start VM at boot
-#   --dry-run done really execute anything.
-#   --net=<backend> [optional, autodetected]
-#   --net2=<backend> [optional, default=empty]
-#   --net3=<backend> [optional, default=empty]
-#   --net4=<backend> [optional, default=empty]
-#   --net5=<backend> [optional, default=empty]
-#   --net6=<backend> [optional, default=empty]
-#   --net7=<backend> [optional, default=empty]
-#   --net8=<backend> [optional, default=empty]
-#   --cpuhost allow access to host CPU, use only for nexted virtualization!
 function kvm_create-vm () {
+	# Parameters:
+	# 1 - machinename [mandatory]
+	# Options:
+	#   --disk=<device> [optional, autodetected]
+	#   --disk2=<device> [optional, autodetected]
+	#   --disk3=<device> [optional, default=empty]
+	#   --mem=<size> [default=1024MB]
+	#   --cpu=<nr of config> [optional, default=empty]
+	#         example: --cpu=3,cpuset=2-3
+	#   --id=internal ID, needs to be unique in whole system
+	#   --replace replace existing VMs [default=no]
+	#   --auto=1 [default=1] auto-start VM at boot
+	#   --dry-run done really execute anything.
+	#   --net=<backend> [optional, autodetected]
+	#   --net2=<backend> [optional, default=empty]
+	#   --net3=<backend> [optional, default=empty]
+	#   --net4=<backend> [optional, default=empty]
+	#   --net5=<backend> [optional, default=empty]
+	#   --net6=<backend> [optional, default=empty]
+	#   --net7=<backend> [optional, default=empty]
+	#   --net8=<backend> [optional, default=empty]
+	#   --cpuhost allow access to host CPU, use only for nexted virtualization!
+
 	# Set Default values
 	local prm_mem="768"
 	local prm_cpu=""
@@ -419,9 +420,9 @@ function kvm_create-vm () {
 }
 
 ##### kvm_delete-vm ##########################################################
-# Parameters:
-# 1 - machinename [mandatory]
 function kvm_delete-vm {
+	# Parameters:
+	# 1 - machinename [mandatory]
 	if [ -z "$1" ] ; then
 		printf "Error: no machine name supplied\n" >&2
 		return 1
@@ -455,11 +456,11 @@ function kvm_delete-vm {
 }
 
 ##### kvm_start-vm ##########################################################
-# Parameters:
-# 1 - machinename [mandatory]
-# 2 - DNS name of machine [optional, default=machinename ]
-# 2 - Timeout to wait for machine to appear in seconds [optional, 60]
 function kvm_start_vm {
+	# Parameters:
+	# 1 - machinename [mandatory]
+	# 2 - DNS name of machine [optional, default=machinename ]
+	# 2 - Timeout to wait for machine to appear in seconds [optional, 60]
 	if [ -z "$1" ] ; then
 		printf "Error: no machine name supplied\n" >&2
 		return 1

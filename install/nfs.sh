@@ -57,13 +57,13 @@ function install-nfs_server {
 }
 
 ##### install-nfs_export #####################################################
-# Parameter:
-#     <Dir>        Real Directory to be exported (e.g. /data/myshare)
-#     <Share-Name> Name of the share visibile to clients (e.g. myshare)
-#                  NB: Can contain slashes, but be aware of side-efects
-#     [options]    either ro (default) or rw or a string of options to be
-#                  put as NFS options in /etc/exports
 function install-nfs_export {
+	# Parameter:
+	#     <Dir>        Real Directory to be exported (e.g. /data/myshare)
+	#     <Share-Name> Name of the share visibile to clients (e.g. myshare)
+	#                  NB: Can contain slashes, but be aware of side-efects
+	#     [options]    either ro (default) or rw or a string of options to be
+	#                  put as NFS options in /etc/exports
 	path="$1"
 	exportname="$2"
 	options="$3"

@@ -283,9 +283,9 @@ function install-net_static2 {
 
 	return 0
 }
-##### install_net_static ( ipaddr, [ifache="eth0"], [virt=""] ################
-##### DEPRECATED, use install_net_static2 instead ############################
+##### DEPRECATED install_net_static ( ipaddr, [ifache="eth0"], [virt=""] #####
 function install-net_static {
+	# DEPRECATED, use install_net_static2 instead
 	local ipaddr="$1"
 	local iface="$2"
 	local virt="${3:-""}"
@@ -359,12 +359,12 @@ function install-net_static {
 }
 
 ##### install_net_dhcp #######################################################
-# Install a secondary network interface that is somehow restricted
-# Parameter:
-#      iface               - name of interface, wildcards allowed
-#      hostname [optional] - hostname to use to get address via DHCP
-#      virt                - restrict to virtualisation [yes/no], both if empty
 function install-net_dhcp {
+	# Install a secondary network interface that is somehow restricted
+	# Parameter:
+	#      iface               - name of interface, wildcards allowed
+	#      hostname [optional] - hostname to use to get address via DHCP
+	#      virt                - restrict to virtualisation [yes/no], both if empty
 	local iface=${1:-""}
 	local hostname=${2:-""}
 	local virt=${3:-""}
@@ -426,12 +426,12 @@ function install-net_dhcp {
 }
 
 ##### install-net_wlan #######################################################
-# Install a WLAN adapter
-# Parameter:
-#      iface  - name of interface, wildcards allowed
-#      SSID   - SSID of the WLAN to be connected to
-#      wlanpw - WLAN Password
 function install-net_wlan {
+	# Install a WLAN adapter
+	# Parameter:
+	#      iface  - name of interface, wildcards allowed
+	#      SSID   - SSID of the WLAN to be connected to
+	#      wlanpw - WLAN Password
 	local iface="$1"
 	local ssid="$2"
 	local wlanpw="$3"

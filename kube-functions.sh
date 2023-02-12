@@ -7,21 +7,21 @@
 # (C) 2018 Stefan Schallenberg
 
 ##### kube-inst_init - Initialize Kubernetes Installation ####################
-# Parameter:
-#   1 - action [install|delete|config]
-#   2 - stage [prod|preprod|test|testtest] where to install
-#   3 - app Application name to be assigne to kubernetes tag
-#   4 - namespace (only use if non-stan dard, standard is based on stage)
-#   5 - Kube Configfile (defaults to ~/.kube/$stage.conf )
-# Environment Variables set on exit
-#   KUBE_CONFIGFILE name of Kubeconfig with access credentials
-#   KUBE_ACTION      action
-#   KUBE_CLI_ACTION  action to be used in kubectl cli
-#   KUBE_ACTION_DISP action to be displayed to the user with -ing
-#   KUBE_STAGE       stage
-#   KUBE_NAMESPACE   Namespeace to be used
-#   KUBE_APP         Application name to be used in Labels
 function kube-inst_init {
+	# Parameter:
+	#   1 - action [install|delete|config]
+	#   2 - stage [prod|preprod|test|testtest] where to install
+	#   3 - app Application name to be assigne to kubernetes tag
+	#   4 - namespace (only use if non-stan dard, standard is based on stage)
+	#   5 - Kube Configfile (defaults to ~/.kube/$stage.conf )
+	# Environment Variables set on exit
+	#   KUBE_CONFIGFILE name of Kubeconfig with access credentials
+	#   KUBE_ACTION      action
+	#   KUBE_CLI_ACTION  action to be used in kubectl cli
+	#   KUBE_ACTION_DISP action to be displayed to the user with -ing
+	#   KUBE_STAGE       stage
+	#   KUBE_NAMESPACE   Namespeace to be used
+	#   KUBE_APP         Application name to be used in Labels
 	local action="$1"
 	local stage="${2:-preprod}"
 	local app="$3"
@@ -94,12 +94,12 @@ function kube-inst_internal-verify-initialised {
 }
 
 ##### kube-inst_internal-environize ##########################################
-# Environize stdin to stdout
-# Parameters:
-#	1 - envnames
-#	stdin - Input File (contains "${<envname>}" to be replaced)
-#	stdout - Output File (with replaced valued)
 function kube-inst_internal-environize {
+	# Environize stdin to stdout
+	# Parameters:
+	#	1 - envnames
+	#	stdin - Input File (contains "${<envname>}" to be replaced)
+	#	stdout - Output File (with replaced valued)
 	local envnames="$1"
 
 	##### Prepare Environizing
@@ -127,13 +127,13 @@ function kube-inst_internal-environize {
 }
 
 ##### kube-inst_internal-exec ################################################
-# Execute a Template File
-# Parameters:
-#   1 - Name of the templace file. Can be "-" for stdin
-#   2 - Name of Environment variables to substitute. Canb be empty in which
-#       case no substitution takes place.
-#   3ff - Kubectl options
 function kube-inst_internal-exec {
+	# Execute a Template File
+	# Parameters:
+	#   1 - Name of the templace file. Can be "-" for stdin
+	#   2 - Name of Environment variables to substitute. Canb be empty in which
+	#       case no substitution takes place.
+	#   3ff - Kubectl options
 	local file="$1"
 	shift
 	local envnames="$1"
@@ -157,26 +157,26 @@ function kube-inst_internal-exec {
 }
 
 ##### kube-inst_exec - Execute installation ##################################
-# Prerequisite: kube-inst_init has been called
-# Parameters:
-#   1 - confdir Directory containing all yamls and templates
-#       [default=./kube]
-#   2 - envnames [ default=none ]
-#       you can  give alist of names to be environized. All words in .template files
-#       inside the configdir that match a name in the list will be replaced by teh
-#       value of the environment variable with that name.
-#       Example:
-#       envnames="MYNAME MYIP"
-#       Environment variable MYNAME="mynamevalue"
-#       Envrionment variabddle MYIP="myipvalue"
-#       my.yaml.template:
-#           value=${MYNAME}
-#          ip=${MYIP}
-#       will be transformed to
-#  	        value=mynamevalue
-#           ip=myipvalue
-#       before the yaml file will be processed by kubernetes.
 function kube-inst_exec {
+	# Prerequisite: kube-inst_init has been called
+	# Parameters:
+	#   1 - confdir Directory containing all yamls and templates
+	#       [default=./kube]
+	#   2 - envnames [ default=none ]
+	#       you can  give alist of names to be environized. All words in .template files
+	#       inside the configdir that match a name in the list will be replaced by teh
+	#       value of the environment variable with that name.
+	#       Example:
+	#       envnames="MYNAME MYIP"
+	#       Environment variable MYNAME="mynamevalue"
+	#       Envrionment variabddle MYIP="myipvalue"
+	#       my.yaml.template:
+	#           value=${MYNAME}
+	#          ip=${MYIP}
+	#       will be transformed to
+	#  	        value=mynamevalue
+	#           ip=myipvalue
+	#       before the yaml file will be processed by kubernetes.
 	local confdir envnames
 	confdir="$(realpath ${1:-./kube})" || return 1
 	envnames="$2 KUBE_APP"
@@ -244,17 +244,17 @@ function kube-inst_exec {
 }
 
 ##### kube-inst_helm2 - install Helm Chart from repo #########################
-# A CronJob will also update the helm chart daily, if Version is not set
-# Parametets:
-#   1 - release =local instance name of helm chart (unique in Kube namespace)
-#   2 - repo URL
-#	3 - repo Local Name (must be unique across all projects!)
-#   4 - chart (name in repo)
-#	5 - Version [optional, default=""]
-#	    if set, install this version of chart and dont auto-update
-#   6 - envnames [optional, default=""]
-#   stdin - yaml file for values
 function kube-inst_helm2 {
+	# A CronJob will also update the helm chart daily, if Version is not set
+	# Parametets:
+	#   1 - release =local instance name of helm chart (unique in Kube namespace)
+	#   2 - repo URL
+	#	3 - repo Local Name (must be unique across all projects!)
+	#   4 - chart (name in repo)
+	#	5 - Version [optional, default=""]
+	#	    if set, install this version of chart and dont auto-update
+	#   6 - envnames [optional, default=""]
+	#   stdin - yaml file for values
 	local release="$1"
 	local repourl="$2"
 	local reponame="$3"
@@ -344,8 +344,9 @@ function kube-inst_helm2 {
 }
 
 ##### kube-inst_testhelm2 - test helm chart installed ########################
-#   1 - release =local instance name of helm chart (unique in Kube namespace)
 function kube-inst_testhelm2 {
+	# Parameters:
+	#   1 - release =local instance name of helm chart (unique in Kube namespace)
 	local release="$1"
 
 	kube-inst_internal-verify-initialised || return 1
@@ -396,16 +397,16 @@ function kube-inst_testhelm2 {
 }
 
 ##### kube-inst_helm - install Helm Chart from URL ###########################
-# DEPRECATED
-#   This function is deprecated, please use kube-inst_helm2
-#   instead
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - release (=name) of helm chart
-#   2 - url of source
-#   3ff - [optional] variables to set (var=value)
-#   stdin - yaml file for values
 function kube-inst_helm {
+	# DEPRECATED
+	#   This function is deprecated, please use kube-inst_helm2
+	#   instead
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - release (=name) of helm chart
+	#   2 - url of source
+	#   3ff - [optional] variables to set (var=value)
+	#   stdin - yaml file for values
 	local release="$1"
 	local sourceurl="$2"
 	shift 2
@@ -443,16 +444,16 @@ function kube-inst_helm {
 }
 
 ##### kube-inst_tls-secret - install Kubernetes Secret using cert* helper ####
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - name of secret
-#   2 - name of the CA
-# Prerequisites:
-#   $CERT_STORE_DIR/<caname>.crt
-#        our CA and its key
-#   stdin as .reqtxt file
-#        the details of the fields certificate
 function kube-inst_tls-secret {
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - name of secret
+	#   2 - name of the CA
+	# Prerequisites:
+	#   $CERT_STORE_DIR/<caname>.crt
+	#        our CA and its key
+	#   stdin as .reqtxt file
+	#        the details of the fields certificate
 	local secretname="$1"
 	local caname="$2"
 
@@ -496,11 +497,11 @@ function kube-inst_tls-secret {
 }
 
 ##### kube-inst_generic-secret - install Kubernetes Secret using cert* helper ########
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - name of secret
-#   2ff - name of file(s)
 function kube-inst_generic-secret {
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - name of secret
+	#   2ff - name of file(s)
 	local secretname="$1"
 	shift
 
@@ -538,11 +539,11 @@ function kube-inst_generic-secret {
 }
 
 ##### kube-inst_text-secret - install Kubernetes Secret using cert* helper ########
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - name of secret
-#   2 - content (text) of the secret
 function kube-inst_text-secret {
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - name of secret
+	#   2 - content (text) of the secret
 	local secretname="$1"
 	shift
 
@@ -578,13 +579,13 @@ function kube-inst_text-secret {
 }
 
 ##### kube-inst_configmap2 - install Kubernetes Configmap ####################
-# Also in the files environizing will be executed
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - name of configmap2
-#   2 - envnames [optional, default=""]
-#   3ff - name of file(s)
 function kube-inst_configmap2 {
+	# Also in the files environizing will be executed
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - name of configmap2
+	#   2 - envnames [optional, default=""]
+	#   3ff - name of file(s)
 	local cmapname="$1"
 	shift
 	local envnames="$1"
@@ -624,14 +625,14 @@ function kube-inst_configmap2 {
 }
 
 ##### kube-inst_configmap - install Kubernetes Configmap ####################
-# DEPRECATED
-#   This function is deprecated, please use kube-inst_configmap2
-#   instead
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - name of configmap
-#   2ff - name of file(s)
 function kube-inst_configmap {
+	# DEPRECATED
+	#   This function is deprecated, please use kube-inst_configmap2
+	#   instead
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - name of configmap
+	#   2ff - name of file(s)
 	local cmapname="$1"
 	shift
 
@@ -641,13 +642,13 @@ function kube-inst_configmap {
 }
 
 ##### kube-inst_nfs-volume - Install NFS Volume ##############################
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - share
-#   2 - path [optional, default depends on share]
-#   3 - owner [optional] - set owner of share
-#       e.g. root:root or 1000:1000 or 1000 or :1000
 function kube-inst_nfs-volume {
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - share
+	#   2 - path [optional, default depends on share]
+	#   3 - owner [optional] - set owner of share
+	#       e.g. root:root or 1000:1000 or 1000 or :1000
 	local share="$1"
 	local path="$2"
 	local owner="$3"
@@ -693,11 +694,11 @@ function kube-inst_nfs-volume {
 }
 
 ##### kube-inst_host-volume - Install Host Volume ############################
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - share
-#   2 - path [optional, default depends on share]
 function kube-inst_host-volume {
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - share
+	#   2 - path [optional, default depends on share]
 	local share="$1"
 	local path="$2"
 	local opt=""
@@ -730,13 +731,13 @@ function kube-inst_host-volume {
 }
 
 ##### kube-inst_local-volume - Install Local Volume ##########################
-# Prerequisite: kube-inst_init has been called
-# Parametets:
-#   1 - share
-#   2 - hostname (no FQDN, just hostname)
-#   3 - path [optional, default depends on share]
-#   4 - volume Mode [optional, default "Filesystem"]
 function kube-inst_local-volume {
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - share
+	#   2 - hostname (no FQDN, just hostname)
+	#   3 - path [optional, default depends on share]
+	#   4 - volume Mode [optional, default "Filesystem"]
 	local share="$1"
 	local hostname="$2"
 	local path="$3"
@@ -770,8 +771,8 @@ function kube-inst_local-volume {
 }
 
 ##### MAIN-template ##################################################################
-# This can be used as template for application specific install script
 function config-template {
+	# This can be used as template for application specific install script
 	kube-inst_init \
 		"action [install|delete]" \
 		"stage [prod|preprod|test|testtest] where to install"
@@ -790,18 +791,17 @@ function config-template {
 }
 
 function main-template {
-if [ "$1" == "--config" ] ; then
-	shift
-	config "$@" || exit 1
-	printf "Loaded config for app %s in Namespace %s\n" \
-		"$app" "$ns"
-else
-	config "$@" &&
-	kube-inst_exec  "./kube" "MYVAL" &&
-	true || return 1
-fi
+	if [ "$1" == "--config" ] ; then
+		shift
+		config "$@" || exit 1
+		printf "Loaded config for app %s in Namespace %s\n" \
+			"$app" "$ns"
+	else
+		config "$@" &&
+		kube-inst_exec  "./kube" "MYVAL" &&
+		true || return 1
+	fi
 }
 
 ##### MAIN ###################################################################
-
 # do nothing ! just load functions
