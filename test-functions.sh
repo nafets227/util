@@ -392,6 +392,7 @@ function test_exec_kubenode {
 	kubecmd+=" --overrides='{ \"apiVersion\": \"v1\", \"spec\": { \"nodeName\": \"$nodename\" } }'"
 	kubecmd+=" --stdin"
 	kubecmd+=" --rm"
+	kubecmd+=" --pod-running-timeout=2m"
 
 	test_internal_exec_kube "$kubecmd" <<<"$bashcmd"
 	TESTRC=$?
