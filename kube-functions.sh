@@ -742,6 +742,7 @@ function kube-inst_local-volume {
 	local hostname="$2"
 	local path="$3"
 	local volmode="${4-"Filesystem"}"
+	local opt=""
 
 	kube-inst_internal-verify-initialised || return 1
 
@@ -759,6 +760,10 @@ function kube-inst_local-volume {
 		return 1
 	fi
 
+	if [ "$KUBE_ACTION" == "delete" ] ; then
+		opt="--wait=0"
+	fi
+
 	printf "%s Local Volume %s (app=%s, stage=%s, mode=%s) for %s : %s \n" \
 		"$KUBE_ACTION_DISP" "$share" "$KUBE_APP" "$KUBE_STAGE" "$volmode" \
 		"$hostname" "$path"
@@ -766,6 +771,7 @@ function kube-inst_local-volume {
 	kube-inst_internal-exec \
 		$(dirname "$BASH_SOURCE")/kube/localVolume.yaml.template \
 		"KUBE_APP KUBE_STAGE share hostname path volmode KUBE_NAMESPACE" \
+		$opt
 
 	return $?
 }
