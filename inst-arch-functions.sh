@@ -697,7 +697,7 @@ function inst-arch_fixverpkg () {
 
 		pkgnames+=" $(pacman -Qp $pkgfile | cut -d" " -f 1)" &&
 		pkgslocal+=" /root/$(basename $pkgfile)" &&
-		cp -a $pkgfile $INSTALL_ROOT/root/ &&
+		cp --preserve=timestamps $pkgfile $INSTALL_ROOT/root/ &&
 		true || return 1
 	done
 	arch-chroot $INSTALL_ROOT \
