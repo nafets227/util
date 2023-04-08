@@ -28,10 +28,10 @@ spec:
     required:
       nodeSelectorTerms:
       - matchExpressions:
-        - key: kubernetes.io/hostname
+        - key: ${key}
           operator: In
           values:
-          - ${hostname}
+          - ${value}
 
 ---
 

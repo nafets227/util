@@ -106,8 +106,9 @@ function kube-inst_internal-environize {
 	sed_parms=""
 	if [ ! -z "$envnames" ] ; then  for f in $envnames ; do
 		if [[ -v $f ]] ; then
-			eval "value=\$$f"
-			sed_parms="$sed_parms -e 's/\${$f}/${value//\//\\\/}/g'"
+			local internal_env_value
+			eval "internal_env_value=\$$f"
+			sed_parms="$sed_parms -e 's/\${$f}/${internal_env_value//\//\\\/}/g'"
 		else
 			printf "%s: variable for envname %s not defined.\n" \
 				"$FUNCNAME" "$f" >&2
@@ -733,15 +734,17 @@ function kube-inst_host-volume {
 ##### kube-inst_local-volume - Install Local Volume ##########################
 function kube-inst_local-volume {
 	# Prerequisite: kube-inst_init has been called
-	# Parametets:
+	# Parameters:
 	#   1 - share
-	#   2 - hostname (no FQDN, just hostname)
+	#   2 - value (e.g. hostname -no FQDN, just hostname)
 	#   3 - path [optional, default depends on share]
 	#   4 - volume Mode [optional, default "Filesystem"]
+	#   5 - key (default kubernetes.io/hostname)
 	local share="$1"
-	local hostname="$2"
+	local value="$2"
 	local path="$3"
-	local volmode="${4-"Filesystem"}"
+	local volmode="${4:-"Filesystem"}"
+	local key="${5:-"kubernetes.io/hostname"}"
 	local opt=""
 
 	kube-inst_internal-verify-initialised || return 1
@@ -750,8 +753,8 @@ function kube-inst_local-volume {
 		printf "%s: Error. Got no or empty share name.\n" \
 			"$FUNCNAME"
 		return 1
-	elif [ -z "$hostname" ] ; then
-		printf "%s: Error. Got no or empty hostname.\n" \
+	elif [ -z "$value" ] ; then
+		printf "%s: Error. Got no or empty value.\n" \
 			"$FUNCNAME"
 		return 1
 	elif [ -z "$path" ] ; then
@@ -764,13 +767,13 @@ function kube-inst_local-volume {
 		opt="--wait=0"
 	fi
 
-	printf "%s Local Volume %s (app=%s, stage=%s, mode=%s) for %s : %s \n" \
+	printf "%s Local Volume %s (app=%s, stage=%s, mode=%s) for %s=%s : %s \n" \
 		"$KUBE_ACTION_DISP" "$share" "$KUBE_APP" "$KUBE_STAGE" "$volmode" \
-		"$hostname" "$path"
+		"$key" "$value" "$path"
 
 	kube-inst_internal-exec \
 		$(dirname "$BASH_SOURCE")/kube/localVolume.yaml.template \
-		"KUBE_APP KUBE_STAGE share hostname path volmode KUBE_NAMESPACE" \
+		"KUBE_APP KUBE_STAGE share key value path volmode KUBE_NAMESPACE" \
 		$opt
 
 	return $?
