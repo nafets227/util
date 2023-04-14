@@ -21,6 +21,7 @@ spec:
     - ReadWriteMany
   hostPath:
     path: ${path}
+    type: DirectoryOrCreate
   persistentVolumeReclaimPolicy: Retain
 
 ---

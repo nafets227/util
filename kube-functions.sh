@@ -715,13 +715,9 @@ function kube-inst_host-volume {
 	printf "%s Host-Volume %s (app=%s, stage=%s) for %s\n" \
 		"$KUBE_ACTION_DISP" "$share" "$KUBE_APP" "$KUBE_STAGE" "$path"
 
-	#### Make sure directory exists
-	if [ "$KUBE_ACTION" == "install" ] ; then
-		[ -d "$path" ] || mkdir -p $path || return 1
-	elif [ "$KUBE_ACTION" == "delete" ] ; then
+	if [ "$KUBE_ACTION" == "delete" ] ; then
 		opt="--wait=0"
 	fi
-	# when deleting we leave the data untouched !
 
 	kube-inst_internal-exec \
 		$(dirname "$BASH_SOURCE")/kube/hostVolume.yaml.template \
