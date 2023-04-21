@@ -70,6 +70,7 @@ function install-ssh_trust {
 	fname="$1"
 	user="${2:-root}"
 	lfname="${3:-$(basename $fname)}"
+	parms="$4"
 
 	#----- Input checks --------------------------------------------------
 	if [ "$#" -lt "1" ] ; then
@@ -102,17 +103,21 @@ function install-ssh_trust {
 	true || return 1
 
 	if [ ! -z "${fname/*:*/}" ] ; then
-		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 $fname \
-			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/$lfname &&
-		true || return 1
+		cp $fname /tmp/$lfname || return 1
 	else
-		scp $fname /tmp/$lfname &&
-		install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 \
-			/tmp/$lfname \
-			$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/$lfname &&
-		rm /tmp/$lfname && \
-		true || return 1
+		scp $fname /tmp/$lfname || return 1
 	fi
+
+	if [ -n "$parms" ] ; then
+		parms="$parms " # add trailing blank
+	fi
+	sed "s:^:$parms:" </tmp/$lfname >/tmp/$lfname-1
+
+	install -o $INSTSSH_UID -g $INSTSSH_GID -m 600 \
+		/tmp/$lfname-1 \
+		$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/$lfname &&
+	rm /tmp/$lfname /tmp/$lfname-1 && \
+	true || return 1
 
 	cat $INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys.d/* \
 		>$INSTALL_ROOT$INSTSSH_HOME/.ssh/authorized_keys || \
