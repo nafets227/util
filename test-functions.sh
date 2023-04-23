@@ -373,16 +373,29 @@ function test_exec_kubenode {
 	#     1 - name of the node
 	#     2 - expected RC [default: 0], possible values:
 	#     3 - optional message to be printed if test fails
+	#     4+ - IP adresses or DNS names to verify connection with
 	test_exec_init || return 1
 
 	local -r nodename="${1,,}" # lowercase
-	local -r rc_exp="${2-0}"
+	local -r rc_exp="${2:-0}"
+	local -r msg="$3"
+	shift 3
+
+	if [ -z "$nodename" ] ; then
+		printf "Error: nodename empty\n"
+		return 1
+	elif [ -z "$*" ] ; then
+		printf "Error: Parm IP Adress missing\n"
+		return 1
+	fi
 
 	local bashcmd
 	bashcmd=""
 	bashcmd+=" set -x"
-	bashcmd+=" && ping -c 1 www.ibm.com"
-	bashcmd+=" && ping -c 1 192.168.108.10"
+	for f in "$@" ; do
+		bashcmd+=" && ping -c 1 -4 $f"
+		bashcmd+=" && ping -c 1 -6 $f"
+	done
 
 	local kubecmd
 	kubecmd=""
@@ -397,9 +410,9 @@ function test_exec_kubenode {
 	test_internal_exec_kube "$kubecmd" <<<"$bashcmd"
 	TESTRC=$?
 
-	if [ $TESTRC -ne $rc_exp ] ; then
+	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
-		if [ ! -z "$3" ] ; then
+		if [ ! -z "$msg" ] ; then
 			printf "Info: %s\n" "$3"
 		fi
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
