@@ -470,11 +470,6 @@ function kvm_start_vm {
 	local -r sleepMax=${3:-60}
 	local -r waitDNS=${4:-0}
 
-	local -r sleepFirst=5
-	local -r sleepNext=5
-
-	local slept=0 # beginning
-
 	ping -c 1 -W 1 "$dnsname"; rc=$?
 	case $rc in
 		0)
@@ -498,7 +493,29 @@ function kvm_start_vm {
 	esac
 
 	printf "Starting virtual Machine %s\n" "$vmname"
-	virsh start $vmname || return 1
+	virsh start $vmname &&
+	kvm_check_vm "$dnsname" "$sleepMax" "$waitDNS"
+
+	return $?
+}
+
+##### kvm_check-vm ###########################################################
+function kvm_check_vm {
+	# Parameters:
+	# 1 - DNS name of machine [optional, default=machinename ]
+	# 2 - Timeout to wait for machine to appear in seconds [optional, 60]
+	if [ -z "$1" ] ; then
+		printf "Error: no machine name supplied\n" >&2
+		return 1
+	fi
+	local -r dnsname="$1"
+	local -r sleepMax=${2:-60}
+	local -r waitDNS=${3:-0}
+
+	local -r sleepFirst=5
+	local -r sleepNext=5
+
+	local slept=0 # beginning
 
 	printf "Waiting initial %s seconds for machine %s to appear (%s/%s)\n" \
 		"$sleepFirst" "$vmname" "$slept" "$sleepMax"
