@@ -229,6 +229,10 @@ function test_internal_exec_kube {
 	local -r kubenolog="$3"
 	local cmd rc
 
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
+
 	cmd="kubectl"
 	cmd+=" --kubeconfig $KUBE_CONFIGFILE"
 	cmd+=" --namespace $KUBE_NAMESPACE"

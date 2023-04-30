@@ -57,17 +57,6 @@ function kube-inst_init {
 	KUBE_APP="$app"
 	KUBE_NAMESPACE="${ns:-$KUBE_STAGE}"
 
-	if [ "$KUBE_ACTION" == "install" ] ; then
-		# Create Namespace if it does not exist yet
-		kubectl \
-			--kubeconfig $KUBE_CONFIGFILE \
-			get namespace $KUBE_NAMESPACE &>/dev/null ||
-		kubectl \
-			--kubeconfig $KUBE_CONFIGFILE \
-			create namespace $KUBE_NAMESPACE ||
-		return 1
-	fi
-
 	return 0
 }
 
@@ -92,6 +81,21 @@ function kube-inst_internal-verify-initialised {
 		return 0
 	fi
 }
+
+##### kube-inst_internal-create_namespace ####################################
+function kube-inst_internal-create_namespace {
+	if [ "$KUBE_ACTION" == "install" ] ; then
+		# Create Namespace if it does not exist yet
+		kubectl \
+			--kubeconfig $KUBE_CONFIGFILE \
+			get namespace $KUBE_NAMESPACE &>/dev/null ||
+		kubectl \
+			--kubeconfig $KUBE_CONFIGFILE \
+			create namespace $KUBE_NAMESPACE ||
+		return 1
+	fi
+}
+
 
 ##### kube-inst_internal-environize ##########################################
 function kube-inst_internal-environize {
@@ -182,7 +186,9 @@ function kube-inst_exec {
 	confdir="$(realpath ${1:-./kube})" || return 1
 	envnames="$2 KUBE_APP"
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	##### checking parameters
 	if [ "$#" -lt 2 ] ; then
@@ -263,7 +269,9 @@ function kube-inst_helm2 {
 	local version="$5"
 	local envnames="$6"
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if		[ -z "$release" ] ||
 			[ -z "$repourl" ] ||
@@ -350,7 +358,9 @@ function kube-inst_testhelm2 {
 	#   1 - release =local instance name of helm chart (unique in Kube namespace)
 	local release="$1"
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$release" ] ; then
 		printf "Error: Empty value for parm release\n"
@@ -412,7 +422,9 @@ function kube-inst_helm {
 	local sourceurl="$2"
 	shift 2
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		local parms=""
@@ -458,7 +470,9 @@ function kube-inst_tls-secret {
 	local secretname="$1"
 	local caname="$2"
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
@@ -506,7 +520,9 @@ function kube-inst_generic-secret {
 	local secretname="$1"
 	shift
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
@@ -548,7 +564,9 @@ function kube-inst_text-secret {
 	local secretname="$1"
 	shift
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
@@ -592,7 +610,9 @@ function kube-inst_configmap2 {
 	local envnames="$1"
 	shift
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$cmapname" ] ; then
 		printf "%s: Error. Got no or empty configmap name.\n" \
@@ -658,7 +678,9 @@ function kube-inst_nfs-volume {
 	local -r nfspath="${path##*:}"
 	local opt=""
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$share" ] ; then
 		printf "%s: Error. Got no or empty share name.\n" \
@@ -704,7 +726,9 @@ function kube-inst_host-volume {
 	local path="$2"
 	local opt=""
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$share" ] ; then
 		printf "%s: Error. Got no or empty share name.\n" \
@@ -743,7 +767,9 @@ function kube-inst_local-volume {
 	local key="${5:-"kubernetes.io/hostname"}"
 	local opt=""
 
-	kube-inst_internal-verify-initialised || return 1
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
 
 	if [ -z "$share" ] ; then
 		printf "%s: Error. Got no or empty share name.\n" \
