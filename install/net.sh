@@ -260,7 +260,7 @@ function install-net_static2 {
 		$addparms
 		EOF
 
-	if [ -f $INSTALL_ROOT/etc/resolv.conf ] || [ -l $INSTALL_ROOT/etc/resolv.conf ] ; then
+	if [ -f $INSTALL_ROOT/etc/resolv.conf ] || [ -L $INSTALL_ROOT/etc/resolv.conf ] ; then
 		rm $INSTALL_ROOT/etc/resolv.conf
 	fi
 	ln -s /run/systemd/resolve/resolv.conf $INSTALL_ROOT/etc/resolv.conf
