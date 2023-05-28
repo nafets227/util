@@ -375,7 +375,7 @@ function test_exec_kubecron {
 function test_exec_kubenode {
 	# Parameters:
 	#     1 - name of the node
-	#     2 - expected RC [default: 0], possible values:
+	#     2 - expected RC [default: 0]
 	#     3 - optional message to be printed if test fails
 	#     4+ - IP adresses or DNS names to verify connection with
 	test_exec_init || return 1
@@ -411,7 +411,8 @@ function test_exec_kubenode {
 	kubecmd+=" --rm"
 	kubecmd+=" --pod-running-timeout=2m"
 
-	test_internal_exec_kube "$kubecmd" <<<"$bashcmd"
+	ssh -o StrictHostKeyChecking=no $nodename \
+		"kubectl $kubecmd <<<\"$bashcmd\"" >>$TESTSETDIR/$testnr.out 2>&1
 	TESTRC=$?
 
 	if [ "$TESTRC" -ne "$rc_exp" ] ; then
