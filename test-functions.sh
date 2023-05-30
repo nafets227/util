@@ -409,7 +409,7 @@ function test_exec_kubenode {
 	kubecmd+=" --overrides='{ \"apiVersion\": \"v1\", \"spec\": { \"nodeName\": \"$nodename\" } }'"
 	kubecmd+=" --stdin"
 	kubecmd+=" --rm"
-	kubecmd+=" --pod-running-timeout=2m"
+	kubecmd+=" --pod-running-timeout=3m"
 
 	ssh -o StrictHostKeyChecking=no $nodename \
 		"kubectl $kubecmd <<<\"$bashcmd\"" >>$TESTSETDIR/$testnr.out 2>&1
