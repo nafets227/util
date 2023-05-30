@@ -36,19 +36,7 @@ function inst-arch_init() {
 	local bootmnt="${4-/boot/efi}"
 
 	printf "About to install Arch Linux for %s\n" "$name" >&2
-	if [ -z "$bootdev" ]; then
-		printf "Root-Device: %s (%s)\n" \
-			"$rootdev" "$(realpath $rootdev)" >&2
-		printf "Warning: All data on %s will be DELETED!\n" \
-			"$rootdev" >&2
-	else
-		printf "Root-Device: %s (%s), Boot-Device: %s (%s) on %s\n" \
-			"$rootdev" "$(realpath $rootdev)" \
-			"$bootdev" "$(realpath $bootdev)" "$bootmnt" >&2
-		printf "Warning: All data on %s and %s will be DELETED!\n" \
-			"$rootdev" "$bootdev" >&2
-	fi
-	read -p "Press Enter to Continue, use Ctrl-C to break."
+	inst-arch_destroy "$rootdev" "$bootdev" || return 1
 
 	inst-arch_initinternal "$name" "$rootdev" "$bootdev" "$bootmnt" || return 1
 
@@ -61,29 +49,25 @@ function inst-arch_init-fulldisk () {
 	#    1 - hostname
 	#    2 - device
 	#    3 - boot mount point [options, default /boot/efi]
+	#    4 - size of file-backed disk. Ignored for device backed disk
 	local name="$1"
 	local diskdev="$2"
-	local bootmnt="${3-/boot/efi}"
+	local bootmnt="${3:-/boot/efi}"
+	local disksize="${4:-10G}"
 
 	printf "About to install Arch Linux for %s\n" "$name" >&2
-	printf "Disk-Device: %s (%s)\n" \
-			"$diskdev" "$(realpath $diskdev)" >&2
-	printf "Warning: All data on %s will be DELETED!\n" \
-			"$diskdev" >&2
-	read -p "Press Enter to Continue, use Ctrl-C to break."
+	inst-arch_destroy-disk "$diskdev" || return 1
 
-	# Create partitions and root Filesystems and mount it
-	if [ ! -e "$diskdev" ] ; then
-		printf "Creating Disk-Devide %s (size=10G)\n" "$diskdev"
-		fallocate -l 10G $diskdev
+	if [ ! -b "$diskdev" ] ; then
+		printf "Creating Disk-Device %s (size=%s)\n" "$diskdev" "$disksize"
+		fallocate -l "$disksize" "$diskdev"
 		if [ $? -ne 0 ] ; then
 			printf "Falling back to dd since fallocate is not working.\n" >&2
-			dd if=/dev/zero of=$diskdev count=0 bs=1 seek=10G || return 1
+			dd if=/dev/zero "of=$diskdev" count=0 bs=1 "seek=$disksize" || return 1
 		fi
-	else
-		wipefs --all --force $diskdev || return 1
 	fi
 
+	# Create partitions and root Filesystems and mount it
 	sfdisk $diskdev <<-EOF || return 1
 		label: gpt
 		1 : size=256M, type="EFI System", name="$name-efi"
@@ -114,22 +98,21 @@ function inst-arch_init-pidisk () {
 	# Parameters:
 	#    1 - hostname
 	#    2 - device
+	#    3 - size of file-backed disk. Ignored for device backed disk
 	local name="$1"
 	local diskdev="$2"
+	local disksize="${3:-8G}"
 
 	printf "About to install Arch Linux for %s\n" "$name" >&2
-	printf "Disk-Device: %s (%s)\n" \
-			"$diskdev" "$(realpath $diskdev)" >&2
-	printf "Warning: All data on %s will be DELETED!\n" \
-			"$diskdev" >&2
-	read -p "Press Enter to Continue, use Ctrl-C to break."
+	inst-arch_destroy-disk "$diskdev" || return 1
 
-	# Create partitions and root Filesystems and mount it
-	if [ ! -e "$diskdev" ] ; then
-		printf "Creating Disk-Devide %s (size=8G) using dd\n" "$diskdev"
-		dd if=/dev/zero of=$diskdev count=0 bs=1 seek=8G || return 1
-	else
-		wipefs --all --force $diskdev || return 1
+	if [ ! -b "$diskdev" ] ; then
+		printf "Creating Disk-Device %s (size=%s)\n" "$diskdev" "$disksize"
+		fallocate -l "$disksize" "$diskdev"
+		if [ $? -ne 0 ] ; then
+			printf "Falling back to dd since fallocate is not working.\n" >&2
+			dd if=/dev/zero "of=$diskdev" count=0 bs=1 "seek=$disksize" || return 1
+		fi
 	fi
 
 	parted -s -- "$diskdev" mklabel msdos &&
@@ -184,6 +167,7 @@ function inst-arch_initinternal () {
 
 	# create boot filesystem and mount (if any)
 	if [ ! -z "$bootdev" ]; then
+		wipefs --all --force $bootdev || return 1
 		mkfs.fat -F32 "$bootdev" >&2 || return 1
 		mkdir -p $INSTALL_ROOT$bootmnt >&2 || return 1
 		mount $bootdev $INSTALL_ROOT$bootmnt >&2 || return 1
@@ -220,6 +204,52 @@ function inst-arch_finalize {
 	fi
 
 	unset INSTALL_ROOT INSTALL_BOOT
+
+	return 0
+}
+
+##### Wipe filesystems #######################################################
+function inst-arch_destroy() {
+	# Parameters:
+	#    1 - rootdev
+	#    2 - boot device [optional]
+	local rootdev="$1"
+	local bootdev="$2"
+
+	printf "About to destroy Arch Linux data.\n\tRoot-Device: %s (%s)\n" \
+		"$rootdev" "$(realpath $rootdev)" >&2
+	if [ -n "$bootdev" ]; then
+		printf "\t Boot-Device: %s (%s)\n" \
+			"$bootdev" "$(realpath $bootdev)" >&2
+		printf "\tWarning: All data will be DELETED!\n" \
+			"$rootdev" "$bootdev" >&2
+	fi
+	read -p "Press Enter to Continue, use Ctrl-C to break."
+
+	wipefs --all --force $rootdev || return 1
+	if [ -n "$bootdev" ]; then
+		wipefs --all --force $bootdev || return 1
+	fi
+
+	return 0
+}
+
+#### Wipe disk and remove file backend #######################################
+function inst-arch_destroy-disk () {
+	# Parameters:
+	#    1 - device
+	local diskdev="$1"
+
+	printf "About to destroy Arch Linux data.\n\tDisk Device %s (%s)\n" \
+		"$diskdev" "$(realpath "$diskdev")" >&2
+	printf "\tWarning: All data will be DELETED!\n" >&2
+	read -p "Press Enter to Continue, use Ctrl-C to break."
+
+	if [ -b "$diskdev" ] ; then
+		wipefs --all --force $diskdev || return 1
+	elif [ -e "$diskdev" ] ; then
+		rm $diskdev || return 1
+	fi
 
 	return 0
 }
