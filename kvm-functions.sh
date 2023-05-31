@@ -526,7 +526,7 @@ function kvm_check_vm {
 	while [ "$slept" -lt "$sleepMax" ] ; do
 		[ -n "$(dig +short "$dnsname")" ] &&
 		ping -c 1 -W 1 "$dnsname" &&
-		ssh -o StrictHostKeyChecking=no -n "$dnsname" &&
+		ssh -n -o StrictHostKeyChecking=no -n "$dnsname" &&
 		vmstatus=$(ssh -o StrictHostKeyChecking=no "$dnsname" \
 			<<-EOF |
 			if [ -e /usr/bin/systemctl ] ; then

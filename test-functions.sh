@@ -434,7 +434,7 @@ function test_exec_kubenode2 {
 	kubecmd+=" --pod-running-timeout=3m"
 
 	if [ -n "$dnsname" ] ; then
-		ssh -o StrictHostKeyChecking=no "$dnsname" \
+		ssh -n -o StrictHostKeyChecking=no "$dnsname" \
 			"kubectl $kubecmd <<<\"$bashcmd\"" >>"$TESTSETDIR/$testnr.out" 2>&1
 		TESTRC=$?
 	else
