@@ -296,7 +296,7 @@ function test_exec_kubecron {
 
 	while [ -z "$TESTRC" ] ; do
 		test_internal_exec_kube \
-			"get job $cronjobname-test -o json| jq '.status'" \
+			"get job $cronjobname-test -o json | jq '.status'" \
 			"" "1" &&
 		STATUS="$TEST_INTERNAL_EXEC_KUBE_OUTPUT" &&
 		ACTIVE=$(jq '.active // 0' <<<"$STATUS" 2>&1) &&
