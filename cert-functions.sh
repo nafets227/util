@@ -17,6 +17,8 @@ function cert_create_key {
 	#    $CERT_PRIVATE_DIR/$certname.key
 	local name="$1"
 	local pw="$2"
+	local TARGETPW
+	local PW
 
 	if [ -z "$name" ] ; then
 		printf "Internal Error (%s): No parm, expected 1\n" "$FUNCNAME"
