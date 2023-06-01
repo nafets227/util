@@ -27,12 +27,12 @@ function install-mount {
 	fi
 
 	# Create Source directory if it does not exist
-	if [[ "$1" != *":"* ]] && [ ! -e $1 ] ; then
+	if [[ "$1" != *":"* ]] && [ ! -e $INSTALL_ROOT/$1 ] ; then
 		mkdir -p $INSTALL_ROOT/$1
 	fi
 
 	# Create Target directory if it does not exist
-	if [ ! -d $2 ]; then
+	if [ ! -d $INSTALL_ROOT/$2 ]; then
 		mkdir -p $INSTALL_ROOT/$2
 	fi
 
