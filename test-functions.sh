@@ -249,7 +249,7 @@ function test_internal_exec_kube {
 			>>$TESTSETDIR/$testnr.out
 	fi
 
-	TEST_INTERNAL_EXEC_KUBE_OUTPUT=$(eval $cmd $kubecmd 2>&1)
+	TEST_INTERNAL_EXEC_KUBE_OUTPUT=$(set +x ; eval $cmd $kubecmd 2>&1)
 	rc=$?
 	if [ -z "$kubenolog" ] || [ "$rc" != 0 ] ; then
 		printf "%s\n" \
