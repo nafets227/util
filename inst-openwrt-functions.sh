@@ -22,7 +22,7 @@ function inst-openwrt_init {
 			"$diskdev" "$(realpath "$diskdev")" >&2
 	printf "Warning: All data on %s will be DELETED!\n" \
 			"$diskdev" >&2
-	read -r -p "Press Enter to Continue, use Ctrl-C to break."
+	[ -t 0 ] && read -r -p "Press Enter to Continue, use Ctrl-C to break."
 
 	openwrt_imggz=$(util_download "$openwrt_url") || return 1
 

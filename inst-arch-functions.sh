@@ -231,7 +231,7 @@ function inst-arch_destroy() {
 			"$bootdev" "$(realpath "$bootdev")" >&2
 		printf "\tWarning: All data will be DELETED!\n" >&2
 	fi
-	read -r -p "Press Enter to Continue, use Ctrl-C to break."
+	[ -t 0 ] && read -r -p "Press Enter to Continue, use Ctrl-C to break."
 
 	wipefs --all --force "$rootdev" || return 1
 	if [ -n "$bootdev" ]; then
@@ -250,7 +250,7 @@ function inst-arch_destroy-disk () {
 	printf "About to destroy Arch Linux data.\n\tDisk Device %s (%s)\n" \
 		"$diskdev" "$(realpath "$diskdev")" >&2
 	printf "\tWarning: All data will be DELETED!\n" >&2
-	read -r -p "Press Enter to Continue, use Ctrl-C to break."
+	[ -t 0 ] && read -r -p "Press Enter to Continue, use Ctrl-C to break."
 
 	if [ -b "$diskdev" ] ; then
 		wipefs --all --force "$diskdev" || return 1
