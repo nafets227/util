@@ -378,12 +378,29 @@ function test_exec_kubenode {
 	#     2 - expected RC [default: 0]
 	#     3 - optional message to be printed if test fails
 	#     4+ - IP adresses or DNS names to verify connection with
+	local -r nodename="$1"
+	local -r rc_exp="$2"
+	local -r msg="$3"
+	shift 3
+
+	test_exec_kubenode2 "$nodename" "$nodename" "$rc_exp" "$msg" "$@"
+}
+
+function test_exec_kubenode2 {
+	# Parameters:
+	#     1 - name of the node
+	#     2 - DNS name of the VM to run kubectl
+	#         if empty, the current machine will be used (no ssh)
+	#     3 - expected RC [default: 0]
+	#     4 - optional message to be printed if test fails
+	#     5+ - IP adresses or DNS names to verify connection with
 	test_exec_init || return 1
 
 	local -r nodename="${1,,}" # lowercase
-	local -r rc_exp="${2:-0}"
-	local -r msg="$3"
-	shift 3
+	local -r dnsname="$2"
+	local -r rc_exp="${3:-0}"
+	local -r msg="$4"
+	shift 4
 
 	if [ -z "$nodename" ] ; then
 		printf "Error: nodename empty\n"
@@ -411,9 +428,14 @@ function test_exec_kubenode {
 	kubecmd+=" --rm"
 	kubecmd+=" --pod-running-timeout=3m"
 
-	ssh -o StrictHostKeyChecking=no $nodename \
-		"kubectl $kubecmd <<<\"$bashcmd\"" >>$TESTSETDIR/$testnr.out 2>&1
-	TESTRC=$?
+	if [ -n "$dnsname" ] ; then
+		ssh -o StrictHostKeyChecking=no $dnsname \
+			"kubectl $kubecmd <<<\"$bashcmd\"" >>$TESTSETDIR/$testnr.out 2>&1
+		TESTRC=$?
+	else
+		kubectl $kubecmd <<<"$bashcmd" >>$TESTSETDIR/$testnr.out 2>&1
+		TESTRC=$?
+	fi
 
 	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
