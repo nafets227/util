@@ -391,4 +391,4 @@ fi
 #openssl x509 -noout -text -in a.crt
 
 ## recreate csr from crt
-#openssl x509 -x509toreq -in nafets.dyndns.eu-20xx.crt -out nafets.dyndns.eu.csr -signkey nafets.dyndns.eu.key
+#openssl x509 -x509toreq -in my.domain.tld-20xx.crt -out my.domain.tld.csr -signkey my.domain.tld.key
