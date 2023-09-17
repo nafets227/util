@@ -21,8 +21,6 @@ function kvm_expect_value () {
 
 ##### parseParm - parse Parameters and set global variables ##################
 function kvm_parseParm () {
-	local -r def_memory="1024M"
-
 	if [ "$#" -lt 1 ] ; then
 		printf "Error: no machine name supplied\n" >&2
 		return 1
@@ -31,7 +29,6 @@ function kvm_parseParm () {
 	shift
 
 	local value
-	local value_present
 
 	while [ $# -gt 0 ] ; do
 		parm="${1%%=*}"
@@ -230,7 +227,7 @@ function kvm_create-vm () {
 
 	# Auto-Detect OS if not given on commandline
 	if [ -z "$prm_os" ] ; then
-		prm_os=$(kvm_getDefaultOS $vmname)
+		prm_os=$(kvm_getDefaultOS "$vmname")
 		rc=$?; if [ "$rc" -ne 0 ] ; then return $rc; fi
 	fi
 
@@ -256,7 +253,7 @@ function kvm_create-vm () {
 	local prefix_dryrun=""
 	[ "$prm_dryrun" -ne 0 ] && prefix_dryrun="Dryrun-"
 	printf "%s: %sInstalling machine %s (ID=%s)\n" \
-		"$(basename $BASH_SOURCE .sh)" \
+		"$(basename "${BASH_SOURCE[0]}" .sh)" \
 		"$prefix_dryrun" \
 		"$vmname" \
 		"$prm_id"
@@ -295,12 +292,12 @@ function kvm_create-vm () {
 		--noreboot
 		--osinfo=require=off
 		"
-	if [ ! -z "$prm_disk2" ] ; then
+	if [ -n "$prm_disk2" ] ; then
 		virt_prms="$virt_prms
 			--disk $prm_disk2,format=raw,bus=$diskbustype,size=10
 			"
 	fi
-	if [ ! -z "$prm_disk3" ] ; then
+	if [ -n "$prm_disk3" ] ; then
 		virt_prms="$virt_prms
 			--disk $prm_disk3,format=raw,bus=$diskbustype,size=10
 			"
@@ -310,12 +307,12 @@ function kvm_create-vm () {
 			--autostart
 			"
 	fi
-	if [ ! -z "$prm_os" ] ; then
+	if [ -n "$prm_os" ] ; then
 		virt_prms="$virt_prms
 			--os-variant $prm_os
 			"
 	fi
-	if [ ! -z "$prm_sound" ] ; then
+	if [ -n "$prm_sound" ] ; then
 		virt_prms="$virt_prms
 			--sound $prm_sound
 			"
@@ -327,13 +324,13 @@ function kvm_create-vm () {
 	else
 		for n in "" 2 3 4 5 6 7 8 ; do
 			eval thisprmnet=\$\{prm_net$n\}
-			if [ ! -z "$thisprmnet" ] ; then
+			if [ -n "$thisprmnet" ] ; then
 				thisprmnet_src=${thisprmnet%%,*}
 				thisprmnet_type=${thisprmnet_src%%:*}
 				thisprmnet_type=${thisprmnet_type:-defaulttype}
 				thisprmnet_src=${thisprmnet_src##*:}
 				thisprmnet_mac=${thisprmnet##*,}
-				if [ -z $thisprmnet_src ] || [ -z %thisprmnet_mac ] ; then
+				if [ -z "$thisprmnet_src" ] || [ -z "$thisprmnet_mac" ] ; then
 					printf "invalid net parm %s for net%s.\n" "$thisprmnet" "$n"
 					return 1
 				elif
@@ -366,7 +363,7 @@ function kvm_create-vm () {
 			--cpu host
 			"
 	fi
-	if [ ! -z "$prm_arch" ] ; then
+	if [ -n "$prm_arch" ] ; then
 		virt_prms="$virt_prms
 			--arch $prm_arch
 			"
@@ -377,7 +374,7 @@ function kvm_create-vm () {
 				"
 		else
 			virt_prms="$virt_prms
-				--graphics vnc,port=$((5900+$prm_id)),listen=0.0.0.0
+				--graphics vnc,port=$((5900+prm_id)),listen=0.0.0.0
 				--video $videotype
 				"
 		fi
@@ -388,6 +385,7 @@ function kvm_create-vm () {
 			--boot uefi
 			"
 	elif [ ! -r "$prm_boot" ] ; then
+		#shellcheck disable=SC2089
 		virt_prms="$virt_prms
 			--boot \"$prm_boot\"
 			"
@@ -395,23 +393,26 @@ function kvm_create-vm () {
 	fi
 	# @TODO ostype
 	# @TODO memory balloning for hot-plug and unplug
-	local domstate=$(virsh dominfo $vmname 2>/dev/null)
+	local domstate
+	domstate=$(virsh dominfo "$vmname" 2>/dev/null) # ignore error
 	if [ "$prm_dryrun" -ne 0 ] ; then
 		true
-	elif [ ! -z "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
+	elif [ -n "$domstate" ] && [ "$prm_replace" -eq 0 ] ; then
 		printf "ERROR: machine %s already existing and --replace was not given.\n" \
 			"$vmname" >&2
 		exit 1
 	else
-		kvm_delete-vm $vmname
+		kvm_delete-vm "$vmname"
 		# We dont honor return code here!
 	fi
-	echo virt-install $virt_prms
+	echo virt-install "$virt_prms"
 
 	if [ "$prm_dryrun" -ne 0 ] ; then
-		virt-install --dry-run $virt_prms
+		#shellcheck disable=SC2086
+		eval virt-install --dry-run $virt_prms
 		rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
 	else
+		#shellcheck disable=SC2086
 		eval virt-install $virt_prms
 		rc=$? ; if [ $rc -ne 0 ] ; then return $rc ; fi
 	fi
@@ -429,7 +430,8 @@ function kvm_delete-vm {
 	fi
 	vmname="$1"
 
-	local domstate=$(virsh domstate $vmname 2>/dev/null)
+	local domstate
+	domstate=$(virsh domstate "$vmname" 2>/dev/null) # ignore error
 
 	if		[ -z "$domstate" ] ||
 			[ "$domstate" == " " ] ; then
@@ -450,7 +452,7 @@ function kvm_delete-vm {
 		virsh undefine --nvram "$vmname"
 	else
 		printf "Unknown State \"%s\" of existing machine %s.\n" \
-			" $state" "$vmname" >&2
+			" $domstate" "$vmname" >&2
 		return 1
 	fi
 }
@@ -493,7 +495,7 @@ function kvm_start_vm {
 	esac
 
 	printf "Starting virtual Machine %s\n" "$vmname"
-	virsh start $vmname &&
+	virsh start "$vmname" &&
 	kvm_check_vm "$dnsname" "$sleepMax" "$waitDNS"
 
 	return $?
@@ -519,10 +521,10 @@ function kvm_check_vm {
 
 	printf "Waiting initial %s seconds for machine %s to appear (%s/%s)\n" \
 		"$sleepFirst" "$vmname" "$slept" "$sleepMax"
-	sleep $sleepFirst ; slept=$(( $slept + $sleepFirst ))
+	sleep $sleepFirst ; slept=$(( slept + sleepFirst ))
 
 	while [ "$slept" -lt "$sleepMax" ] ; do
-		[ ! -z "$(dig +short $dnsname)" ] &&
+		[ -n "$(dig +short "$dnsname")" ] &&
 		ping -c 1 -W 1 "$dnsname" &&
 		ssh -o StrictHostKeyChecking=no -n "$dnsname" &&
 		vmstatus=$(ssh -o StrictHostKeyChecking=no "$dnsname" \
@@ -548,7 +550,7 @@ function kvm_check_vm {
 
 		printf "Waiting another %s seconds for machine %s to appear (%s/%s) %s\n" \
 			"$sleepNext" "$vmname" "$slept" "$sleepMax" "$vmstatus"
-		sleep $sleepNext ; slept=$(( $slept + $sleepNext ))
+		sleep "$sleepNext" ; slept=$(( slept + sleepNext ))
 	done
 
 	printf "ERROR: Timed out waiting %s seconds for machine %s\n" \

@@ -12,32 +12,32 @@ function install-mount {
 
 	if [ $# -ne 3 ]; then
 		printf "%s: Wrong number of %s parms (should be 3)" \
-			"$FUNCNAME" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	elif [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
-	fgrep " $2 " $INSTALL_ROOT/etc/fstab >/dev/null
+	grep -F " $2 " "$INSTALL_ROOT/etc/fstab" >/dev/null
 	if [ $? -ne 1 ]; then
 		echo "Setting up Mount [$1] skipped."
 		return 0
 	fi
 
 	# Create Source directory if it does not exist
-	if [[ "$1" != *":"* ]] && [ ! -e $INSTALL_ROOT/$1 ] ; then
-		mkdir -p $INSTALL_ROOT/$1
+	if [[ "$1" != *":"* ]] && [ ! -e "$INSTALL_ROOT/$1" ] ; then
+		mkdir -p "$INSTALL_ROOT/$1"
 	fi
 
 	# Create Target directory if it does not exist
-	if [ ! -d $INSTALL_ROOT/$2 ]; then
-		mkdir -p $INSTALL_ROOT/$2
+	if [ ! -d "$INSTALL_ROOT/$2" ]; then
+		mkdir -p "$INSTALL_ROOT/$2"
 	fi
 
 	# Create entry in /etc/fstab if it does not exist
-	cat >>$INSTALL_ROOT/etc/fstab <<-EOF
+	cat >>"$INSTALL_ROOT/etc/fstab" <<-EOF
 		$1 $2 $3
 		EOF
 
@@ -52,11 +52,11 @@ function install-mount_bind {
 	#   2 - Mountpoing [directory]
 	if [ $# -ne 2 ]; then
 		printf "%s: Wrong number of %s parms (should be 2)" \
-			"$FUNCNAME" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	elif [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 

@@ -87,11 +87,11 @@ function kube-inst_internal-create_namespace {
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		# Create Namespace if it does not exist yet
 		kubectl \
-			--kubeconfig $KUBE_CONFIGFILE \
-			get namespace $KUBE_NAMESPACE &>/dev/null ||
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			get namespace "$KUBE_NAMESPACE" &>/dev/null ||
 		kubectl \
-			--kubeconfig $KUBE_CONFIGFILE \
-			create namespace $KUBE_NAMESPACE ||
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			create namespace "$KUBE_NAMESPACE" ||
 		return 1
 	fi
 }
@@ -108,21 +108,22 @@ function kube-inst_internal-environize {
 
 	##### Prepare Environizing
 	sed_parms=""
-	if [ ! -z "$envnames" ] ; then  for f in $envnames ; do
+	if [ -n "$envnames" ] ; then  for f in $envnames ; do
 		if [[ -v $f ]] ; then
 			local internal_env_value
 			eval "internal_env_value=\$$f"
 			sed_parms="$sed_parms -e 's/\${$f}/${internal_env_value//\//\\\/}/g'"
 		else
 			printf "%s: variable for envname %s not defined.\n" \
-				"$FUNCNAME" "$f" >&2
+				"${FUNCNAME[0]}" "$f" >&2
 		fi
 	done; fi
 	#DEBUG
 	#printf "sed_parms=%s\n" "$sed_parms"
 	#set -x
 
-	if [ ! -z "$sed_parms" ] ; then
+	if [ -n "$sed_parms" ] ; then
+		#shellcheck disable=SC2086 # sed_parms contains multiple parms
 		eval sed ${sed_parms//$'\n'/\\n} || return 1
 	else
 		cat
@@ -144,12 +145,14 @@ function kube-inst_internal-exec {
 	local envnames="$1"
 	shift
 
-	cat $file |
-		kube-inst_internal-environize "$envnames" |
+	if [ "$file" == "-" ] ; then
+		file="/dev/stdin"
+	fi
+	kube-inst_internal-environize "$envnames" <"$file" |
 		kubectl \
-			--kubeconfig $KUBE_CONFIGFILE \
-			$KUBE_CLI_ACTION \
-			-n $KUBE_NAMESPACE \
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			"$KUBE_CLI_ACTION" \
+			-n "$KUBE_NAMESPACE" \
 			"$@" \
 			-f -
 
@@ -183,7 +186,7 @@ function kube-inst_exec {
 	#           ip=myipvalue
 	#       before the yaml file will be processed by kubernetes.
 	local confdir envnames
-	confdir="$(realpath ${1:-./kube})" || return 1
+	confdir="$(realpath "${1:-./kube}")" || return 1
 	envnames="$2 KUBE_APP"
 
 	kube-inst_internal-verify-initialised &&
@@ -193,12 +196,13 @@ function kube-inst_exec {
 	##### checking parameters
 	if [ "$#" -lt 2 ] ; then
 		printf "%s: Error. received %s parms (Exp >=2 ).\n" \
-			"$FUNCNAME" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 
-	if [ ! -d $confdir ] ; then
-		printf "%s: Error confdir \"%s\" is no directory.\n"
+	if [ ! -d "$confdir" ] ; then
+		printf "%s: Error confdir \"%s\" is no directory.\n" \
+			"${FUNCNAME[0]}" "$confdir"
 		return 1
 	fi
 
@@ -212,38 +216,36 @@ function kube-inst_exec {
 		printf "\t %s=%s\n" "$f" "$value"
 	done
 
+	# set shellopt nullglob and reset to previous state on return
+	#shellcheck disable=SC2064
+	trap "$(shopt -p nullglob)" RETURN
+	shopt -s nullglob
+
 	#Execute Shell Scripts in confdir
-	if [ ! -z "$(ls $confdir/*.sh 2>/dev/null)" ] ; then
-		for f in $confdir/*.sh ; do
-			printf "Loading Kubeconfig %s ... " "$(basename $f)"
-			. $f --$KUBE_ACTION || return 1
-		done
-	fi
+	for f in "$confdir"/*.sh ; do
+		printf "Loading Kubeconfig %s ... " "$(basename "$f")"
+		#shellcheck disable=SC1090 # cannot parse dynamic parm statically
+		. "$f" "--$KUBE_ACTION" || return 1
+	done
 
 	#Execute yaml in confdir
-	if [ ! -z "$(ls $confdir/*.yaml 2>/dev/null)" ] ; then
-		for f in $confdir/*.yaml ; do
-			printf "Loading Kubeconfig %s ... " "$(basename $f)"
-			kube-inst_internal-exec $f || return 1
-		done
-	fi
+	for f in "$confdir"/*.yaml ; do
+		printf "Loading Kubeconfig %s ... " "$(basename "$f")"
+		kube-inst_internal-exec "$f" || return 1
+	done
 
 	#Execute yaml.template in confdir
-	if [ ! -z "$(ls $confdir/*.yaml.template 2>/dev/null)" ] ; then
-		for f in $confdir/*.yaml.template ; do
-			printf "Loading Kubeconfig %s ... " "$(basename $f)"
-			kube-inst_internal-exec $f 	"$envnames" || return 1
-		done
-	fi
+	for f in "$confdir"/*.yaml.template ; do
+		printf "Loading Kubeconfig %s ... " "$(basename "$f")"
+		kube-inst_internal-exec "$f" "$envnames" || return 1
+	done
 
 	#Execute yaml.delete in confdir
-	if [ ! -z $(ls $confdir/*.yaml.delete 2>/dev/null) ] ; then
-		for f in $confdir/*.yaml.delete ; do
-			kubectl delete -n $ns -f $f \
-				--cascade=true --ignore-not-found \
-			|| return 1
-		done
-	fi
+	for f in "$confdir"/*.yaml.delete ; do
+		kubectl delete -n "$ns" -f "$f" \
+			--cascade=true --ignore-not-found \
+		|| return 1
+	done
 
 	unset KUBE_CONFIGFILE KUBE_ACTION KUBE_NAMESPACE KUBE_APP
 
@@ -283,7 +285,7 @@ function kube-inst_helm2 {
 	fi
 
 	local prm_version cronjobsuspend
-	if [ ! -z "$version" ]; then
+	if [ -n "$version" ]; then
 		prm_version="--version $version"
 		cronjobsuspend="true"
 	else
@@ -301,9 +303,10 @@ function kube-inst_helm2 {
 			return 1
 		fi
 
+		#shellcheck disable=SC2086 # prm_version conains multiple parms
 		if ! helm upgrade --install \
-			--kubeconfig $KUBE_CONFIGFILE \
-			--namespace $KUBE_NAMESPACE \
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
 			--values - \
 			$prm_version \
 			"$release" \
@@ -318,13 +321,13 @@ function kube-inst_helm2 {
 	elif [ "$KUBE_ACTION" == "delete" ] ; then
 		# do not stop on error, try to delete everything
 		helm uninstall \
-			--kubeconfig $KUBE_CONFIGFILE \
-			--namespace $KUBE_NAMESPACE \
-			$release
-		helm repo remove $reponame
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
+			"$release"
+		helm repo remove "$reponame"
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
-			"$FUNCNAME" "$1"
+			"${FUNCNAME[0]}" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
@@ -340,12 +343,13 @@ function kube-inst_helm2 {
 	envnameshelmupdate+=" reponame"
 	envnameshelmupdate+=" repourl"
 	envnameshelmupdate+=" chart"
+	echo "$cronjobname $cronjobsuspend $release $reponame $repourl $chart" >/dev/null
 
 	kube-inst_configmap \
 		"$cronjobname" \
-		"helmupdate.sh=$(dirname "$BASH_SOURCE")/kube/helmupdate.sh" &&
+		"helmupdate.sh=$(dirname "${BASH_SOURCE[0]}")/kube/helmupdate.sh" &&
 	kube-inst_internal-exec \
-		$(dirname "$BASH_SOURCE")/kube/helmupdate.cronjob.yaml.template \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/helmupdate.cronjob.yaml.template" \
 		"$envnameshelmupdate" \
 	|| return 1
 
@@ -380,8 +384,8 @@ function kube-inst_testhelm2 {
 	# should return "deployed".
 
 	helm test \
-		--kubeconfig $KUBE_CONFIGFILE \
-		--namespace $KUBE_NAMESPACE \
+		--kubeconfig "$KUBE_CONFIGFILE" \
+		--namespace "$KUBE_NAMESPACE" \
 		"$release"
 	rc="$?"
 	if [ "$rc" != "0" ] ; then
@@ -389,18 +393,18 @@ function kube-inst_testhelm2 {
 		# maybe https://github.com/helm/helm/pull/10603 will solve it.
 		# So we workaround identifying the pods ourselves.
 		pods=$( kubectl get pods \
-			--kubeconfig $KUBE_CONFIGFILE \
-			--namespace $KUBE_NAMESPACE \
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
 			--output jsonpath='{.items[?(@.metadata.annotations.helm\.sh/hook=="test-success")].metadata.name}'
 		) &&
 		for pod in $pods ; do
-			printf -- "----- Logs of Pod $pod -----\n"
+			printf -- "----- Logs of Pod %s -----\n" "$pod"
 			kubectl logs \
-				--kubeconfig $KUBE_CONFIGFILE \
-				--namespace $KUBE_NAMESPACE \
+				--kubeconfig "$KUBE_CONFIGFILE" \
+				--namespace "$KUBE_NAMESPACE" \
 				--all-containers \
-				$pod
-			printf -- "----- End of Logs of Pod $pod -----\n"
+				"$pod"
+			printf -- "----- End of Logs of Pod %s -----\n" "$pod"
 			done
 	fi
 
@@ -428,27 +432,28 @@ function kube-inst_helm {
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		local parms=""
-		for p in $* ; do
+		for p in "$@" ; do
 			parms+=" --set $p"
 		done
 
+		#shellcheck disable=SC2086 # parms contains multiple parms
 		helm upgrade --install \
-			--kubeconfig $KUBE_CONFIGFILE \
-			--namespace $KUBE_NAMESPACE \
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
 			$parms \
 			--values - \
-			$release \
-			$sourceurl &&
+			"$release" \
+			"$sourceurl" &&
 		true || return 1
 	elif [ "$KUBE_ACTION" == "delete" ] ; then
 		helm uninstall \
-			--kubeconfig $KUBE_CONFIGFILE \
-			--namespace $KUBE_NAMESPACE \
-			$release &&
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
+			"$release" &&
 		true || return 1
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
-			"$FUNCNAME" "$1"
+			"${FUNCNAME[0]}" "$1"
 		printf " Must be \"install\" or \"delete\".\n"
 		return 1
 	fi
@@ -476,31 +481,31 @@ function kube-inst_tls-secret {
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	elif [ -z "$caname" ] ; then
 		printf "%s: Error. Got no or empty ca name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	fi
 
 	printf "%s secret %s ... " "$KUBE_ACTION_DISP" "$secretname"
 
 	if [ "$KUBE_ACTION" == "delete" ] ; then
-		kubectl --kubeconfig $KUBE_CONFIGFILE \
-			$KUBE_CLI_ACTION \
-			-n $KUBE_NAMESPACE \
-			secret $secretname \
+		kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+			"$KUBE_CLI_ACTION" \
+			-n "$KUBE_NAMESPACE" \
+			secret "$secretname" \
 		|| return 1
 	elif [ "$KUBE_ACTION" == "install" ] ; then
 		local cert_key_fname cert_fname
-		cert_key_fname=$(cert_get_key $secretname) &&
-		cert_fname=$(cert_get_cert $secretname $caname) &&
+		cert_key_fname=$(cert_get_key "$secretname") &&
+		cert_fname=$(cert_get_cert "$secretname" "$caname") &&
 
-		kubectl --kubeconfig $KUBE_CONFIGFILE \
-			create secret tls $secretname \
-			--cert=$cert_fname \
-			--key=$cert_key_fname \
+		kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+			create secret tls "$secretname" \
+			"--cert=$cert_fname" \
+			"--key=$cert_key_fname" \
 			--save-config \
 			--dry-run=client \
 			-o yaml \
@@ -526,11 +531,11 @@ function kube-inst_generic-secret {
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	elif [ -z "$1" ] ; then
 		printf "%s: Error. Got no or empty filename.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	# Do not check if fname exists.
 	# it may be also a directory or a string like logicalname=realname
@@ -543,8 +548,9 @@ function kube-inst_generic-secret {
 		fromfilearg+=" --from-file=$a"
 	done
 
-	kubectl --kubeconfig $KUBE_CONFIGFILE \
-		create secret generic $secretname \
+	#shellcheck disable=SC2086 # fromfilearg contains multiple parms
+	kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+		create secret generic "$secretname" \
 		$fromfilearg \
 		--save-config \
 		--dry-run=client \
@@ -570,11 +576,11 @@ function kube-inst_text-secret {
 
 	if [ -z "$secretname" ] ; then
 		printf "%s: Error. Got no or empty secret name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	elif [ -z "$1" ] ; then
 		printf "%s: Error. Got no or empty content.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	fi
 
@@ -585,8 +591,9 @@ function kube-inst_text-secret {
 		fromliteralarg+=" --from-literal=$a"
 	done
 
-	kubectl --kubeconfig $KUBE_CONFIGFILE \
-		create secret generic $secretname \
+	#shellcheck disable=SC2086 # fromliteralarg contains multiple args
+	kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+		create secret generic "$secretname" \
 		$fromliteralarg \
 		--save-config \
 		--dry-run=client \
@@ -616,11 +623,11 @@ function kube-inst_configmap2 {
 
 	if [ -z "$cmapname" ] ; then
 		printf "%s: Error. Got no or empty configmap name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	elif [ -z "$1" ] ; then
 		printf "%s: Error. Got no or empty filename.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	# Do not check if fname exists.
 	# it may be also a directory or a string like logicalname=realname
@@ -633,8 +640,9 @@ function kube-inst_configmap2 {
 		fromfilearg+=" --from-file=$a"
 	done
 
-	kubectl --kubeconfig $KUBE_CONFIGFILE \
-		create configmap $cmapname \
+	#shellcheck disable=SC2086 # fromfilearg contains multiple args
+	kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+		create configmap "$cmapname" \
 		$fromfilearg \
 		--save-config \
 		--dry-run=client \
@@ -684,7 +692,7 @@ function kube-inst_nfs-volume {
 
 	if [ -z "$share" ] ; then
 		printf "%s: Error. Got no or empty share name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	fi
 
@@ -693,13 +701,13 @@ function kube-inst_nfs-volume {
 
 	#### Make sure directory exists on server
 	if [ "$KUBE_ACTION" == "install" ] ; then
-		ssh -o StrictHostKeyChecking=no $nfsserver \
+		ssh -o StrictHostKeyChecking=no "$nfsserver" \
 			"test -d /srv/nfs4/$nfspath" \
 			'||' "mkdir -p /srv/nfs4/$nfspath" \
 			|| return 1
 
-		if [ ! -z "$owner" ] ; then
-			ssh -o StrictHostKeyChecking=no $nfsserver \
+		if [ -n "$owner" ] ; then
+			ssh -o StrictHostKeyChecking=no "$nfsserver" \
 				"chown -R $owner /srv/nfs4/$nfspath" \
 				|| return 1
 		fi
@@ -709,7 +717,7 @@ function kube-inst_nfs-volume {
 	fi
 
 	kube-inst_internal-exec \
-		$(dirname "$BASH_SOURCE")/kube/nfsVolume.yaml.template \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/nfsVolume.yaml.template" \
 		"KUBE_APP KUBE_STAGE share nfspath nfsserver KUBE_NAMESPACE" \
 		$opt
 
@@ -732,7 +740,7 @@ function kube-inst_host-volume {
 
 	if [ -z "$share" ] ; then
 		printf "%s: Error. Got no or empty share name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	fi
 
@@ -744,7 +752,7 @@ function kube-inst_host-volume {
 	fi
 
 	kube-inst_internal-exec \
-		$(dirname "$BASH_SOURCE")/kube/hostVolume.yaml.template \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/hostVolume.yaml.template" \
 		"KUBE_APP KUBE_STAGE share path KUBE_NAMESPACE" \
 		$opt
 
@@ -773,15 +781,15 @@ function kube-inst_local-volume {
 
 	if [ -z "$share" ] ; then
 		printf "%s: Error. Got no or empty share name.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	elif [ -z "$value" ] ; then
 		printf "%s: Error. Got no or empty value.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	elif [ -z "$path" ] ; then
 		printf "%s: Error. Got no or empty path.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	fi
 
@@ -794,7 +802,7 @@ function kube-inst_local-volume {
 		"$key" "$value" "$path"
 
 	kube-inst_internal-exec \
-		$(dirname "$BASH_SOURCE")/kube/localVolume.yaml.template \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/localVolume.yaml.template" \
 		"KUBE_APP KUBE_STAGE share key value path volmode KUBE_NAMESPACE" \
 		$opt
 
@@ -806,9 +814,9 @@ function config-template {
 	# This can be used as template for application specific install script
 	kube-inst_init \
 		"action [install|delete]" \
-		"stage [prod|preprod|test|testtest] where to install"
-		"app Application name to be assigne to kubernetes tag"
-		"namespace (only use if non-standard, standard is based on stage)"
+		"stage [prod|preprod|test|testtest] where to install" \
+		"app Application name to be assigne to kubernetes tag" \
+		"namespace (only use if non-standard, standard is based on stage)" \
 		"kubeconfig (only us if not standard ~/.kube/$stage.conf"
 	if [ "$KUBE_STAGE" == "prod" ] ; then
 		MYVAL="prodvalue"
@@ -819,6 +827,8 @@ function config-template {
 	else
 		return 1
 	fi
+
+	echo "MYVAL=$MYVAL"
 }
 
 function main-template {

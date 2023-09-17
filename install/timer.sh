@@ -16,23 +16,23 @@ function install-timer {
 	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
 	elif [ "$#" -lt 1 ] ; then
 		printf "%s: Internal Error. Got %s parms (Exp=1+)\n" \
-			"$FUNCNAME" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	elif	[ -z "$onBootSec" ] && \
 			[ -z "$onUnitActiveSec" ] && \
 			[ -z "$onCalendar" ] ; then
 		printf "%s: Internal Error. Neither parm 3,4 or 5 are set.\n" \
-			"$FUNCNAME"
+			"${FUNCNAME[0]}"
 		return 1
 	fi
 
 	#----- Real Work -----------------------------------------------------
 	FNTIMER="$INSTALL_ROOT/etc/systemd/system/${name}.timer"
-	cat >$FNTIMER <<-EOF
+	cat >"$FNTIMER" <<-EOF
 		# nafetsde-${name}.timer
 		#
 		# (C) 2016-2018 Stefan Schallenberg
@@ -46,15 +46,15 @@ function install-timer {
 		[Timer]
 		Unit=${name}.service
 		EOF
-	[ ! -z "$onBootSec" ] &&
-		printf "OnBootSec=%s\n" "$onBootSec" >>$FNTIMER
-	[ ! -z "$onUnitActiveSec" ] &&
-		printf "OnUnitActiveSec=%s\n" "$onUnitActiveSec" >>$FNTIMER
-	[ ! -z "$onCalendar" ] &&
-		printf "OnCalendar=%s\n" "$onCalendar" >>$FNTIMER
+	[ -n "$onBootSec" ] &&
+		printf "OnBootSec=%s\n" "$onBootSec" >>"$FNTIMER"
+	[ -n "$onUnitActiveSec" ] &&
+		printf "OnUnitActiveSec=%s\n" "$onUnitActiveSec" >>"$FNTIMER"
+	[ -n "$onCalendar" ] &&
+		printf "OnCalendar=%s\n" "$onCalendar" >>"$FNTIMER"
 
 	FNSERVICE="$INSTALL_ROOT/etc/systemd/system/${name}.service"
-	cat >$FNSERVICE <<-EOF
+	cat >"$FNSERVICE" <<-EOF
 		# nafetsde-${name}.service
 		#
 		# (C) 2015-2018 Stefan Schallenberg
@@ -68,7 +68,7 @@ function install-timer {
 		User=$user
 		EOF
 
-	systemctl --root=$INSTALL_ROOT enable ${name}.timer
+	systemctl --root="$INSTALL_ROOT" enable "${name}.timer"
 
 	#----- Closing  ------------------------------------------------------
 	printf "Timer %s to call %s as %s [%s, %s, %s] uccessfully setup.\n" \

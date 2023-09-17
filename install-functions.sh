@@ -14,17 +14,17 @@ function install_setup_service () {
 	#    1 - mounted_rootdir
 	#    2 - Install type - matches to /root/install/install-<type>.sh
 	#        that will be called on first boot
-	if [ ! -d $1/etc/systemd/system ] ; then
+	if [ ! -d "$1/etc/systemd/system" ] ; then
 		printf "Internal Error: %s is not a directory.\n" \
 			"$1/etc/systemd/system" >&2
 		return 1
-	elif [ ! -e $1/root/tools/install/install-$2.sh ] ; then
+	elif [ ! -e "$1/root/tools/install/install-$2.sh" ] ; then
 		printf "Warning: Skipping Install-service (no %s).\n" \
 			"$1/root/tools/install/install-$2.sh" >&2
 		return 0
 	fi
 	printf "Installing Install-Service for machine type %s.\n" "$2" >&2
-	cat >>$1/etc/systemd/system/nafetsde-install.service <<-EOF &&
+	cat >>"$1/etc/systemd/system/nafetsde-install.service" <<-EOF &&
 		# nafetsde-install.service
 		#
 		# (C) 2017 Stefan Schallenberg
@@ -44,7 +44,7 @@ function install_setup_service () {
 		WantedBy=multi-user.target
 		EOF
 
-	arch-chroot $1 <<-EOF &&
+	arch-chroot "$1" <<-EOF &&
 		systemctl enable nafetsde-install.service
 	EOF
 
@@ -58,12 +58,12 @@ function install_ease-of-use {
 	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	cat >$INSTALL_ROOT/etc/profile.d/nafets_de.sh <<-"EOF" &&
+	cat >"$INSTALL_ROOT/etc/profile.d/nafets_de.sh" <<-"EOF" &&
 		#!/bin/sh
 		#
 		# (C) 2014-2018 Stefan Schallenberg
@@ -75,15 +75,15 @@ function install_ease-of-use {
 		eval "`dircolors`"
 		export EDITOR="vim"
 		EOF
-	chmod 755 $INSTALL_ROOT/etc/profile.d/nafets_de.sh &&
+	chmod 755 "$INSTALL_ROOT/etc/profile.d/nafets_de.sh" &&
 
 	true || return 1
 	# Enable Syntax highlighting in vim
 	if \
-		[ -e $INSTALL_ROOT/etc/vimrc ]  &&
-		! fgrep "syntax enable" $INSTALL_ROOT/etc/vimrc >/dev/null
+		[ -e "$INSTALL_ROOT/etc/vimrc" ]  &&
+		! grep -F "syntax enable" "$INSTALL_ROOT/etc/vimrc" >/dev/null
 	then
-		printf "syntax enable\n" >>$INSTALL_ROOT/etc/vimrc || return 1
+		printf "syntax enable\n" >>"$INSTALL_ROOT/etc/vimrc" || return 1
 	fi
 
 	#----- Closing  ------------------------------------------------------
@@ -97,15 +97,15 @@ function install_instinfo {
 	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	git -C $(dirname $BASH_SOURCE)/.. log -n 1 \
-		>$INSTALL_ROOT/root/instinfo.gitrev &&
-	git -C $(dirname $BASH_SOURCE)/.. diff HEAD \
-		>$INSTALL_ROOT/root/instinfo.gitdiff &&
+	git -C "$(dirname "${BASH_SOURCE[0]}")/.." log -n 1 \
+		>"$INSTALL_ROOT/root/instinfo.gitrev" &&
+	git -C "$(dirname "${BASH_SOURCE[0]}")/.." diff HEAD \
+		>"$INSTALL_ROOT/root/instinfo.gitdiff" &&
 
 	#----- Closing  ------------------------------------------------------
 	printf "Noted script revision to /root/instinfo.*\n" &&
@@ -129,8 +129,8 @@ function install_nafets-std {
 ##### Main ###################################################################
 
 # Load Sub.Modules
-for f in $(dirname $BASH_SOURCE)/install/*.sh ; do
+for f in "$(dirname "${BASH_SOURCE[0]}")/install/"*.sh ; do
 	echo "Loading Module $f"
-	. $f
+	#shellcheck disable=SC1090
+	. "$f"
 done
-

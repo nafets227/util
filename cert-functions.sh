@@ -21,25 +21,27 @@ function cert_create_key {
 	local PW
 
 	if [ -z "$name" ] ; then
-		printf "Internal Error (%s): No parm, expected 1\n" "$FUNCNAME"
+		printf "Internal Error (%s): No parm, expected 1\n" "${FUNCNAME[0]}"
 		return 1
 	elif [ -f "$CERT_PRIVATE_DIR/$name.key" ] ; then
 		printf "Internal Error (%s): cert key %s already exists.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_PRIVATE_DIR/$name.key"
 		return 1
 	fi
 
-	if [ ! -z "$pw" ] ; then
+	if [ -n "$pw" ] ; then
 		TARGETPW="-des3 -passout env:PW"
+		echo "$PW" >/dev/null # tell shellcheck its used
 	else
 		TARGETPW=""
 	fi
 
+	#shellcheck disable=SC2086 # TARGETPW contains multiple parms
 	PW=$pw \
 	openssl genrsa \
 		$TARGETPW \
-		-out $CERT_PRIVATE_DIR/$name.key \
+		-out "$CERT_PRIVATE_DIR/$name.key" \
 		4096 \
 	|| return 1
 
@@ -59,7 +61,7 @@ function cert_get_key {
 	local pw="$2"
 
 	if [ -z "$name" ] ; then
-		printf "Internal Error (%s): No parm, expected 1\n" "$FUNCNAME" >&2
+		printf "Internal Error (%s): No parm, expected 1\n" "${FUNCNAME[0]}" >&2
 		return 1
 	fi
 
@@ -68,8 +70,8 @@ function cert_get_key {
 		# we migrate to new by recreating the key
 		printf "Migrating Cert-Key %s\n" "$name" >&2
 		rm \
-			$CERT_PRIVATE_DIR/$name.key.insecure \
-			$CERT_PRIVATE_DIR/$name.key &&
+			"$CERT_PRIVATE_DIR/$name.key.insecure" \
+			"$CERT_PRIVATE_DIR/$name.key" &&
 		cert_create_key "$name" "$pw" >&2 &&
 		printf "%s\n" "$CERT_PRIVATE_DIR/$name.key" &&
 		true || return 1
@@ -105,21 +107,21 @@ function cert_create_ca {
 	local req="${4:-"-"}"
 
 	if [ -z "$caname" ] || [ -z "$validity" ] ; then
-		printf "Internal Error (%s): Not enough parm, expected >= 1\n" "$FUNCNAME"
+		printf "Internal Error (%s): Not enough parm, expected >= 1\n" "${FUNCNAME[0]}"
 		return 1
 	elif [ "$req" != "-" ] && [ ! -f "$req" ] ; then
 		printf "Internal Error (%s): req %s is not - and does not exist.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$req"
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$caname.key" ] ; then
 		printf "Internal Error (%s): ca key %s does not exist.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_PRIVATE_DIR/$caname.key"
 		return 1
 	elif [ -f "$CERT_STORE_DIR/$caname.crt" ] ; then
 		printf "Internal Error (%s): cert %s already exists.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_STORE_DIR/$caname.crt"
 		return 1
 	fi
@@ -128,9 +130,9 @@ function cert_create_ca {
 
 	if [ "$req" == "-" ] ; then
 		# store stdin to reqtxt file
-		cat >$CERT_STORE_DIR/$caname.reqtxt || return 1
+		cat >"$CERT_STORE_DIR/$caname.reqtxt" || return 1
 	else
-		cp -a $req $CERT_STORE_DIR/$caname.reqtxt || return 1
+		cp -a "$req" "$CERT_STORE_DIR/$caname.reqtxt" || return 1
 	fi
 
 	## CA erzeugen
@@ -140,12 +142,12 @@ function cert_create_ca {
 	openssl req \
 		-new \
 		-x509 \
-		-key $CERT_PRIVATE_DIR/$caname.key \
-		-days $validity \
+		-key "$CERT_PRIVATE_DIR/$caname.key" \
+		-days "$validity" \
 		-passin env:PW \
-		-set_serial $serial \
-		-config $CERT_STORE_DIR/$caname.reqtxt \
-		-out $CERT_STORE_DIR/$caname.crt \
+		-set_serial "$serial" \
+		-config "$CERT_STORE_DIR/$caname.reqtxt" \
+		-out "$CERT_STORE_DIR/$caname.crt" \
 	|| return 1
 
 	return 0
@@ -179,65 +181,65 @@ function cert_create_cert {
 	local req="${4:-"-"}"
 
 	if [ -z "$name" ] || [ -z "$caname" ] ; then
-		printf "Internal Error (%s): Not enough parm, expected >= 2\n" "$FUNCNAME"
+		printf "Internal Error (%s): Not enough parm, expected >= 2\n" "${FUNCNAME[0]}"
 		return 1
 	elif [ "$req" != "-" ] && [ ! -f "$req" ] ; then
 		printf "Internal Error (%s): req %s is not - and does not exist.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$req"
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$name.key" ] ; then
 		printf "Internal Error (%s): cert key %s does not exist.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_PRIVATE_DIR/$name.key"
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$caname.key" ] ; then
 		printf "Internal Error (%s): ca key %s does not exist.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_PRIVATE_DIR/$caname.key"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$caname.crt" ] ; then
 		printf "Internal Error (%s): ca cert %s does not exist.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_STORE_DIR/$caname.crt"
 		return 1
 	elif [ -f "$CERT_STORE_DIR/$name.crt" ] ; then
 		printf "Internal Error (%s): cert %s already exists.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_STORE_DIR/$name.crt"
 		return 1
 	fi
 
 	if [ "$req" == "-" ] ; then
 		# store stdin to reqtxt file
-		cat >$CERT_STORE_DIR/$name.reqtxt || return 1
+		cat >"$CERT_STORE_DIR/$name.reqtxt" || return 1
 	else
-		cp -a $req $CERT_STORE_DIR/$name.reqtxt || return 1
+		cp -a "$req" "$CERT_STORE_DIR/$name.reqtxt" || return 1
 	fi
 
 	cert_read_pw || return 1
 
 	openssl req \
 		-new \
-		-key $CERT_PRIVATE_DIR/$name.key \
-		-config $CERT_STORE_DIR/$name.reqtxt \
-		-out $CERT_STORE_DIR/$name.csr &&
+		-key "$CERT_PRIVATE_DIR/$name.key" \
+		-config "$CERT_STORE_DIR/$name.reqtxt" \
+		-out "$CERT_STORE_DIR/$name.csr" &&
 	PW=$INST_CERT_CA_PW \
 	openssl x509 \
 		-req \
 		-days 365 \
-		-in $CERT_STORE_DIR/$name.csr \
-		-CA $CERT_STORE_DIR/$caname.crt \
-		-CAkey $CERT_PRIVATE_DIR/$caname.key \
+		-in "$CERT_STORE_DIR/$name.csr" \
+		-CA "$CERT_STORE_DIR/$caname.crt" \
+		-CAkey "$CERT_PRIVATE_DIR/$caname.key" \
 		-passin env:PW \
-		-set_serial $serial \
-		-out $CERT_STORE_DIR/$name.crt \
+		-set_serial "$serial" \
+		-out "$CERT_STORE_DIR/$name.crt" \
 		-extensions v3_req \
-		-extfile $CERT_STORE_DIR/$name.reqtxt &&
+		-extfile "$CERT_STORE_DIR/$name.reqtxt" &&
 	cat \
-		$CERT_STORE_DIR/$name.crt \
-		$CERT_STORE_DIR/$caname.crt \
-		>$CERT_STORE_DIR/$name.fullchain.crt \
+		"$CERT_STORE_DIR/$name.crt" \
+		"$CERT_STORE_DIR/$caname.crt" \
+		>"$CERT_STORE_DIR/$name.fullchain.crt" \
 	|| return 1
 
 	return 0
@@ -269,16 +271,16 @@ function cert_update_cert {
 	local req="$3" # default handled in called function cert_create_cert
 
 	if [ -z "$name" ] || [ -z "$caname" ] ; then
-		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$FUNCNAME"
+		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "${FUNCNAME[0]}"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$name.crt" ] ; then
 		printf "Internal Error (%s): cert %s does not exist.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_STORE_DIR/$name.crt"
 		return 1
 	elif [ ! -f "$CERT_STORE_DIR/$name.csr" ] ; then
 		printf "Internal Error (%s): cert Signing request %s does not exists.\n" \
-			"$FUNCNAME" \
+			"${FUNCNAME[0]}" \
 			"$CERT_STORE_DIR/$name.csr"
 		return 1
 	fi
@@ -335,11 +337,11 @@ function cert_get_cert {
 	local req="$3" # default will be handled by called functions
 
 	if [ -z "$name" ] || [ -z "$caname" ] ; then
-		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "$FUNCNAME"
+		printf "Internal Error (%s): Not enough parms, expected >= 2\n" "${FUNCNAME[0]}"
 		return 1
 	fi
 
-	if [ ! -f $CERT_STORE_DIR/$name.crt ] ; then
+	if [ ! -f "$CERT_STORE_DIR/$name.crt" ] ; then
 		# CERT does not exist yet
 		cert_create_cert "$name" "$caname" "$req" >&2 || return 1
 	else
@@ -354,7 +356,7 @@ function cert_get_cert {
 ##### cert_read_pw ###########################################################
 function cert_read_pw {
 	if [ -z "$INST_CERT_CA_PW" ] ; then
-		read -s -p "Please enter CA Password " INST_CERT_CA_PW </dev/tty \
+		read -r -s -p "Please enter CA Password " INST_CERT_CA_PW </dev/tty \
 		|| return 1
 		printf "\n" >/dev/tty
 		if [ -z "$INST_CERT_CA_PW" ] ; then

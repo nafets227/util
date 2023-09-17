@@ -35,16 +35,17 @@ function util_loadfunc-or-exit {
 	if [ "${1:1:1}" == "/" ] ; then # absolute path given
 		fname="$1"
 	else
-		fname="$(dirname $caller)/$1"
+		fname="$(dirname "$caller")/$1"
 	fi
 
-	if [ ! -r $fname ] ; then
+	if [ ! -r "$fname" ] ; then
 		printf "util_loadfunc-or-exit: file %s not readable\n" \
 			"$fname" >&2
 		exit 99
 	fi
 
-	. $fname
+	#shellcheck disable=SC1090 # no chance to lint the included file here
+	. "$fname"
 	rc=$?; if [ $rc -ne 0 ] ; then
 		printf "util_loadfunc-or-exit: file %s return Error %s\n" \
 			"$fname" "$rc" >&2
@@ -58,22 +59,23 @@ function util_loadfunc-or-exit {
 function util_download {
 	local -r URL="$1"
 	local -r MY_CACHEDIR=${UTIL_CACHEDIR:-"/var/cache/nafets-util"}
-	local -r CACHFIL="${2:-$UTIL_CACHEDIR/$(basename $URL)}"
+	local -r CACHFIL="${2:-$MY_CACHEDIR/$(basename "$URL")}"
 
 	printf "Downloading %s to %s\n" "$URL" "$CACHFIL" >&2
 
-	test -d "$(dirname $CACHFIL)" ||
-	mkdir -p "$(dirname $CACHFIL)" ||
+	test -d "$(dirname "$CACHFIL")" ||
+	mkdir -p "$(dirname "$CACHFIL")" ||
 	return 1
 
 	for i in 1 2 3 ; do
-		if [ ! -f $CACHFIL ] ; then
+		echo "$i" >/dev/null # tell shellcheck var i is used
+		if [ ! -f "$CACHFIL" ] ; then
 			curl \
 				--fail \
 				--location \
 				--remote-time \
-				--output $CACHFIL \
-				$URL \
+				--output "$CACHFIL" \
+				"$URL" \
 				>&2
 			rc=$?
 		else
@@ -81,17 +83,17 @@ function util_download {
 				--fail \
 				--location \
 				--remote-time \
-				--output $CACHFIL \
-				--time-cond $CACHFIL \
-				$URL \
+				--output "$CACHFIL" \
+				--time-cond "$CACHFIL" \
+				"$URL" \
 				>&2 &&
 			curl \
 				--fail \
 				--location \
 				--remote-time \
-				--output $CACHFIL \
-				--time-cond -$CACHFIL \
-				$URL \
+				--output "$CACHFIL" \
+				--time-cond "-$CACHFIL" \
+				"$URL" \
 				>&2
 			rc=$?
 		fi
@@ -116,7 +118,7 @@ function util_make-local {
 	fi
 
 	#----- Action -------------------------------------------------------
-	if [ ! -z "${fname/*:*/}" ] ; then
+	if [ -n "${fname/*:*/}" ] ; then
 		# fname contains no ":" so its already local
 		if [ ! -r "$fname" ] ; then
 			return 1
@@ -125,12 +127,12 @@ function util_make-local {
 	elif [ "${fname#http://*#}" ] || [ -z "${fname#https://*#}" ] ; then
 		# fname begins with "http://" or "https://" so its remote http(s)
 		local lfname
-		lfname=$(util_download $fname) || return 1
+		lfname=$(util_download "$fname") || return 1
 		printf "%s\n" "$lfname"
 	else
 		# fname contains ":" so its remote via scp
-		scp $fname /tmp/$(basename $fname) || return 1
-		printf "%s\n" "/tmp/$(basename $fname)"
+		scp "$fname" "/tmp/$(basename "$fname")" || return 1
+		printf "%s\n" "/tmp/$(basename "$fname")"
 	fi
 
 	return 0
@@ -139,7 +141,7 @@ function util_make-local {
 ##### util-getIP #############################################################
 function util-getIP {
 	local result
-	result=$(dig +short $1)
+	result=$(dig +short "$1")
 	rc=$?
 	if [ $rc != "0" ] ; then
 		printf "Error getting IP of %s.\n" "$1" >&2

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # Allgemeine Test Bibliothek
 #
@@ -7,7 +7,7 @@
 function test_cleanImap {
 	if [ "$#" -ne 3 ] ; then
 		printf "%s: Internal Error. Got %s parms (exp=3)\n" \
-			"$FUNCNAME" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 
@@ -58,7 +58,7 @@ function test_cleanImap {
 function test_putImap {
 	if [ "$#" -ne 3 ] ; then
 		printf "%s: Internal Error. Got %s parms (exp=3)\n" \
-			"$FUNCNAME" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 
@@ -69,8 +69,8 @@ function test_putImap {
 	printf "Storing a Mail into %s at %s.\n" \
 		"$mail_adr" "$mail_srv"
 
-	cat >$TESTSETDIR/testmsg <<-EOF &&
-		Return-Path: <$mail_adrt>
+	cat >"$TESTSETDIR/testmsg" <<-EOF &&
+		Return-Path: <$mail_adr>
 		From: Test-From <$mail_adr>
 		Content-Type: text/plain; charset=us-ascii
 		Content-Transfer-Encoding: 7bit
@@ -85,7 +85,7 @@ function test_putImap {
 	curl --ssl --silent --show-error \
 		"imap://$mail_srv/INBOX" \
 		--user "$mail_adr:$mail_pw" \
-		-T $TESTSETDIR/testmsg &&
+		-T "$TESTSETDIR/testmsg" &&
 
 	curl --ssl --silent --show-error \
 		"imap://$mail_srv/INBOX" \
@@ -106,7 +106,7 @@ function test_exec_init {
 	printf "Executing Test %d (%s:%s %s) ... " "$testnr" \
 		"${BASH_SOURCE[2]}" "${BASH_LINENO[1]}" "${FUNCNAME[2]}"
 
-	if [ ! -z "$testdesc" ] ; then
+	if [ -n "$testdesc" ] ; then
 		printf "\t%s\n" "$testdesc"
 	fi
 
@@ -122,7 +122,8 @@ function test_lastoutput_contains {
 	local altsearch="$4"
 
 	local grep_cnt
-	grep_cnt=$(grep -c $grepopts "$search" <$TESTSETDIR/$testexecnr$extension)
+	#shellcheck disable=SC2086 # grepopts contains multiple parms
+	grep_cnt=$(grep -c $grepopts "$search" <"$TESTSETDIR/$testexecnr$extension")
 	if [ $? -gt 1 ] ; then
 		# grep error
 		printf "ERROR checking %s. Search: '%s'\n" \
@@ -133,9 +134,9 @@ function test_lastoutput_contains {
 		# expected text not in output.
 		printf "CHECK %s FAILED. '%s' not found in output of test %s\n" \
 			"$testnr" "$search" "$testexecnr"
-		if [ ! -z "$altsearch" ] ; then
+		if [ -n "$altsearch" ] ; then
 			printf "========== Selected Output Test %d Begin ==========\n" "$testexecnr"
-			grep "$altsearch" $TESTSETDIR/$testexecnr$extension
+			grep "$altsearch" "$TESTSETDIR/$testexecnr$extension"
 			printf "========== Selected Output Test %d End ==========\n" "$testexecnr"
 		fi
 		testsetfailed="$testsetfailed $testnr"
@@ -157,18 +158,19 @@ function test_exec_simple {
 	local rc_exp=${2-0}
 
 	printf "#-----\n#----- Command: %s\n#-----\n" "$1" \
-		>$TESTSETDIR/$testnr.out
-	eval $1 >>$TESTSETDIR/$testnr.out 2>&1
+		>"$TESTSETDIR/$testnr.out"
+	#shellcheck disable=SC2086 # $1 contains multiple parms
+	eval $1 >>"$TESTSETDIR/$testnr.out" 2>&1
 	TESTRC=$?
 
-	if [ $TESTRC -ne $rc_exp ] ; then
+	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
 		printf "CMD: %s\n" "$1"
-		if [ ! -z "$3" ] ; then
+		if [ -n "$3" ] ; then
 			printf "Info: %s\n" "$3"
 		fi
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
-		cat $TESTSETDIR/$testnr.out
+		cat "$TESTSETDIR/$testnr.out"
 		printf "========== Output Test %d End ==========\n" "$testnr"
 		testsetfailed="$testsetfailed $testnr"
 	else
@@ -177,7 +179,7 @@ function test_exec_simple {
 		if [ "$TESTSETLOG" == "1" ] ; then
 			printf "CMD: %s\n" "$1"
 			printf "========== Output Test %d Begin ==========\n" "$testnr"
-			cat $TESTSETDIR/$testnr.out
+			cat "$TESTSETDIR/$testnr.out"
 			printf "========== Output Test %d End ==========\n" "$testnr"
 		fi
 	fi
@@ -191,10 +193,11 @@ function test_exec_url {
 	local url="$1"
 	local rc_exp=${2-200}
 	shift 2
+	local http_code=""
 
 	TESTRC=$(curl -s "$@" \
 		-i \
-		-o $TESTSETDIR/$testnr.curlout \
+		-o "$TESTSETDIR/$testnr.curlout" \
 		-w "%{http_code}" \
 		"$url")
 	local rc=$?
@@ -204,7 +207,7 @@ function test_exec_url {
 		printf "URL: %s\n" "$url"
 		printf "Options: %s\n" "$@"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
-		cat $TESTSETDIR/$testnr.curlout
+		cat "$TESTSETDIR/$testnr.curlout"
 		printf "\n"
 		printf "========== Output Test %d End ==========\n" "$testnr"
 		[ "$rc" -ne 0 ] && TESTRC=999
@@ -214,7 +217,7 @@ function test_exec_url {
 		testsetok=$(( ${testsetok-0} + 1))
 		if [ "$TESTSETLOG" == "1" ] ; then
 			printf "========== Output Test %d Begin ==========\n" "$testnr"
-			cat $TESTSETDIR/$testnr.curlout
+			cat "$TESTSETDIR/$testnr.curlout"
 			printf "\n"
 			printf "========== Output Test %d End ==========\n" "$testnr"
 		fi
@@ -240,21 +243,22 @@ function test_internal_exec_kube {
 	if [ -n "$kubecomment" ] ; then
 		printf "#----- %s\n" \
 			"$kubecomment" \
-			>>$TESTSETDIR/$testnr.out
+			>>"$TESTSETDIR/$testnr.out"
 	fi
 
 	if [ -z "$kubenolog" ] ; then
 		printf "#----- Command: %s\n" \
 			"$cmd $kubecmd" \
-			>>$TESTSETDIR/$testnr.out
+			>>"$TESTSETDIR/$testnr.out"
 	fi
 
+	#shellcheck disable=SC2086 # cmd and kubecmd contains more than one parm
 	TEST_INTERNAL_EXEC_KUBE_OUTPUT=$(set +x ; eval $cmd $kubecmd 2>&1)
 	rc=$?
 	if [ -z "$kubenolog" ] || [ "$rc" != 0 ] ; then
 		printf "%s\n" \
 			"$TEST_INTERNAL_EXEC_KUBE_OUTPUT" \
-			>>$TESTSETDIR/$testnr.out
+			>>"$TESTSETDIR/$testnr.out"
 	fi
 
 	return $rc
@@ -279,7 +283,6 @@ function test_exec_kubecron {
 	local -r sleepMax=${4:-240}
 	local -r sleepNext=5
 
-	local kubestatus=""
 	local STATUS ACTIVE FAILED SUCCEEDED CONDSTATUS
 	local slept=0
 
@@ -303,39 +306,40 @@ function test_exec_kubecron {
 		FAILED=$(jq '.failed // 0' <<<"$STATUS" 2>&1) &&
 		SUCCEEDED=$(jq '.succeeded // 0' <<<"$STATUS" 2>&1) &&
 		CONDSTATUS=$(jq -r 'try .conditions[] | select(.status=="True").type' <<<"$STATUS" 2>&1)
+		#shellcheck disable=SC2181 # using $? here helps to keep the structure
 		if [ "$?" != 0 ] ; then
 			printf "%s\nACTIVE=%s\nFAILED=%s\nSUCCEEDED=%s\nCONDSTATUS=%s\n" \
 				"$STATUS" "$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
-				>>$TESTSETDIR/$testnr.out
+				>>"$TESTSETDIR/$testnr.out"
 			TESTRC=3
 			break
 		elif [ "$CONDSTATUS" == "Complete" ] ; then
 			printf "  Completed Job: %s/%s/%s/%s (active/failed/succeeded/condition)\n" \
 				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
-				>>$TESTSETDIR/$testnr.out
+				>>"$TESTSETDIR/$testnr.out"
 			TESTRC=0
 			break
 		elif [ "$CONDSTATUS" == "Failed" ] ; then
 			printf "     Failed Job: %s/%s/%s/%s (active/failed/succeeded/condition)\n" \
 				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
-				>>$TESTSETDIR/$testnr.out
+				>>"$TESTSETDIR/$testnr.out"
 			TESTRC=1
 			break
 		elif [ "$slept" -gt "$sleepMax" ] ; then
 			printf "   TimedOut Job: %s/%s/%s/%s (active/failed/succeeded/condition)\n" \
 				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
-				>>$TESTSETDIR/$testnr.out
+				>>"$TESTSETDIR/$testnr.out"
 			TESTRC=2
 			break
 		else
 			printf "Waiting for Job: %s/%s/%s/%s (active/failed/succeeded/condition)" \
 				"$ACTIVE" "$FAILED" "$SUCCEEDED" "$CONDSTATUS" \
-				>>$TESTSETDIR/$testnr.out
+				>>"$TESTSETDIR/$testnr.out"
 			printf " sleep %s seconds (%s/%s)\n" \
 					"$sleepNext" "$slept" "$sleepMax" \
-					>>$TESTSETDIR/$testnr.out
+					>>"$TESTSETDIR/$testnr.out"
 
-			sleep $sleepNext ; slept=$(( $slept + $sleepNext ))
+			sleep $sleepNext ; slept=$(( slept + sleepNext ))
 		fi
 	done
 
@@ -344,27 +348,28 @@ function test_exec_kubecron {
 		"logs job/$cronjobname-test --all-containers" \
 		|| TESTRC=2
 
-	if [ $TESTRC -ne $rc_exp ] ; then
+	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
-		if [ ! -z "$3" ] ; then
-			printf "Info: %s\n" "$3"
+		if [ -n "$infomsg" ] ; then
+			printf "Info: %s\n" "$infomsg"
 		fi
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
-		cat $TESTSETDIR/$testnr.out
+		cat "$TESTSETDIR/$testnr.out"
 		printf "========== Output Test %d End ==========\n" "$testnr"
 		testsetfailed="$testsetfailed $testnr"
 	else
 		cmd="kubectl --kubeconfig $KUBE_CONFIGFILE --namespace $KUBE_NAMESPACE"
 		cmd+=" delete job/$cronjobname-test"
 		printf "#----- Delete Job\n#----- Command: %s\n" "$cmd" \
-			>>$TESTSETDIR/$testnr.out
-		eval $cmd >>$TESTSETDIR/$testnr.out 2>&1 # ignore if deleting job fails.
+			>>"$TESTSETDIR/$testnr.out"
+		#shellcheck disable=SC2086 # cmd contains multiple parms
+		eval $cmd >>"$TESTSETDIR/$testnr.out" 2>&1 # ignore if deleting job fails.
 
 		printf "OK\n"
 		testsetok=$(( ${testsetok-0} + 1))
 		if [ "$TESTSETLOG" == "1" ] ; then
 			printf "========== Output Test %d Begin ==========\n" "$testnr"
-			cat $TESTSETDIR/$testnr.out
+			cat "$TESTSETDIR/$testnr.out"
 			printf "========== Output Test %d End ==========\n" "$testnr"
 		fi
 	fi
@@ -429,21 +434,22 @@ function test_exec_kubenode2 {
 	kubecmd+=" --pod-running-timeout=3m"
 
 	if [ -n "$dnsname" ] ; then
-		ssh -o StrictHostKeyChecking=no $dnsname \
-			"kubectl $kubecmd <<<\"$bashcmd\"" >>$TESTSETDIR/$testnr.out 2>&1
+		ssh -o StrictHostKeyChecking=no "$dnsname" \
+			"kubectl $kubecmd <<<\"$bashcmd\"" >>"$TESTSETDIR/$testnr.out" 2>&1
 		TESTRC=$?
 	else
-		kubectl $kubecmd <<<"$bashcmd" >>$TESTSETDIR/$testnr.out 2>&1
+		#shellcheck disable=SC2086 # kubecmd contains multiple parms
+		kubectl $kubecmd <<<"$bashcmd" >>"$TESTSETDIR/$testnr.out" 2>&1
 		TESTRC=$?
 	fi
 
 	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
-		if [ ! -z "$msg" ] ; then
+		if [ -n "$msg" ] ; then
 			printf "Info: %s\n" "$3"
 		fi
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
-		cat $TESTSETDIR/$testnr.out
+		cat "$TESTSETDIR/$testnr.out"
 		printf "========== Output Test %d End ==========\n" "$testnr"
 		testsetfailed="$testsetfailed $testnr"
 	else
@@ -451,7 +457,7 @@ function test_exec_kubenode2 {
 		testsetok=$(( ${testsetok-0} + 1))
 		if [ "$TESTSETLOG" == "1" ] ; then
 			printf "========== Output Test %d Begin ==========\n" "$testnr"
-			cat $TESTSETDIR/$testnr.out
+			cat "$TESTSETDIR/$testnr.out"
 			printf "========== Output Test %d End ==========\n" "$testnr"
 		fi
 	fi
@@ -472,18 +478,19 @@ function test_exec_recvmail {
 	#MAIL_STD_OPT="-n -d -vv -Sv15-compat -Ssendwait -Sexpandaddr=fail,-all,+addr"
 	local MAIL_OPT="-S 'folder=$url'"
 
+	#shellcheck disable=SC2086 # vars contain multiple parms
 	LC_ALL=C MAILRC=/dev/null \
-		eval $TEST_SNAIL $MAIL_STD_OPT $MAIL_OPT "$@" \
-		>$TESTSETDIR/$testnr.mailout \
+		eval $TEST_SNAIL $MAIL_STD_OPT $MAIL_OPT "$*" \
+		>"$TESTSETDIR/$testnr.mailout" \
 		2>&1 \
 		</dev/null
 	TESTRC=$?
-	if [ $TESTRC -ne $rc_exp ] ; then
+	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
 		printf "test_exec_recvmail(%s,%s,%s)\n" "$url" "$rc_exp" "$@"
 		printf "CMD: $TEST_SNAIL %s %s %s\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
-		cat $TESTSETDIR/$testnr.mailout
+		cat "$TESTSETDIR/$testnr.mailout"
 		printf "========== Output Test %d End ==========\n" "$testnr"
 		testsetfailed="$testsetfailed $testnr"
 	else
@@ -498,7 +505,6 @@ function test_exec_sendmail {
 	local from="$3"
 	local to="$4"
 	shift 4
-	opts="$@"
 
 	[ -z "$TEST_SNAIL" ] && return 1
 	test_exec_init "sendmail $rc_exp $url" || return 1
@@ -510,18 +516,19 @@ function test_exec_sendmail {
 	MAIL_OPT="$MAIL_OPT -s 'Subject TestMail $testnr'"
 	MAIL_OPT="$MAIL_OPT -r '$from'"
 
+	#shellcheck disable=SC2086 # vars contain multiple parms
 	LC_ALL=C MAILRC=/dev/null \
-		eval $TEST_SNAIL $MAIL_STD_OPT $MAIL_OPT "$@" '$to' \
-		>$TESTSETDIR/$testnr.mailout \
+		eval $TEST_SNAIL $MAIL_STD_OPT $MAIL_OPT "$*" '$to' \
+		>"$TESTSETDIR/$testnr.mailout" \
 		2>&1 \
 		<<<"Text TestMail $testnr"
 	TESTRC=$?
-	if [ $TESTRC -ne $rc_exp ] ; then
+	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$rc" "$rc_exp"
 		printf "send_testmail(%s,%s,%s,%s,%s)\n" "$rc_exp" "$url" "$from" "$to" "$*"
 		printf "CMD: $TEST_SNAIL %s %s %s '%s'\n" "$MAIL_STD_OPT" "$MAIL_OPT" "$*" "$to"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
-		cat $TESTSETDIR/$testnr.mailout
+		cat "$TESTSETDIR/$testnr.mailout"
 		printf "========== Output Test %d End ==========\n" "$testnr"
 		testsetfailed="$testsetfailed $testnr"
 	else
@@ -555,7 +562,7 @@ function test_assert_tools {
 	printf "Executing Assert %d (Tools %s) ... " "$testnr" "$*"
 
 	for f in "$@" ; do
-		if ! errmsg=$(which $f 2>&1) ; then
+		if ! errmsg=$(which "$f" 2>&1) ; then
 			printf "FAILED: Missing %s\n\t%s\n" \
 				"$f" "$errmsg"
 			TESTRC=1
@@ -597,7 +604,7 @@ function test_assert_files {
 
 	for f in "$@" ; do
 		if [ ! -f "$f" ] ; then
-			printf "FAILED: Missing %s\n"
+			printf "FAILED: Missing %s\n" "$f"
 			TESTRC=1
 			testsetfailed="$testsetfailed $testnr"
 			return $TESTRC
@@ -631,6 +638,7 @@ function test_expect_value {
 	fi
 
 	# should not reach this
+	#shellcheck disable=SC2317
 	return 99
 }
 
@@ -642,11 +650,11 @@ function test_expect_file_missing {
 	local testfile="$1"
 	local rc
 
-	if [ ${testfile:0:1} != "/" ] ; then
+	if [ "${testfile:0:1}" != "/" ] ; then
 		testfile="$TESTSETDIR/$testfile"
 	fi
 
-	testresult=$(ls -1A $testfile 2>/dev/null )
+	testresult=$(ls -1A "$testfile" 2>/dev/null )
 	rc=$?
 
 	if [ "$rc" == "1" ] || [ "$rc" == "2" ]; then
@@ -666,6 +674,7 @@ function test_expect_file_missing {
 	fi
 
 	# should not reach this
+	#shellcheck disable=SC2317
 	return 99
 }
 
@@ -680,11 +689,12 @@ function test_expect_files {
 	local testresult
 	local rc
 
-	if [ ${testdir:0:1} != "/" ] ; then
+	if [ "${testdir:0:1}" != "/" ] ; then
 		testdir="$TESTSETDIR/$testdir"
 	fi
 
-	testresult=$( set -o pipefail ; ls -1A $testdir 2>/dev/null | wc -l)
+	#shellcheck disable=SC2012 # no worries about non-alpha filenames here
+	testresult=$( set -o pipefail ; ls -1A "$testdir" 2>/dev/null | wc -l)
 	rc=$?
 
 	if [ "$rc" != 0 ] ; then
@@ -692,7 +702,7 @@ function test_expect_files {
 			"$testnr" "$1"
 		testsetfailed="$testsetfailed $testnr"
 		return 1
-	elif [ $testresult != $testexpected ] ; then
+	elif [ "$testresult" != "$testexpected" ] ; then
 		# nr of files differ from expected
 		printf "\tCHECK %s FAILED. nr of files in '%s' is %s (exp=%s)\n" \
 			"$testnr" "$1" "$testresult" "$testexpected"
@@ -708,6 +718,7 @@ function test_expect_files {
 	fi
 
 	# should not reach this
+	#shellcheck disable=SC2317
 	return 99
 }
 
@@ -722,11 +733,11 @@ function test_expect_file_contains {
 	local testresult
 	local rc
 
-	if [ ${testfile:0:1} != "/" ] ; then
+	if [ "${testfile:0:1}" != "/" ] ; then
 		testfile="$TESTSETDIR/$testfile"
 	fi
 
-	testresult=$(fgrep "$testexpected" "$testfile")
+	testresult=$(grep -F "$testexpected" "$testfile")
 	rc=$?
 
 	if [ "$rc" != 0 ] ; then
@@ -741,6 +752,7 @@ function test_expect_file_contains {
 	fi
 
 	# should not reach this
+	#shellcheck disable=SC2317
 	return 99
 }
 
@@ -757,13 +769,14 @@ function test_expect_linkedfiles {
 	local rc
 
 	for fnam in "$@" ; do
-		if [ ${fnam:0:1} != "/" ] ; then
+		if [ "${fnam:0:1}" != "/" ] ; then
 			fnam="$TESTSETDIR/$fnam"
 		fi
 
 		testresult=$(
 			set -o pipefail ;
-			ls -1i $fnam 2>/dev/null | cut -f 1 -d " "
+			#shellcheck disable=SC2012 # no worries about non-alpha filenames here
+			ls -1i "$fnam" 2>/dev/null | cut -f 1 -d " "
 			)
 		rc=$?
 
@@ -772,7 +785,7 @@ function test_expect_linkedfiles {
 				"$testnr" "$fnam"
 			testsetfailed="$testsetfailed $testnr"
 			return 1
-		elif [ ! -z "$testexpected" ] && [ "$testresult" != "$testexpected" ] ; then
+		elif [ -n "$testexpected" ] && [ "$testresult" != "$testexpected" ] ; then
 			printf "\tCHECK %s FAILED. '%s' and '%s' have different INode\n" \
 				"$testnr" "$fnam" "$fnamexpected"
 			testsetfailed="$testsetfailed $testnr"
@@ -798,18 +811,18 @@ function testset_init {
 
 	if [[ "$OSTYPE" =~ darwin* ]] ; then
 		printf "Activating MacOS workaround.\n"
-		TEST_RSYNCOPT="--rsync-path=/usr/local/bin/rsync"
+		# TEST_RSYNCOPT="--rsync-path=/usr/local/bin/rsync"
 		TEST_SNAIL=/usr/local/bin/s-nail
 	elif [ "$(awk -F= '/^NAME/{print $2}' /etc/os-release)" == "\"Ubuntu\"" ] ; then
 		printf "Activating Ubuntu settings.\n"
-		TEST_RSYNCOPT=""
+		# TEST_RSYNCOPT=""
 		TEST_SNAIL=s-nail
 	else
 		printf "Using default OS (OSTYPE=%s, os-release/NAME=%s\n" \
 			"$OSTYPE" \
 			"$(awk -F= '/^NAME/{print $2}' /etc/os-release)"
-		TEST_RSYNCOPT=""
-		TEST_SNAIL=mailx
+		# TEST_RSYNCOPT=""
+		TEST_SNAIL="mailx"
 	fi
 
 	TESTSETLOG=0
@@ -828,12 +841,13 @@ function testset_init {
 		shift
 	done
 
-	TESTSETDIR=$(mktemp -d ${TMPDIR:-/tmp}/$TESTSETNAME.XXXXXXXXXX) \
+	TESTSETDIR=$(mktemp -d "${TMPDIR:-/tmp}/$TESTSETNAME.XXXXXXXXXX") \
 		|| return 1
 	printf "\tTESTSETDIR=%s\n" "$TESTSETDIR"
 	printf "\tTESTSETLOG=%s\n" "$TESTSETLOG"
 	printf "\tTESTSETPARM=%s\n" "$TESTSETPARM"
 
+	#shellcheck disable=SC2086
 	set -- $TESTSETPARM
 
 	return 0

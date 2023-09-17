@@ -8,32 +8,34 @@ function install-nfs_server {
 	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
-	elif [ -f $INSTALL_ROOT/etc/exports ] && \
-		fgrep "Standard NFS Setup in nafets.de" $INSTALL_ROOT/etc/exports >/dev/null ; then
-		printf "%s: Error NFS Setup was already done before (see /etc/exports).\n"
+	elif [ -f "$INSTALL_ROOT/etc/exports" ] && \
+		grep -F "Standard NFS Setup in nafets.de" "$INSTALL_ROOT/etc/exports" >/dev/null ; then
+		printf "%s: Error NFS Setup was already done before (see /etc/exports).\n" \
+			"${FUNCNAME[0]}"
 		return 1
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	arch-chroot $INSTALL_ROOT \
-		pacman -S --needed --noconfirm nfs-utils
-	if [ "$?" != "0" ] ; then return 1 ; fi
+	arch-chroot "$INSTALL_ROOT" \
+		pacman -S --needed --noconfirm nfs-utils \
+		|| return 1
 
-	if [ ! -d $INSTALL_ROOT/srv/nfs4 ]; then
-		mkdir -p $INSTALL_ROOT/srv/nfs4 || return 1
+	if [ ! -d "$INSTALL_ROOT/srv/nfs4" ]; then
+		mkdir -p "$INSTALL_ROOT/srv/nfs4" || return 1
 	fi
 
-	cat >>$INSTALL_ROOT/etc/exports <<-EOF
+	cat >>"$INSTALL_ROOT/etc/exports" <<-EOF || return 1
 		# Standard NFS Setup in nafets.de
 		# (C) 2015-2018 Stefan Schallenberg
 
 		EOF
-	if [ "$?" != "0" ] ; then return 1 ; fi
 
-	mv $INSTALL_ROOT/etc/idmapd.conf $INSTALL_ROOT/etc/idmapd.conf.backup || return 1
-	awk -f - $INSTALL_ROOT/etc/idmapd.conf.backup >$INSTALL_ROOT/etc/idmapd.conf  <<-"EOF"
+	mv "$INSTALL_ROOT/etc/idmapd.conf" \
+		"$INSTALL_ROOT/etc/idmapd.conf.backup" || return 1
+	awk -f - "$INSTALL_ROOT/etc/idmapd.conf.backup" \
+		>"$INSTALL_ROOT/etc/idmapd.conf" <<-"EOF" || return 1
 		BEGIN {global=0}
 		/\[Gneral\]/ { global=1; print; next }
 		/Domain/ { next }
@@ -46,9 +48,8 @@ function install-nfs_server {
 			}
 		{ print }
 		EOF
-	if [ "$?" != "0" ] ; then return 1 ; fi
 
-	systemctl --root=$INSTALL_ROOT enable rpcbind.service nfs-server.service || return 1
+	systemctl --root="$INSTALL_ROOT" enable rpcbind.service nfs-server.service || return 1
 
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up NFS Server completed.\n"
@@ -72,16 +73,16 @@ function install-nfs_export {
 	#----- Input checks --------------------------------------------------
 	if [ $# -lt 2 ]; then
 		printf "%s: Internal Error: Got %s Parms (Exp=2+)\n" \
-			"$FUNCNAME" "$#" >&2
+			"${FUNCNAME[0]}" "$#" >&2
 		return 1
 	elif [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
-	elif [ ! -z "$exportname" ] &&
-		fgrep "/srv/nfs4/$exportname" $INSTALL_ROOT/etc/exports >&/dev/null ; then
+	elif [ -n "$exportname" ] &&
+		grep -F "/srv/nfs4/$exportname" "$INSTALL_ROOT/etc/exports" >&/dev/null ; then
 		printf "%s: Error %s already exportet (see /etc/exports)\n" \
-			"$FUNCNAME" "$exportname" >&2
+			"${FUNCNAME[0]}" "$exportname" >&2
 		return 1
 	fi
 
@@ -111,7 +112,7 @@ function install-nfs_export {
 	done
 	netopt="${netopt:1}" # remove leading blank
 
-	cat >>$INSTALL_ROOT/etc/exports <<-EOF
+	cat >>"$INSTALL_ROOT/etc/exports" <<-EOF
 		/srv/nfs4/$exportname $netopt
 		EOF
 
@@ -128,15 +129,17 @@ function install-nfs_client {
 	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"$FUNCNAME" "$INSTALL_ROOT" >&2
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
 		return 1
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	arch-chroot $INSTALL_ROOT \
+	arch-chroot "$INSTALL_ROOT" \
 		pacman -S --needed --noconfirm nfs-utils
 
-	systemctl --root=$INSTALL_ROOT enable rpcbind.service nfs-client.target remote-fs.target || return 1
+	systemctl --root="$INSTALL_ROOT" \
+		enable rpcbind.service nfs-client.target remote-fs.target \
+	|| return 1
 
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up NFS Client completed.\n"
