@@ -301,7 +301,10 @@ function inst-arch_baseos {
 
 	#Bootstrap the new system
 	#shellcheck disable=SC2086 # extrapkg contains multiple parms
-	pacstrap -c "$INSTALL_ROOT" base openssh grub linux linux-firmware pacutils $extrapkg || return 1
+	pacstrap -c "$INSTALL_ROOT" \
+		base openssh grub linux linux-firmware pacutils pacman-contrib \
+		$extrapkg \
+	|| return 1
 
 	# Workaround a bug in Archlinux that /dev cannot be unmounted at the end of pacstrap without raising an error
 	umount "$INSTALL_ROOT/dev" # do not check the RC here!
@@ -342,9 +345,11 @@ function inst-arch_baseos {
 	printf "Configuring nafetsde-autoupdate at %s on %s\n" \
 		"$updatetim" "$INSTALL_ROOT" >&2
 
+
+
 	install-timer \
 		"nafetsde-autoupdate" \
-		"/bin/bash -c \"ls $INSTALL_BOOT && pacman -Suy --noconfirm && systemctl reboot\"" \
+		"/usr/local/bin/autoupdate.sh $INSTALL_BOOT" \
 		"" \
 		"" \
 		"*-*-* ${updatetim-1:00}" \
