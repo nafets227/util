@@ -65,6 +65,34 @@ function install-ssh_allow-root-pw {
 	return 0
 }
 
+##### install-ssh_allow-env ##################################################
+function install-ssh_allow-env {
+
+	#----- Input checks --------------------------------------------------
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
+		return 1
+	elif grep -F "nafetsde-sshenv" "$INSTALL_ROOT/etc/ssh/sshd_config" >/dev/null ; then
+		# avoid to add this configuration a second time
+		printf "Setting up SSH Environment Config skipped.\n" >&2
+		return 0
+	fi
+
+	#----- Real Work -----------------------------------------------------
+	cat >>"$INSTALL_ROOT/etc/ssh/sshd_config" <<-"EOF"
+
+		# SSH config modification nafetsde-sshenv
+		# nafets.de by physerver/install install-ssh_allow-env
+		PermitUserEnvironment yes
+		EOF
+
+	#----- Closing  ------------------------------------------------------
+	printf "Setting up SSH Environment Config completed.\n"
+
+	return 0
+}
+
 ##### install-ssh_trust ######################################################
 function install-ssh_trust {
 	fname="$1"
