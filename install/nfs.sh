@@ -49,7 +49,7 @@ function install-nfs_server {
 		{ print }
 		EOF
 
-	systemctl --root="$INSTALL_ROOT" enable rpcbind.service nfs-server.service || return 1
+	systemctl --root="$INSTALL_ROOT" enable nfsv4-server.service || return 1
 
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up NFS Server completed.\n"
