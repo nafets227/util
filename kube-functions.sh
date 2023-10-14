@@ -297,7 +297,7 @@ function kube-inst_helm2 {
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		helm repo add "$reponame" "$repourl" && # does not fail if already exists
-		helm repo update &&
+		helm repo update "$reponame" &&
 		true || return 1
 
 		if ! inputyaml=$(kube-inst_internal-environize "$envnames") ; then
