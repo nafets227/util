@@ -230,13 +230,15 @@ function kube-inst_exec {
 
 	#Execute yaml in confdir
 	for f in "$confdir"/*.yaml ; do
-		printf "Loading Kubeconfig %s ... " "$(basename "$f")"
-		kube-inst_internal-exec "$f" || return 1
+		if ! [[ "$f" =~ -template\.yaml$ ]] ; then
+			printf "Loading Kubeconfig %s ... " "$(basename "$f")"
+			kube-inst_internal-exec "$f" || return 1
+		fi
 	done
 
-	#Execute yaml.template in confdir
-	for f in "$confdir"/*.yaml.template ; do
-		printf "Loading Kubeconfig %s ... " "$(basename "$f")"
+	#Execute yaml.template and *.template.yaml in confdir
+	for f in "$confdir"/*.yaml.template "$confdir"/*-template.yaml ; do
+		printf "Loading Kubeconfig Template %s ... " "$(basename "$f")"
 		kube-inst_internal-exec "$f" "$envnames" || return 1
 	done
 
@@ -349,7 +351,7 @@ function kube-inst_helm2 {
 		"$cronjobname" \
 		"helmupdate.sh=$(dirname "${BASH_SOURCE[0]}")/kube/helmupdate.sh" &&
 	kube-inst_internal-exec \
-		"$(dirname "${BASH_SOURCE[0]}")/kube/helmupdate.cronjob.yaml.template" \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/helmupdate-cronjob-template.yaml" \
 		"$envnameshelmupdate" \
 	|| return 1
 
@@ -717,7 +719,7 @@ function kube-inst_nfs-volume {
 	fi
 
 	kube-inst_internal-exec \
-		"$(dirname "${BASH_SOURCE[0]}")/kube/nfsVolume.yaml.template" \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/nfsVolume-template.yaml" \
 		"KUBE_APP KUBE_STAGE share nfspath nfsserver KUBE_NAMESPACE" \
 		$opt
 
@@ -752,7 +754,7 @@ function kube-inst_host-volume {
 	fi
 
 	kube-inst_internal-exec \
-		"$(dirname "${BASH_SOURCE[0]}")/kube/hostVolume.yaml.template" \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/hostVolume-template.yaml" \
 		"KUBE_APP KUBE_STAGE share path KUBE_NAMESPACE" \
 		$opt
 
@@ -802,7 +804,7 @@ function kube-inst_local-volume {
 		"$key" "$value" "$path"
 
 	kube-inst_internal-exec \
-		"$(dirname "${BASH_SOURCE[0]}")/kube/localVolume.yaml.template" \
+		"$(dirname "${BASH_SOURCE[0]}")/kube/localVolume-template.yaml" \
 		"KUBE_APP KUBE_STAGE share key value path volmode KUBE_NAMESPACE" \
 		$opt
 
