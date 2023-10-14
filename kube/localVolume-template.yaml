@@ -4,6 +4,8 @@
 #
 # (C) 2021 Stefan Schallenberg
 
+---
+
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -27,11 +29,11 @@ spec:
   nodeAffinity:
     required:
       nodeSelectorTerms:
-      - matchExpressions:
-        - key: ${key}
-          operator: In
-          values:
-          - ${value}
+        - matchExpressions:
+            - key: ${key}
+              operator: In
+              values:
+                - ${value}
 
 ---
 
