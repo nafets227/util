@@ -518,8 +518,61 @@ function kube-inst_tls-secret {
 	return 0
 }
 
+##### kube-inst_generic-secret2 - install Kubernetes Secret using cert* helper ########
+function kube-inst_generic-secret2 {
+	# Prerequisite: kube-inst_init has been called
+	# Parametets:
+	#   1 - name of secret
+	#   2ff - values. Can be either
+	#         plaintext (leading @ has to be escaped as \@)
+	#         @filename - keyname will be filename
+	#         @key=filename
+	#         @dirname - each file in directory will be made one key.
+	local secretname="$1"
+	shift
+
+	kube-inst_internal-verify-initialised &&
+	kube-inst_internal-create_namespace &&
+	true || return 1
+
+	if [ -z "$secretname" ] ; then
+		printf "%s: Error. Got no or empty secret name.\n" \
+			"${FUNCNAME[0]}"
+		return 1
+	elif [ -z "$1" ] ; then
+		printf "%s: Error. Got no or empty values.\n" \
+			"${FUNCNAME[0]}"
+		return 1
+	fi
+
+	printf "%s secret %s ... " "$KUBE_ACTION_DISP" "$secretname"
+
+	local fromargs=""
+	for a in "$@" ; do
+		if [ "${a:0:1}" == "@" ] ; then
+			fromargs+=" --from-file=${a:1}"
+		else
+			fromargs+=" --from-literal=$a"
+		fi
+	done
+
+	#shellcheck disable=SC2086 # fromargs contains multiple parms
+	kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+		create secret generic "$secretname" \
+		$fromargs \
+		--save-config \
+		--dry-run=client \
+		-o yaml \
+	| kube-inst_internal-exec "-" "" \
+	|| return 1
+
+	return 0
+}
+
 ##### kube-inst_generic-secret - install Kubernetes Secret using cert* helper ########
 function kube-inst_generic-secret {
+	# DEPRECATED
+	#   This function is deprecated, please use kube-inst_generic-secret2 instead
 	# Prerequisite: kube-inst_init has been called
 	# Parametets:
 	#   1 - name of secret
@@ -565,6 +618,8 @@ function kube-inst_generic-secret {
 
 ##### kube-inst_text-secret - install Kubernetes Secret using cert* helper ########
 function kube-inst_text-secret {
+	# DEPRECATED
+	#   This function is deprecated, please use kube-inst_generic-secret2 instead
 	# Prerequisite: kube-inst_init has been called
 	# Parametets:
 	#   1 - name of secret
