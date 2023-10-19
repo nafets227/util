@@ -138,6 +138,26 @@ function util_make-local {
 	return 0
 }
 
+##### util_verifypwfile ######################################################
+function util_verifypwfile {
+	local pwfile="$1"
+
+	if [ -z "$pwfile" ] ; then
+		printf "util_verifypwfile: unexpected empty parm\n" >&2
+		return 1
+	elif [ ! -f "$CERT_PRIVATE_DIR/$pwfile" ] ; then
+		printf "util_verifypwfile: fiel %s does not exist\n" \
+			"$CERT_PRIVATE_DIR/$pwfile" >&2
+		return 1
+	elif cat -e "$CERT_PRIVATE_DIR/$pwfile" | grep -q '\$' ; then
+		printf "Error: password File %s contains trailing newline\n" \
+			"$CERT_PRIVATE_DIR/$pwfile" >&2
+		return 1
+	fi
+
+	return 0
+}
+
 ##### util-getIP #############################################################
 function util-getIP {
 	local result
