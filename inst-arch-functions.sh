@@ -345,11 +345,14 @@ function inst-arch_baseos {
 	printf "Configuring nafetsde-autoupdate at %s on %s\n" \
 		"$updatetim" "$INSTALL_ROOT" >&2
 
-
+	install -o 0 -g 0 -m 700 \
+		"$(dirname "${BASH_SOURCE[0]}")/inst-arch/autoupdate.sh" \
+		"$INSTALL_ROOT/usr/local/sbin/autoupdate.sh" \
+		&&
 
 	install-timer \
 		"nafetsde-autoupdate" \
-		"/usr/local/bin/autoupdate.sh $INSTALL_BOOT" \
+		"/usr/local/sbin/autoupdate.sh $INSTALL_BOOT" \
 		"" \
 		"" \
 		"*-*-* ${updatetim-1:00}" \
