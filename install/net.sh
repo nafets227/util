@@ -188,17 +188,17 @@ function install-net_vlan {
 	return 0
 }
 
-##### install_net_static2 ( ipaddr, [ifache="eth0"], [virt=""] ###############
-function install-net_static2 {
-	local ipaddr="$1"
-	local iface="$2"
-	local virt="${3:-""}"
+##### install_net_static3 ( ipaddr, tagname, match-condition #################
+function install-net_static3 {
+	local ipaddr=$1
+	local tag=$2
+	local match=$3
 	local addparms
 	addparms=$(cat /dev/stdin) || return 1 # cat stdin for optional parms
 
 	#----- Input checks --------------------------------------------------
-	if [ $# -lt 2 ]; then
-		printf "Internal Error: %s got %s parms (exp=2++)\n" \
+	if [ $# -ne 3 ]; then
+		printf "Internal Error: %s got %s parms (exp=3)\n" \
 			"${FUNCNAME[0]}" "$#" >&2
 		return 1
 	elif [ ! -d "$INSTALL_ROOT" ] ; then
@@ -208,25 +208,12 @@ function install-net_static2 {
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	iface_fname=${iface//\*/_}
-	iface_fname=${iface_fname// /_}
-
-	if [ -z "$virt" ] ; then
-		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname.network"
-	else
-		local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$iface_fname-$virt.network"
-	fi
+	local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$tag.network"
 
 	cat >"$cfgfile" <<-EOF
 		[Match]
-		Name=$iface
+		$match
 		EOF
-
-	if [ -n "$virt" ] ; then
-		cat >>"$cfgfile" <<-EOF
-			Virtualization=$virt
-			EOF
-	fi
 
 	# enable Multicast on all interfaces that are configured with an
 	# IP adress (e.g. NOT vlan's etc.)
@@ -278,20 +265,54 @@ function install-net_static2 {
 		systemd-timesyncd.service
 
 	#----- Closing  ------------------------------------------------------
-	printf "Setting up network [Static %s on %s] completed.\n" \
-		"${ipaddr:="<noIP>"}" "$iface"
-	if [ -n "$virt" ] ; then
-		printf "\tVirt=%s\n" "$virt"
-	fi
+	printf "Setting up network [Static %s] completed. Match:\n%s\n" \
+		"${ipaddr:="<noIP>"}" "$match"
 	if [ -n "$addparms" ] ; then
 		printf "\t%s\n" "$addparms"
 	fi
 
 	return 0
 }
+##### DEPRECATED install_net_static2 ( ipaddr, [ifache="eth0"], [virt=""] ###############
+function install-net_static2 {
+	# DEPRECATED, use install_net_static3 instead
+	local ipaddr="$1"
+	local iface="$2"
+	local virt="${3:-""}"
+
+	#----- Input checks --------------------------------------------------
+	if [ $# -lt 2 ]; then
+		printf "Internal Error: %s got %s parms (exp=2++)\n" \
+			"${FUNCNAME[0]}" "$#" >&2
+		return 1
+	elif [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
+		return 1
+	fi
+
+	#----- Real Work -----------------------------------------------------
+	iface_fname=${iface//\*/_}
+	iface_fname=${iface_fname// /_}
+
+	if [ -z "$virt" ] ; then
+		local -r iftag="$iface_fname.network"
+	else
+		local -r iftag="$iface_fname-$virt.network"
+	fi
+
+	ifmatch="Name=$iface"
+	if [ -n "$virt" ] ; then
+		ifmatch+=$'\n'"Virtualization=$virt"
+	fi
+
+	install-net_static3 "$ipaddr" "$iftag" "$ifmatch" || return 1
+
+	return 0
+}
 ##### DEPRECATED install_net_static ( ipaddr, [ifache="eth0"], [virt=""] #####
 function install-net_static {
-	# DEPRECATED, use install_net_static2 instead
+	# DEPRECATED, use install_net_static3 instead
 	local ipaddr="$1"
 	local iface="$2"
 	local virt="${3:-""}"
