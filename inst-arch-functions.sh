@@ -311,9 +311,9 @@ function inst-arch_baseos {
 
 	# Now include the needed modules in initcpio
 	if [ -n "$extramod" ] ; then
-		sed -i -re \
-			"s/(MODULES=[\\(\"])(.*)([\\)\"]\$)/\\1\\2$extramod\\3/" \
-			"$INSTALL_ROOT/etc/mkinitcpio.conf"
+		util_updateConfig "$INSTALL_ROOT/etc/mkinitcpio.conf" \
+			"MODULES" "( $extramod )" \
+		|| return 1
 	fi
 
 	cat >>"$INSTALL_ROOT/etc/locale.gen" <<-EOF
@@ -434,7 +434,7 @@ function inst-arch_basearm {
 		"$KEYR_DIR" &&
 	sed "s:Include = /:Include = $INSTALL_ROOT/:" \
 		<"$INSTALL_ROOT/etc/pacman.conf" \
-		>"$INSTALL_ROOT/etc/pacman.conf.installroot"
+		>"$INSTALL_ROOT/etc/pacman.conf.installroot" &&
 	pacman-key --init \
 		--config "$INSTALL_ROOT/etc/pacman.conf.installroot" \
 		--gpgdir "$INSTALL_ROOT/etc/pacman.d/gnupg" &&
@@ -489,10 +489,9 @@ function inst-arch_bootmgr-grubconfig {
 	# Install grub2 Config for booting efi or raw.
 	mkdir -p "$INSTALL_ROOT/boot/grub" 2>/dev/null &&
 
-	sed_cmd="s:"
-	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\(.*\)\"$:"
-	sed_cmd="${sed_cmd}GRUB_CMDLINE_LINUX=\"\$(cat /etc/kernel/cmdline) \\1\":"
-	sed -i.orig -e "$sed_cmd" "$INSTALL_ROOT/etc/default/grub" &&
+	util_updateConfig "$INSTALL_ROOT/etc/default/grub" \
+		"GRUB_CMDLINE_LINUX" \
+		"\"\$(cat /etc/kernel/cmdline)\"" &&
 
 	inst-arch_chroot-helper "$INSTALL_ROOT" <<-"EOFGRUB" &&
 		grub-mkconfig >/boot/grub/grub.cfg || exit 1
@@ -713,9 +712,14 @@ function inst-arch_fixverpkg () {
 
 	#----- Real Work -----------------------------------------------------
 	local -r PKGURL="https://archive.archlinux.org/packages/.all"
-	local arch PKGDIR pkg pkgfile pkgnames pkgslocal
+	local arch PKGDIR pkg pkgfile pkgnames pkgslocal pkgnames_old
 	arch=$(arch-chroot "$INSTALL_ROOT" /usr/bin/pacconf |
-		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') &&
+		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') || return 1
+	if [ -z "$arch" ] ; then
+		printf "%s: Did not find Architecture = in pacman conf\n" \
+			"${FUNCNAME[0]}"
+		return 1
+	fi
 	printf "Arch=%s\n" "$arch" &&
 	PKGDIR="$PKGURL/community/os/$arch" &&
 	PKGDIR2="$PKGURL/extra/os/$arch" &&
@@ -748,8 +752,9 @@ function inst-arch_fixverpkg () {
 	#shellcheck disable=SC2086 # pkgnames contains multiple parms
 	arch-chroot "$INSTALL_ROOT" \
 		pacman -U --needed --noconfirm $pkgslocal &&
-	sed -i "s/#* *IgnorePkg *= *\(.*\)$/IgnorePkg =$pkgnames \1/" \
-		"$PACCONF" &&
+	pkgnames_old=$(util_getConfig "$PACCONF" "IgnorePkg") &&
+	util_updateConfig "$PACCONF" \
+		"IgnorePkg" "$pkgnames_old $pkgnames" &&
 	true || return 1
 
 	#----- Closing -------------------------------------------------------
