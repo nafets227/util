@@ -44,9 +44,7 @@ function install_setup_service () {
 		WantedBy=multi-user.target
 		EOF
 
-	arch-chroot "$1" <<-EOF &&
-		systemctl enable nafetsde-install.service
-	EOF
+	systemctl --root="$1" enable nafetsde-install.service &&
 
 	true || return 1
 
