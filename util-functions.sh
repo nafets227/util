@@ -184,5 +184,35 @@ function util-get1IP {
 	return $?
 }
 
+function util_updateConfig {
+	local -r fname=$1
+	local -r varname=$2
+	local -r value=$3
+
+	# For explanation on sed syntax see
+	# https://stackoverflow.com/questions/15965073
+	#shellcheck disable=SC2016
+	sed -i -r -e \
+		'/^([[:blank:]]*)(#?)(#*)([[:blank:]]*'"$varname"'[[:blank:]]*=[[:blank:]]*)(.*)$/'" \
+		"'{s::\1#\3\4\5\n\1\4'"$value"':;h}'" \
+		"';${x;/./{x;q0};x;q100}' \
+		"$fname"
+	case $? in
+		0)
+			return 0
+			;;
+		100)
+			printf "%s(%s): Error %s not found in %s\n" \
+				"${FUNCMANE[0]}" "${FUNCNAME[1]}" "$varname" "$fname"
+			return 100
+			;;
+		*)
+			printf "%s: Internal error. sed-RC=%s (\"%s\", \"%s\", \"%s\")\n" \
+				"${FUNCNAME[0]}" "$?" "$fname" "$varname" "$value"
+			return 1
+			;;
+	esac
+}
+
 ##### Main ###################################################################
 # do nothing
