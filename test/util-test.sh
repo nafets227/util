@@ -7,6 +7,16 @@
 
 function do_test {
 	testset_init
+	valtest="" # make shellcheck happy
+
+	cat >"$TESTSETDIR/utiltest1.txt" <<-EOF || return 1
+		# var1=bla
+		var3 = value3
+		EOF
+	test_exec_simple "valtest=\$(util_getConfig \"$TESTSETDIR/utiltest1.txt\" var1)" &&
+		test_expect_value "$valtest" ""
+	test_exec_simple "valtest=\$(util_getConfig \"$TESTSETDIR/utiltest1.txt\" var3)" &&
+		test_expect_value "$valtest" "value3"
 
 	cat >"$TESTSETDIR/testconfig1.txt" <<-EOF || return 1
 		# var1=bla

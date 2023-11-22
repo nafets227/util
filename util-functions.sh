@@ -214,5 +214,17 @@ function util_updateConfig {
 	esac
 }
 
+function util_getConfig {
+	local -r fname=$1
+	local -r varname=$2
+
+	sed -n -r -e \
+		's/^[[:blank:]]*'"$varname"'[[:blank:]]*=[[:blank:]]*(.*)$/\1/p' \
+		"$fname" \
+	|| return 1
+
+	return 0
+}
+
 ##### Main ###################################################################
 # do nothing
