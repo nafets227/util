@@ -302,7 +302,7 @@ function inst-arch_baseos {
 	#Bootstrap the new system
 	#shellcheck disable=SC2086 # extrapkg contains multiple parms
 	pacstrap -c "$INSTALL_ROOT" \
-		base openssh grub linux linux-firmware pacutils pacman-contrib \
+		base openssh grub linux linux-firmware pacutils pacman-contrib less \
 		$extrapkg \
 	|| return 1
 
