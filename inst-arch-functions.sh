@@ -557,6 +557,10 @@ function inst-arch_bootmgr-grubefi {
 			WantedBy=multi-user.target
 			EOF
 		systemctl --root="$INSTALL_ROOT" enable nafetsde-efiboot.service
+	else
+		cat >"$INSTALL_ROOT/$INSTALL_BOOT/startup.nsh" <<-EOF || return 1
+			EFI\arch\grubx64.efi
+			EOF
 	fi
 
 	return 0
