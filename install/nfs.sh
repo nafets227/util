@@ -37,7 +37,7 @@ function install-nfs_server {
 	awk -f - "$INSTALL_ROOT/etc/idmapd.conf.backup" \
 		>"$INSTALL_ROOT/etc/idmapd.conf" <<-"EOF" || return 1
 		BEGIN {global=0}
-		/\[Gneral\]/ { global=1; print; next }
+		/\[General\]/ { global=1; print; next }
 		/Domain/ { next }
 		/\[/ {
 			if (global==1) {
