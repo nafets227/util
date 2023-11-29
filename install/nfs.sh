@@ -49,6 +49,11 @@ function install-nfs_server {
 		{ print }
 		EOF
 
+	mkdir -p /etc/systemd/system/nfsv4-server.service.d || return 1
+	cat >/etc/systemd/system/nfsv4-server.service.d/afternfs.conf <<-EOF || return 1
+		[Unit]
+		After=nfs-server.service
+		EOF
 	systemctl --root="$INSTALL_ROOT" enable nfsv4-server.service || return 1
 
 	#----- Closing  ------------------------------------------------------
