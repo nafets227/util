@@ -178,6 +178,14 @@ function test_expect_lastoutput_linecount {
 	return 0
 }
 
+function test_get_lastoutput {
+	local extension="${2:-.out}"
+
+	tail --lines=+5 "$TESTSETDIR/$testexecnr$extension" || return 1
+
+	return 0
+}
+
 function test_exec_simple {
 	# Parameters:
 	#     1 - command to test
