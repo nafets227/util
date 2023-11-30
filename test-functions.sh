@@ -148,6 +148,36 @@ function test_lastoutput_contains {
 	return 0
 }
 
+function test_expect_lastoutput_linecount {
+	testnr=$(( ${testnr-0} + 1))
+	# not increasing testexecnr
+	local linecountexp="$1"
+	local extension="${2:-.out}"
+
+	local linecountact
+	linecountact=$(wc -l <"$TESTSETDIR/$testexecnr$extension")
+	linecountact=$(( linecountact - 4 )) # Ignore Log Lines inserted at the beginning
+	if [ $? -gt 1 ] ; then
+		# wc error
+		printf "ERROR checking linecount %s.\n" "$testnr"
+		testsetfailed="$testsetfailed $testnr"
+		return 1
+	elif [ "$linecountact" == "$linecountexp" ] ; then
+		# line count as expected -> OK
+		testsetok=$(( ${testsetok-0} + 1))
+	else
+		# linecount not as expected
+		printf "CHECK %s FAILED. Linecountof test %s is %d (exp=%d)\n" \
+			"$testnr" "$testexecnr" "$linecountact" "$linecountexp"
+		printf "========== Output Test %d Begin ==========\n" "$testexecnr"
+		cat "$TESTSETDIR/$testexecnr$extension"
+		printf "========== Output Test %d End ==========\n" "$testexecnr"
+		testsetfailed="$testsetfailed $testnr"
+	fi
+
+	return 0
+}
+
 function test_exec_simple {
 	# Parameters:
 	#     1 - command to test
