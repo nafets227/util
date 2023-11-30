@@ -217,6 +217,49 @@ function test_exec_simple {
 	return 0
 }
 
+function test_exec_ssh {
+	# Parameters:
+	#     1 - machine name to ssh to
+	#     2 - expected RC [default: 0]
+	#     3ff - command to test
+	test_exec_init || return 1
+
+	local sshtarget="$1"
+	shift
+	local rc_exp=${1:-0}
+	shift
+
+	local sshopt="-n"
+
+	printf "#-----\n#----- SSH Machine: %s\n#----- Command: %s\n#-----\n" \
+		"$sshtarget" "$*" \
+		>"$TESTSETDIR/$testnr.out"
+	[ "$#" == 0 ] && sshopt=""
+	#shellcheck disable=SC2029
+	ssh $sshopt "$sshtarget" "$*" >>"$TESTSETDIR/$testnr.out" 2>&1
+	TESTRC=$?
+
+	if [ "$TESTRC" -ne "$rc_exp" ] ; then
+		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
+		printf "SSH %s CMD: %s\n" "$sshtarget" "$*"
+		printf "========== Output Test %d Begin ==========\n" "$testnr"
+		cat "$TESTSETDIR/$testnr.out"
+		printf "========== Output Test %d End ==========\n" "$testnr"
+		testsetfailed="$testsetfailed $testnr"
+	else
+		printf "OK\n"
+		testsetok=$(( ${testsetok-0} + 1))
+		if [ "$TESTSETLOG" == "1" ] ; then
+			printf "SSH %s CMD: %s\n" "$sshtarget" "$*"
+			printf "========== Output Test %d Begin ==========\n" "$testnr"
+			cat "$TESTSETDIR/$testnr.out"
+			printf "========== Output Test %d End ==========\n" "$testnr"
+		fi
+	fi
+
+	return 0
+}
+
 function test_exec_url {
 	test_exec_init || return 1
 
