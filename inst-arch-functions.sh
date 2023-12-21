@@ -316,7 +316,7 @@ function inst-arch_baseos {
 		|| return 1
 	fi
 
-	cat >>"$INSTALL_ROOT/etc/locale.gen" <<-EOF
+	cat >>"$INSTALL_ROOT/etc/locale.gen" <<-EOF || return 1
 
 		# by $OURSELVES
 		de_DE.UTF-8 UTF-8
