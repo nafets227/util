@@ -97,56 +97,6 @@ function inst-arch_init-fulldisk () {
 	return 0
 }
 
-#### Setup Filesystems for virtual machines (make partitions) ################
-function inst-arch_init-pidisk () {
-	# Parameters:
-	#    1 - hostname
-	#    2 - device
-	#    3 - size of file-backed disk. Ignored for device backed disk
-	local name="$1"
-	local diskdev="$2"
-	local disksize="${3:-8G}"
-
-	# jscpd:ignore-start
-	printf "About to install Arch Linux for %s\n" "$name" >&2
-	inst-arch_destroy-disk "$diskdev" || return 1
-
-	if [ ! -b "$diskdev" ] ; then
-		printf "Creating Disk-Device %s (size=%s)\n" "$diskdev" "$disksize"
-		if ! fallocate -l "$disksize" "$diskdev"
-		then
-			printf "Falling back to dd since fallocate is not working.\n" >&2
-			dd if=/dev/zero "of=$diskdev" count=0 bs=1 "seek=$disksize" || return 1
-		fi
-	fi
-	# jscpd:ignore-end
-
-	parted -s -- "$diskdev" mklabel msdos &&
-	parted -s -- "$diskdev" mkpart primary fat32 128M 256M &&
-	parted -s -- "$diskdev" mkpart primary ext4 256M 100% \
-	|| return 1
-
-	# jscpd:ignore-start
-	parts=$(kpartx -asv "$(realpath "$diskdev")" | \
-		sed -n -e 's:^add map \([A-Za-z0-9\-]*\).*:\1:p') &&
-	part_boot=$(head -1 <<<"$parts" | tail -1) &&
-	part_root=$(tail -1 <<<"$parts") \
-	|| return 1
-
-	INSTALL_DEV=$(losetup | grep "$diskdev" | cut -d" " -f 1) || return 1
-	if [ -z "$INSTALL_DEV" ] ; then
-		INSTALL_DEV="$diskdev"
-	fi
-	INSTALL_FINALIZE_CMD="kpartx -d $(realpath "$diskdev")"
-	# jscpd:ignore-end
-
-	inst-arch_initinternal "$name" "/dev/mapper/$part_root" \
-		"/dev/mapper/$part_boot" "/boot" \
-		|| return 1
-
-	return 0
-}
-
 #### Setup Filesystems for a directory, i.e. NFS-root ########################
 function inst-arch_init-dir () {
 	# Parameters:
