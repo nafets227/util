@@ -642,7 +642,7 @@ function inst-arch_bootmgr-systemd {
 	touch "$INSTALL_ROOT/etc/kernel/cmdline" &&
 	arch-chroot "$INSTALL_ROOT" bootctl install --no-variables &&
 	arch-chroot "$INSTALL_ROOT" mkinitcpio -p linux &&
-	systemctl enable systemd-boot-update.service &&
+	systemctl --root="$INSTALL_ROOT" enable systemd-boot-update.service &&
 	true || return 1
 
 	return 0
