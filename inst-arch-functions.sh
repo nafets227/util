@@ -146,6 +146,51 @@ function inst-arch_init-pidisk () {
 
 	return 0
 }
+
+#### Setup Filesystems for a directory, i.e. NFS-root ########################
+function inst-arch_init-dir () {
+	# Parameters:
+	#    1 - hostname
+	#    2 - rootdir
+	local name="$1"
+	local rootdir="$2"
+	local bootmnt="${3-/boot}"
+
+	if [ -e "$rootdir" ] ; then
+		printf "Refusing to install Arch Linux for %s on existing dir %s\n" \
+			"$name" "$rootdir" >&2
+		return 1
+	fi
+
+	printf "About to install Arch Linux for %s on %s\n" "$name" "$rootdir" >&2
+
+	# create tempdir to temporary mount the filesystems
+	mkdir -p \
+		"$rootdir/dev" \
+		"$rootdir/proc" \
+		"$rootdir/sys" \
+		"$rootdir/var/cache/pacman" \
+		&&
+	INSTALL_ROOT="$rootdir" &&
+	INSTALL_BOOT="$bootmnt" &&
+	mount --bind "$INSTALL_ROOT" "$INSTALL_ROOT" &&
+
+	# mount filesystems needed for chroot
+	mount --bind /dev "$INSTALL_ROOT/dev" &&
+	mount --bind /proc "$INSTALL_ROOT/proc" &&
+	mount --bind /sys "$INSTALL_ROOT/sys" &&
+	# share package cache with installing host
+	mount --bind /var/cache/pacman "$INSTALL_ROOT/var/cache/pacman" &&
+
+	# Important: export INSTALL_ROOT now to let the caller do cleanup with
+	# the funtion inst-arch_finalize
+	export INSTALL_ROOT INSTALL_BOOT &&
+
+	true || return 1
+
+	return 0
+}
+
 #### Internal helper for setting up Filesystems in any environment ###########
 #### (partition based or fulldisk) ###########################################
 function inst-arch_initinternal () {
@@ -261,84 +306,9 @@ function inst-arch_destroy-disk () {
 	return 0
 }
 
-##### Install Arch Linux on a new filesystem #################################
-function inst-arch_baseos {
-	# Parameters:
-	#    1 - hostname
-	#    2 - additional package [optional]
-	#    3 - additional Modules in initrd [optional]
-	#    4 - time to run autoupdate [default=blank means disabled]
-	#    5 - kernal parmeters [default=blank]
-	local name="$1"
-	local extrapkg="$2"
-	local extramod="$3"
-	local updatetim="$4"
-	local kernel_parm="$5"
-
-	if [ ! -d "$INSTALL_ROOT" ] ; then
-		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
-			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
-		return 1
-	fi
-
-	printf "Installing Arch Linux on %s for %s. \n\tExtra Packages: %s\n\tExtra Modules: %s\n" \
-		"$INSTALL_ROOT" "$name" "$extrapkg" "$extramod" >&2
-
-	# set Hostname, locale and root password. Do it befor installing the
-	# system because packages will already update passwd and shadow
-	# for german use: --locale=LANG=de_DE.UTF-8
-	mkdir "$INSTALL_ROOT/etc"
-	systemd-firstboot --root="$INSTALL_ROOT" \
-		--hostname="$name" \
-		--locale="en_DK.UTF-8" \
-		--locale-messages="en_US.UTF-8" \
-		--keymap="de-latin1-nodeadkeys" \
-		--timezone="Europe/Berlin" \
-		--copy-root-password \
-		--copy-root-shell \
-		--setup-machine-id \
-	|| return 1
-
-	#Bootstrap the new system
-	#shellcheck disable=SC2086 # extrapkg contains multiple parms
-	pacstrap -c "$INSTALL_ROOT" \
-		base openssh grub linux linux-firmware pacutils pacman-contrib less \
-		$extrapkg \
-	|| return 1
-
-	# Workaround a bug in Archlinux that /dev cannot be unmounted at the end of pacstrap without raising an error
-	umount "$INSTALL_ROOT/dev" # do not check the RC here!
-
-	# Now include the needed modules in initcpio
-	if [ -n "$extramod" ] ; then
-		util_updateConfig "$INSTALL_ROOT/etc/mkinitcpio.conf" \
-			"MODULES" "( $extramod )" \
-		|| return 1
-	fi
-
-	cat >>"$INSTALL_ROOT/etc/locale.gen" <<-EOF || return 1
-
-		# by $OURSELVES
-		de_DE.UTF-8 UTF-8
-		en_DK.UTF-8 UTF-8
-		en_US.UTF-8 UTF-8
-		EOF
-
-	#Now chroot into the future system
-	inst-arch_chroot-helper "$INSTALL_ROOT" <<-EOF || return 1
-		systemctl enable sshd.service
-
-		locale-gen
-
-		mkinitcpio -p linux
-		EOF
-
-	# We insert parameters for console to be able to use it when starting as
-	# virtual machine. But it does not work when starting bare-metal:
-	# kernel_parm+=" consoleblank=0 console=ttyS0,115200n8 console=tty0"
-	cat >"$INSTALL_ROOT/etc/kernel/cmdline" <<-EOF || return 1
-		${kernel_parm}
-		EOF
+#### Install auto-update timer ###############################################
+function inst-archinternal_updatetimer {
+	local updatetim="$1"
 
 	# Configure an autoupdate Service and timer.
 	# if updatetim is blank, disable it
@@ -363,6 +333,200 @@ function inst-arch_baseos {
 			disable nafetsde-autoupdate.timer \
 		|| return 1
 	fi
+
+	return 0
+}
+
+##### configure an architecture to install ###################################
+function inst-arch_confarchinternal {
+	local arch_cur
+
+	arch_cur=$(uname -m) &&
+	INSTALL_ARCH=${1:-$arch_cur} &&
+	true || return 1
+
+	INSTALL_EARLY_PKG=( pacman pacman-mirrorlist mkinitcpio )
+
+	if [ "$INSTALL_ARCH" == "x86_64" ] ; then
+		INSTALL_REPOURL="https://geo.mirror.pkgbuild.com/\$repo/os/\$arch"
+		INSTALL_KEYRING_PKG=( archlinux-keyring )
+	elif [ "$INSTALL_ARCH" == "aarch64" ] ; then
+		INSTALL_REPOURL="http://mirror.archlinuxarm.org/\$arch/\$repo"
+		INSTALL_KEYRING_PKG=( archlinux-keyring archlinuxarm-keyring )
+	else
+		printf "%s: unsupported Architecture %s\n" \
+			"${FUNCNAME[0]}" "$INSTALL_ARCH" >&2
+		return 1
+	fi
+
+	return 0
+}
+
+##### initialise keyring on mounted system ###################################
+function inst-arch_keyringinternal {
+	local keyringdir
+	# Setup a Keyring for new system
+	keyringdir=/usr/share/pacman/keyrings/$(basename "$INSTALL_ROOT") &&
+	ln -s \
+		"$INSTALL_ROOT/usr/share/pacman/keyrings" \
+		"$keyringdir" &&
+	sed -e "s:Include = /:Include = $INSTALL_ROOT/:" \
+			-e "s:#DBPath.*:DBPath = $INSTALL_ROOT/var/lib/pacman/:" \
+			-e "s:#LogFile.*:LogFile = $INSTALL_ROOT/var/log/pacman.log:" \
+			-e "s:#GPGDir.*:GPGDir = $INSTALL_ROOT/etc/pacman.d/gnupg/:" \
+			-e "s:#HookDir.*:HookDir = $INSTALL_ROOT/etc/pacman.d/hooks/:" \
+		<"$INSTALL_ROOT/etc/pacman.conf" \
+		>"$INSTALL_ROOT/etc/pacman.conf.installroot" &&
+	pacman-key \
+		--config "$INSTALL_ROOT/etc/pacman.conf.installroot" \
+		--init \
+		&&
+	# workaround, probably solved when both archlinux x86_64 and aarch64 update
+	# to gnupg 2.4.x
+	echo allow-weak-key-signatures >>"$INSTALL_ROOT/etc/pacman.d/gnupg/gpg.conf" &&
+	local keyrings=( ) &&
+	for f in "$keyringdir"/*.gpg ; do
+		keyrings+=( "$(basename "$INSTALL_ROOT")/$(basename "$f" .gpg)" )
+	done
+	pacman-key \
+		--config "$INSTALL_ROOT/etc/pacman.conf.installroot" \
+		--populate "${keyrings[@]}" \
+		&&
+	rm "$keyringdir" &&
+	killall "gpg-agent" -u root &&
+	true || return 1
+
+	return 0
+}
+
+##### Install Arch Linux on a new filesystem #################################
+function inst-arch_baseos {
+	# Parameters:
+	#    1 - hostname
+	#    2 - additional package [optional]
+	#    3 - additional Modules in initrd [optional]
+	#    4 - time to run autoupdate [default=blank means disabled]
+	#    5 - kernal parmeters [default=blank]
+	#    6 - architecture [default=current arch we are running on]
+	#    7 - additional pacman repositories to pull
+	#        Format: reponame, url [ ,SigLevel ]
+	local name="$1"
+	local extrapkg="$2"
+	local extramod="$3"
+	local updatetim="$4"
+	local kernel_parm="$5"
+	local arch="$6"
+	local repos="$7"
+
+	if [ ! -d "$INSTALL_ROOT" ] ; then
+		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
+			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
+		return 1
+	fi
+
+	inst-arch_confarchinternal "$arch" || return 1
+
+	printf "Installing Arch Linux on %s for %s (%s). \n\tExtra Packages: %s\n\tExtra Modules: %s\n" \
+		"$INSTALL_ROOT" "$name" "$arch" "$extrapkg" "$extramod" >&2
+
+	# set Hostname, locale and root password. Do it befor installing the
+	# system because packages will already update passwd and shadow
+	# for german use: --locale=LANG=de_DE.UTF-8
+	mkdir "$INSTALL_ROOT/etc" &&
+	systemd-firstboot --root="$INSTALL_ROOT" \
+		--hostname="$name" \
+		--locale="en_DK.UTF-8" \
+		--locale-messages="en_US.UTF-8" \
+		--keymap="de-latin1-nodeadkeys" \
+		--timezone="Europe/Berlin" \
+		--copy-root-password \
+		--copy-root-shell \
+		--setup-machine-id \
+		&&
+
+	# pacstrap options:
+	# -C <config>    Use an alternate config file for pacman
+	# -c Use the package cache on the host, rather than the target
+	# -D Skip pacman dependency checks
+	# -G Avoid copying the host's pacman keyring to the target
+	# -i Prompt for package confirmation when needed (run interactively)
+	# -K Initialize an empty pacman keyring in the target (implies '-G')
+	# -M Avoid copying the host's mirrorlist to the target
+	# -N Run in unshare mode as a regular user
+	# -P Copy the host's pacman config to the target
+	# -U Use pacman -U to install packages
+	pacstrap -C <( cat <<-EOF
+			[options]
+			Architecture = $INSTALL_ARCH
+			SigLevel=Never
+			[core]
+			Server = $INSTALL_REPOURL
+			[extra]
+			Server = $INSTALL_REPOURL
+			EOF
+			) \
+		-c -D -G -M \
+		"$INSTALL_ROOT" \
+		"${INSTALL_EARLY_PKG[@]}" "${INSTALL_KEYRING_PKG[@]}" &&
+
+	# ensure at least on server is available in mirrorlist
+	# current x86_64 mirrorlist has all servers commented out.
+	cat >>"$INSTALL_ROOT/etc/pacman.d/mirrorlist" <<-EOF &&
+
+		# added by ${BASH_FUNC[0]} at $(date)
+		Server = $INSTALL_REPOURL
+		EOF
+
+	if [ -n "$repos" ] ; then
+		local reponame repourl reposig
+		IFS="," read -r reponame repourl reposig <<<"$repos"
+
+		inst-arch_add_repo "$reponame" "$repourl" "$reposig" || return 1
+	fi
+
+	#Bootstrap the new system
+	inst-arch_keyringinternal &&
+	true || return 1
+
+	# Now include the needed modules in initcpio
+	if [ -n "$extramod" ] ; then
+		util_updateConfig "$INSTALL_ROOT/etc/mkinitcpio.conf" \
+			"MODULES" "( $extramod )" \
+		|| return 1
+	fi
+
+	#shellcheck disable=SC2086 # extrapkg contains multiple parms
+	pacstrap -C "$INSTALL_ROOT/etc/pacman.conf.installroot" \
+		-c -G -M \
+		"$INSTALL_ROOT" \
+		base openssh grub linux-firmware pacutils pacman-contrib less \
+		"${INSTALL_EARLY_PKG[@]}" "${INSTALL_KEYRING_PKG[@]}" \
+		$extrapkg &&
+	true || return 1
+
+	# Workaround a bug in Archlinux that /dev cannot be unmounted at the end of pacstrap without raising an error
+	umount "$INSTALL_ROOT/dev" # do not check the RC here!
+
+	cat >>"$INSTALL_ROOT/etc/locale.gen" <<-EOF &&
+
+		# by ${BASH_FUNC[0]}
+		de_DE.UTF-8 UTF-8
+		en_DK.UTF-8 UTF-8
+		en_US.UTF-8 UTF-8
+		EOF
+
+	inst-arch_chroot-helper "$INSTALL_ROOT" locale-gen &&
+
+	# We insert parameters for console to be able to use it when starting as
+	# virtual machine. But it does not work when starting bare-metal:
+	# kernel_parm+=" consoleblank=0 console=ttyS0,115200n8 console=tty0"
+	cat >"$INSTALL_ROOT/etc/kernel/cmdline" <<-EOF &&
+		${kernel_parm}
+		EOF
+
+	inst-archinternal_updatetimer "$updatetim" &&
+	systemctl --root="$INSTALL_ROOT" enable sshd.service &&
+	true || return 1
 
 	return 0
 }
