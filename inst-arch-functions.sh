@@ -166,9 +166,12 @@ function inst-arch_init-dir () {
 
 	# create tempdir to temporary mount the filesystems
 	mkdir -p \
-		"$rootdir/dev" \
+		"$rootdir/dev/pts" \
+		"$rootdir/dev/shm" \
 		"$rootdir/proc" \
+		"$rootdir/run" \
 		"$rootdir/sys" \
+		"$rootdir/tmp" \
 		"$rootdir/var/cache/pacman" \
 		&&
 	INSTALL_ROOT="$rootdir" &&
@@ -176,9 +179,15 @@ function inst-arch_init-dir () {
 	mount --bind "$INSTALL_ROOT" "$INSTALL_ROOT" &&
 
 	# mount filesystems needed for chroot
-	mount --bind /dev "$INSTALL_ROOT/dev" &&
-	mount --bind /proc "$INSTALL_ROOT/proc" &&
-	mount --bind /sys "$INSTALL_ROOT/sys" &&
+	# filesystem list is taken from arch-chroot
+	mount proc "$INSTALL_ROOT/proc" -t proc -o nosuid,noexec,nodev &&
+	mount sys "$INSTALL_ROOT/sys" -t sysfs -o nosuid,noexec,nodev,ro &&
+	mount udev "$INSTALL_ROOT/dev" -t devtmpfs -o mode=0755,nosuid &&
+	mount devpts "$INSTALL_ROOT/dev/pts" -t devpts -o mode=0620,gid=5,nosuid,noexec &&
+	mount shm "$INSTALL_ROOT/dev/shm" -t tmpfs -o mode=1777,nosuid,nodev &&
+	mount run "$INSTALL_ROOT/run" -t tmpfs -o nosuid,nodev,mode=0755 &&
+	mount tmp "$INSTALL_ROOT/tmp" -t tmpfs -o mode=1777,strictatime,nodev,nosuid &&
+
 	# share package cache with installing host
 	mount --bind /var/cache/pacman "$INSTALL_ROOT/var/cache/pacman" &&
 
@@ -515,7 +524,7 @@ function inst-arch_baseos {
 		en_US.UTF-8 UTF-8
 		EOF
 
-	inst-arch_chroot-helper "$INSTALL_ROOT" locale-gen &&
+	arch-chroot "$INSTALL_ROOT" locale-gen &&
 
 	# We insert parameters for console to be able to use it when starting as
 	# virtual machine. But it does not work when starting bare-metal:
