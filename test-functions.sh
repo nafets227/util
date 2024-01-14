@@ -186,26 +186,33 @@ function test_get_lastoutput {
 	return 0
 }
 
-function test_exec_simple {
+function test_exec_cmd {
 	# Parameters:
-	#     1 - command to test
-	#     2 - expected RC [default: 0]
-	#     3 - optional message to be printed if test fails
+	#     1 - expected RC [default: 0]
+	#     2 - optional message to be printed if test fails
+	#     3+ - command to be executed
+	if [ "$#" -lt 3 ] ; then
+		printf "%s: Internal error: too few parameters (%s < 3)\n" \
+			"${BASH_FUNC[0]}" "$#"
+		return 1
+	fi
+
 	test_exec_init || return 1
 
-	local rc_exp=${2-0}
+	local -r rc_exp=${1:-0}
+	local testmsg=$2
+	shift 2 || return 1
 
-	printf "#-----\n#----- Command: %s\n#-----\n" "$1" \
+	printf "#-----\n#----- Command: %s\n#-----\n" "$@" \
 		>"$TESTSETDIR/$testnr.out"
-	#shellcheck disable=SC2086 # $1 contains multiple parms
-	eval $1 >>"$TESTSETDIR/$testnr.out" 2>&1
+	"$@" >>"$TESTSETDIR/$testnr.out" 2>&1
 	TESTRC=$?
 
 	if [ "$TESTRC" -ne "$rc_exp" ] ; then
 		printf "FAILED. RC=%d (exp=%d)\n" "$TESTRC" "$rc_exp"
-		printf "CMD: %s\n" "$1"
-		if [ -n "$3" ] ; then
-			printf "Info: %s\n" "$3"
+		printf "CMD: %s\n" "$@"
+		if [ -n "$testmsg" ] ; then
+			printf "Info: %s\n" "$testmsg"
 		fi
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
 		cat "$TESTSETDIR/$testnr.out"
@@ -215,7 +222,7 @@ function test_exec_simple {
 		printf "OK\n"
 		testsetok=$(( ${testsetok-0} + 1))
 		if [ "$TESTSETLOG" == "1" ] ; then
-			printf "CMD: %s\n" "$1"
+			printf "CMD: %s\n" "$@"
 			printf "========== Output Test %d Begin ==========\n" "$testnr"
 			cat "$TESTSETDIR/$testnr.out"
 			printf "========== Output Test %d End ==========\n" "$testnr"
@@ -223,6 +230,18 @@ function test_exec_simple {
 	fi
 
 	return 0
+}
+
+function test_exec_simple {
+	# DEPRECATED. Use test_exec_cmd instead.
+	# Parameters:
+	#     1 - command to test
+	#     2 - expected RC [default: 0]
+	#     3 - optional message to be printed if test fails
+
+	test_exec_cmd "$2" "$3" eval "$1"
+
+	return $?
 }
 
 function test_exec_ssh {
