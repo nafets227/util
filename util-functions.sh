@@ -226,5 +226,39 @@ function util_getConfig {
 	return 0
 }
 
+function util_retry {
+	# parm 1: Timout in seconds
+	# parm 2: sleeping time between tries in seconds
+	# parm 3+: command to be executed
+	if [ "$#" -lt 3 ] ; then
+		printf "%s: Internal error: too few parameters (%s < 3)\n" \
+			"${BASH_FUNC[0]}" "$#"
+		return 1
+	fi
+
+	local -r timeout="$1"
+	local -r sleep="$2"
+	shift 2 || return 1
+	local slept=0 # beginning
+
+	while [ "$slept" -lt "$timeout" ] ; do
+		if "$@"
+		then
+			printf "\tOK after %s seconds\n" "$slept"
+			return 0
+		fi
+
+		printf "\twaiting another %s seconds (%s/%s)\n" \
+				"$sleep" "$slept" "$timeout"
+		sleep "$sleep"
+		(( slept += sleep ))
+	done
+
+	printf "\tTIMEOUT after %s seconds\n" \
+		"$timeout"
+
+	return 1
+}
+
 ##### Main ###################################################################
 # do nothing
