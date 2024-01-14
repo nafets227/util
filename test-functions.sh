@@ -934,6 +934,14 @@ function testset_init {
 	return 0
 }
 
+function testset_success {
+	if [ "$testsetok" -ne "$testnr" ] ; then
+		return 1
+	else
+		return 0
+	fi
+}
+
 function testset_summary {
 	printf "TESTS Ended. %d of %d successful.\n" "$testsetok" "$testnr"
 	if [ "$testsetok" -ne "$testnr" ] ; then
