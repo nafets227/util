@@ -32,6 +32,19 @@ echo "    at RepoURL             $repourl"
 
 set -x
 
+# wait for DNS server. Sometimes this pod is starting quicker than DNS
+# after reboot
+while true ; do
+	nslookup www.ibm.com && break
+	sleep 1
+	i=${i-0}
+	(( i++ ))
+	if [ "$i" -ge 60 ] ; then
+		echo "Timed out after 60s - DNS not responding to query for www.ibm.com"
+		exit 1
+	fi
+done
+
 helm repo add "$reponame" "$repourl" &&
 helm repo update &&
 
