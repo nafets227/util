@@ -699,6 +699,50 @@ function inst-arch_add_repo () {
 	return 0
 }
 
+#### inst-arch_getpkgurl #####################################################
+function inst-arch_getpkgurl {
+	local -r pkg="$1"
+
+	if  [ -z "$pkg" ] ; then
+		printf "%s: Error no parm given\n" "${BASH_FUNC[0]}"
+		return 1
+	fi
+
+	local -r PKGURL="https://archive.archlinux.org/packages/.all"
+	local -r PKGURL2="https://alaa.ad24.cz/packages/.all"
+	local arch
+
+	arch=$(arch-chroot "$INSTALL_ROOT" /usr/bin/pacconf |
+		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') || return 1
+	if [ -z "$arch" ] ; then
+		printf "%s: Did not find Architecture = in pacman conf\n" \
+			"${FUNCNAME[0]}"
+		return 1
+	fi
+
+	for url in \
+		{$PKGURL,$PKGURL2}/$pkg-{$arch,any}.pkg.tar.{zst,xz} ;
+	do
+		if curl \
+			--head \
+			-o /dev/null \
+			--silent \
+			--fail "$url" \
+			--location \
+			-w "%{url} %{http_code}\n" \
+			>/dev/stderr ;
+		then
+			printf "%s\n" "$url"
+			return 0
+		fi
+	done
+
+	printf "Error: package %s not found.\n\t URLs: %s\n" \
+		"$pkg" "{$PKGURL,$PKGURL2}/$pkg-{$arch,any}.pkg.tar.{zst,xz}"
+
+	return 1
+}
+
 #### inst-arch_fixverpkg #####################################################
 function inst-arch_fixverpkg () {
 	local -r PACCONF=$INSTALL_ROOT/etc/pacman.conf
