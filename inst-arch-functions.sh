@@ -746,7 +746,6 @@ function inst-arch_getpkgurl {
 #### inst-arch_fixverpkg #####################################################
 function inst-arch_fixverpkg () {
 	local -r PACCONF=$INSTALL_ROOT/etc/pacman.conf
-	pkgs="$*"
 
 	#----- Input checks --------------------------------------------------
 	if [ ! -d "$INSTALL_ROOT" ] ; then
@@ -768,54 +767,27 @@ function inst-arch_fixverpkg () {
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	local -r PKGURL="https://archive.archlinux.org/packages/.all"
-	local arch PKGDIR pkg pkgfile pkgnames pkgslocal pkgnames_old
-	arch=$(arch-chroot "$INSTALL_ROOT" /usr/bin/pacconf |
-		sed -n 's/Architecture[[:blank:]]*=[[:blank:]]*//p') || return 1
-	if [ -z "$arch" ] ; then
-		printf "%s: Did not find Architecture = in pacman conf\n" \
-			"${FUNCNAME[0]}"
-		return 1
-	fi
-	printf "Arch=%s\n" "$arch" &&
-	PKGDIR="$PKGURL/community/os/$arch" &&
-	PKGDIR2="$PKGURL/extra/os/$arch" &&
-	true || return 1
-
-	pkgnames=""
-	pkgslocal=""
-
-	for pkg in $pkgs ; do
-		pkgfile=$(util_make-local "$PKGDIR/$pkg-$arch.pkg.tar.zst") ||
-		pkgfile=$(util_make-local "$PKGDIR/$pkg-any.pkg.tar.zst") ||
-		pkgfile=$(util_make-local "$PKGDIR/$pkg-$arch.pkg.tar.xz") ||
-		pkgfile=$(util_make-local "$PKGDIR/$pkg-any.pkg.tar.xz") ||
-		pkgfile=$(util_make-local "$PKGDIR2/$pkg-$arch.pkg.tar.zst") ||
-		pkgfile=$(util_make-local "$PKGDIR2/$pkg-any.pkg.tar.zst") ||
-		pkgfile=$(util_make-local "$PKGDIR2/$pkg-$arch.pkg.tar.xz") ||
-		pkgfile=$(util_make-local "$PKGDIR2/$pkg-any.pkg.tar.xz") ||
-		pkgfile=""
-
-		if [ -z "$pkgfile" ] ; then
-			printf "Error: Package file %s not found.\n" "$PKGDIR/$pkg-{$arch,any}.pkg.tar.{zst,xz}"
-			return 1
-		fi
-
-		pkgnames+=" $(pacman -Qp "$pkgfile" | cut -d" " -f 1)" &&
-		pkgslocal+=" /root/$(basename "$pkgfile")" &&
-		cp --preserve=timestamps "$pkgfile" "$INSTALL_ROOT/root/" &&
+	local pkgurl pkgname
+	local pkgurls=( )
+	local pkgnames=( )
+	for pkg in "$@" ; do
+		pkgurl=$(inst-arch_getpkgurl "$pkg") &&
+		pkgname=${pkg%-*-*} &&
+		pkgurls+=( "$pkgurl" ) &&
+		pkgnames+=( "$pkgname" ) &&
 		true || return 1
 	done
-	#shellcheck disable=SC2086 # pkgnames contains multiple parms
+
 	arch-chroot "$INSTALL_ROOT" \
-		pacman -U --needed --noconfirm $pkgslocal &&
+		pacman -U --needed --noconfirm "${pkgurls[@]}" &&
+
 	pkgnames_old=$(util_getConfig "$PACCONF" "IgnorePkg") &&
 	util_updateConfig "$PACCONF" \
-		"IgnorePkg" "$pkgnames_old $pkgnames" &&
+		"IgnorePkg" "$pkgnames_old" "${pkgnames[@]}" &&
 	true || return 1
 
 	#----- Closing -------------------------------------------------------
-	printf "Added Package(s) with fixed version %s\n" "$pkgs" >&2
+	printf "Added Package(s) with fixed version %s\n" "$@" >&2
 
 	return 0
 }
