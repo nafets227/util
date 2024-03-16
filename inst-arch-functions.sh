@@ -783,7 +783,7 @@ function inst-arch_fixverpkg () {
 
 	pkgnames_old=$(util_getConfig "$PACCONF" "IgnorePkg") &&
 	util_updateConfig "$PACCONF" \
-		"IgnorePkg" "$pkgnames_old" "${pkgnames[@]}" &&
+		"IgnorePkg" "$pkgnames_old ${pkgnames[*]}" &&
 	true || return 1
 
 	#----- Closing -------------------------------------------------------
