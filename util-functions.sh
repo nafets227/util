@@ -189,6 +189,12 @@ function util_updateConfig {
 	local -r varname=$2
 	local -r value=$3
 
+	if [ "$#" != "3" ] ; then
+		printf "%s: Internal Error. Git %s parms (exp=3)\n" \
+			"${BASH_FUNC[0]}" "$#"
+		return 1
+	fi
+
 	# For explanation on sed syntax see
 	# https://stackoverflow.com/questions/15965073
 	#shellcheck disable=SC2016
