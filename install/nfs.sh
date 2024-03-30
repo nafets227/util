@@ -49,11 +49,8 @@ function install-nfs_server {
 		{ print }
 		EOF
 
-	mkdir -p /etc/systemd/system/nfsv4-server.service.d || return 1
-	cat >/etc/systemd/system/nfsv4-server.service.d/afternfs.conf <<-EOF || return 1
-		[Unit]
-		After=nfs-server.service
-		EOF
+	# following suggestion to mask nfsv3 services from https://wiki.archlinux.org/title/NFS
+	systemctl --root="$INSTALL_ROOT" mask rpcbind.service rpcbind.socket nfs-server.service || return 1
 	systemctl --root="$INSTALL_ROOT" enable nfsv4-server.service || return 1
 
 	#----- Closing  ------------------------------------------------------
