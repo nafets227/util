@@ -266,7 +266,7 @@ function install-net_static3 {
 
 	#----- Closing  ------------------------------------------------------
 	printf "Setting up network [Static %s] completed. Match:\n%s\n" \
-		"${ipaddr:="<noIP>"}" "$match"
+		"${ipaddr:-"<noIP>"}" "$match"
 	if [ -n "$addparms" ] ; then
 		printf "\t%s\n" "$addparms"
 	fi
