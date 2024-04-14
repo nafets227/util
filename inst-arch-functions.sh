@@ -242,8 +242,6 @@ function inst-arch_destroy() {
 		wipefs --all --force "$bootdev" || return 1
 	fi
 
-	udevadm settle # wait udev to proceed wiped FSs
-
 	return 0
 }
 
@@ -260,7 +258,6 @@ function inst-arch_destroy-disk () {
 
 	if [ -b "$diskdev" ] ; then
 		wipefs --all --force "$diskdev" || return 1
-		udevadm settle # wait udev to proceed wiped FSs
 	elif [ -e "$diskdev" ] ; then
 		rm "$diskdev" || return 1
 	fi
