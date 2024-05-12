@@ -4,6 +4,8 @@
 #
 # (C) 2021 Stefan Schallenberg
 
+# jscpd:ignore-start
+
 ---
 
 apiVersion: v1
@@ -49,3 +51,5 @@ spec:
       state: "${KUBE_STAGE}"
       app: "${KUBE_APP}"
       share: "${share}"
+
+# jscpd:ignore-end
