@@ -296,9 +296,9 @@ function install-net_static2 {
 	iface_fname=${iface_fname// /_}
 
 	if [ -z "$virt" ] ; then
-		local -r iftag="$iface_fname.network"
+		local -r iftag="$iface_fname"
 	else
-		local -r iftag="$iface_fname-$virt.network"
+		local -r iftag="$iface_fname-$virt"
 	fi
 
 	ifmatch="Name=$iface"
