@@ -208,7 +208,7 @@ function install-net_static3 {
 	fi
 
 	#----- Real Work -----------------------------------------------------
-	local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/nafetsde-$tag.network"
+	local -r cfgfile="$INSTALL_ROOT/etc/systemd/network/$tag.network"
 
 	cat >"$cfgfile" <<-EOF
 		[Match]
@@ -306,7 +306,7 @@ function install-net_static2 {
 		ifmatch+=$'\n'"Virtualization=$virt"
 	fi
 
-	install-net_static3 "$ipaddr" "$iftag" "$ifmatch" || return 1
+	install-net_static3 "$ipaddr" "50-nafetsde-$iftag" "$ifmatch" || return 1
 
 	return 0
 }
