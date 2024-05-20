@@ -84,14 +84,6 @@ function util_download {
 				--location \
 				--remote-time \
 				--output "$CACHFIL" \
-				--time-cond "$CACHFIL" \
-				"$URL" \
-				>&2 &&
-			curl \
-				--fail \
-				--location \
-				--remote-time \
-				--output "$CACHFIL" \
 				--time-cond "-$CACHFIL" \
 				"$URL" \
 				>&2
