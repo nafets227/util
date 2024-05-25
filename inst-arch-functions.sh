@@ -640,12 +640,10 @@ function inst-arch_bootmgr-systemd {
 
 	#----- Real Work -----------------------------------------------------
 	cat >>"$INSTALL_ROOT/etc/mkinitcpio.d/linux.preset" <<-EOF &&
-		default_efi_image="$INSTALL_BOOT/EFI/Linux/archlinux-linux.efi"
-		default_options="-A systemd"
-		fallback_efi_image="$INSTALL_BOOT/EFI/Linux/archlinux-linux-fallback.efi"
-		fallback_options="-S autodetect -A systemd"
-
-		ALL_microcode=(/boot/*-ucode.img)
+		default_uki="$INSTALL_BOOT/EFI/Linux/archlinux-linux.efi"
+		default_options="-A systemd,microcode"
+		fallback_uki="$INSTALL_BOOT/EFI/Linux/archlinux-linux-fallback.efi"
+		fallback_options="-S autodetect -A systemd,microcode"
 		EOF
 
 	touch "$INSTALL_ROOT/etc/kernel/cmdline" &&
