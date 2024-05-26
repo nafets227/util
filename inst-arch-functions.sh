@@ -639,11 +639,21 @@ function inst-arch_bootmgr-systemd {
 	fi
 
 	#----- Real Work -----------------------------------------------------
+	# this is a workaround as long as the feature is not present
+	# in upstream mkinitcpio.
+	# see https://gitlab.archlinux.org/archlinux/mkinitcpio/mkinitcpio/-/issues/205
+	cat >"$INSTALL_ROOT/etc/initcpio/install/nafetsde-shadow" <<-EOF || return 1
+		#!/bin/bash
+
+		build() {
+			add_file /etc/shadow /etc/shadow
+		}
+		EOF
 	cat >>"$INSTALL_ROOT/etc/mkinitcpio.d/linux.preset" <<-EOF &&
 		default_uki="$INSTALL_BOOT/EFI/Linux/archlinux-linux.efi"
-		default_options="-A systemd,microcode"
+		default_options="-A systemd,microcode,nafetsde-shadow"
 		fallback_uki="$INSTALL_BOOT/EFI/Linux/archlinux-linux-fallback.efi"
-		fallback_options="-S autodetect -A systemd,microcode"
+		fallback_options="-S autodetect -A systemd,microcode,nafetsde-shadow"
 		EOF
 
 	touch "$INSTALL_ROOT/etc/kernel/cmdline" &&
