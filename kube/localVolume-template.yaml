@@ -12,13 +12,12 @@ apiVersion: v1
 kind: PersistentVolume
 metadata:
   name: ${share}.${KUBE_APP}.${KUBE_STAGE}
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "nafets"
   labels:
     state: "${KUBE_STAGE}"
     app: "${KUBE_APP}"
     share: "${share}"
 spec:
+  storageClassName: "nafets"
   capacity:
     storage: 100Mi
   accessModes:
@@ -44,12 +43,11 @@ kind: PersistentVolumeClaim
 metadata:
   name: ${share}.${KUBE_APP}
   namespace: ${KUBE_NAMESPACE}
-  annotations:
-    volume.beta.kubernetes.io/storage-class: "nafets"
   labels:
     app: "${KUBE_APP}"
     share: "${share}"
 spec:
+  storageClassName: "nafets"
   accessModes:
     - ReadWriteMany
   resources:
