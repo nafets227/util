@@ -141,7 +141,7 @@ function util_verifypwfile {
 		printf "util_verifypwfile: fiel %s does not exist\n" \
 			"$CERT_PRIVATE_DIR/$pwfile" >&2
 		return 1
-	elif cat -e "$CERT_PRIVATE_DIR/$pwfile" | grep -q '\$' ; then
+	elif [ "$(wc -l <"$CERT_PRIVATE_DIR/$pwfile")" != "0" ] ; then
 		printf "Error: password File %s contains trailing newline\n" \
 			"$CERT_PRIVATE_DIR/$pwfile" >&2
 		return 1
