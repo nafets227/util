@@ -138,7 +138,7 @@ function util_verifypwfile {
 		printf "util_verifypwfile: unexpected empty parm\n" >&2
 		return 1
 	elif [ ! -f "$CERT_PRIVATE_DIR/$pwfile" ] ; then
-		printf "util_verifypwfile: fiel %s does not exist\n" \
+		printf "util_verifypwfile: file %s does not exist\n" \
 			"$CERT_PRIVATE_DIR/$pwfile" >&2
 		return 1
 	elif [ "$(wc -l <"$CERT_PRIVATE_DIR/$pwfile")" != "0" ] ; then
