@@ -638,6 +638,8 @@ function inst-arch_bootmgr-systemd {
 		return 1
 	fi
 
+	printf "Installing Systemd-Bootmgr on %s in %s\n" "$INSTALL_ROOT" "$INSTALL_BOOT" >&2
+
 	#----- Real Work -----------------------------------------------------
 	# this is a workaround as long as the feature is not present
 	# in upstream mkinitcpio.
