@@ -242,6 +242,37 @@ function test_wait_kubepods {
 	return 0
 }
 
+function test_wait_url {
+	# Parameters:
+	#     1 - url
+	#     2 - timeout in seconds
+	local -r url="$1"
+	local -r timeout="$2"
+	if [ "$#" -lt 2 ] ; then
+		printf "%s: Internal error: too few parameters (%s < 2)\n" \
+			"${BASH_FUNC[0]}" "$#"
+		return 1
+	fi
+
+	local i
+	i=$(date '+%s') || return 1
+	while (( $(date '+%s') - i < timeout )) ; do
+		if \
+			curl -k -f -4 "$url" &&
+			curl -k -f -6 "$url"
+		then
+			printf "%s reachable\n" "wlan.$SITE_BASEDOM"
+			return 0
+		fi
+
+		printf "waiting for url %s: sleep 5 seconds (%s/%s)\n" \
+				"$url" $(( $(date '+%s') - i)) "$timeout"
+		sleep 5
+	done
+
+	return 1
+}
+
 function test_exec_cmd {
 	# Parameters:
 	#     1 - expected RC [default: 0]
