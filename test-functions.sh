@@ -382,8 +382,9 @@ function test_exec_url {
 	shift 2
 
 	TESTRC=$(curl -s "$@" \
-		-i \
+		-i -v \
 		-o "$TESTSETDIR/$testnr.curlout" \
+		--stderr "$TESTSETDIR/$testnr.curlerr" \
 		-w "%{http_code}" \
 		"$url")
 	local rc=$?
@@ -396,6 +397,10 @@ function test_exec_url {
 		cat "$TESTSETDIR/$testnr.curlout"
 		printf "\n"
 		printf "========== Output Test %d End ==========\n" "$testnr"
+		printf "========== stderr-Output Test %d Begin ==========\n" "$testnr"
+		cat "$TESTSETDIR/$testnr.curlerr"
+		printf "\n"
+		printf "========== stderr-Output Test %d End ==========\n" "$testnr"
 		[ "$rc" -ne 0 ] && TESTRC=999
 		testsetfailed="$testsetfailed $testnr"
 	else
