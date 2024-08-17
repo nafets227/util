@@ -304,7 +304,7 @@ function inst-arch_confarchinternal {
 	INSTALL_ARCH=${1:-$arch_cur} &&
 	true || return 1
 
-	INSTALL_EARLY_PKG=( pacman pacman-mirrorlist mkinitcpio )
+	INSTALL_EARLY_PKG=( pacman pacman-mirrorlist mkinitcpio linux bash )
 
 	if [ "$INSTALL_ARCH" == "x86_64" ] ; then
 		INSTALL_REPOURL="https://geo.mirror.pkgbuild.com/\$repo/os/\$arch"
@@ -453,6 +453,17 @@ function inst-arch_baseos {
 			"MODULES" "( $extramod )" \
 		|| return 1
 	fi
+
+	# always generate full efi kernel needed for systemd-boot
+	cat >>"$INSTALL_ROOT/etc/mkinitcpio.d/linux.preset" <<-EOF &&
+		default_efi_image="$INSTALL_BOOT/EFI/Linux/archlinux-linux.efi"
+		default_options="-A systemd"
+		fallback_efi_image="$INSTALL_BOOT/EFI/Linux/archlinux-linux-fallback.efi"
+		fallback_options="-S autodetect -A systemd"
+
+		ALL_microcode=(/boot/*-ucode.img)
+		EOF
+	true || return 1
 
 	#shellcheck disable=SC2086 # extrapkg contains multiple parms
 	pacstrap -C "$INSTALL_ROOT/etc/pacman.conf.installroot" \
@@ -632,10 +643,6 @@ function inst-arch_bootmgr-systemd {
 		printf "%s: Error \$INSTALL_BOOT is not set\n" \
 			"${FUNCNAME[0]}" >&2
 		return 1
-	elif [ ! -w "$INSTALL_ROOT/etc/mkinitcpio.d/linux.preset" ] ; then
-		printf "%s: Error %s  does not exist or ist not writable\n" \
-			"${FUNCNAME[0]}"  "/etc/mkinitcpio.d/linux.preset" >&2
-		return 1
 	fi
 
 	printf "Installing Systemd-Bootmgr on %s in %s\n" "$INSTALL_ROOT" "$INSTALL_BOOT" >&2
@@ -660,7 +667,6 @@ function inst-arch_bootmgr-systemd {
 
 	touch "$INSTALL_ROOT/etc/kernel/cmdline" &&
 	arch-chroot "$INSTALL_ROOT" bootctl install --no-variables &&
-	arch-chroot "$INSTALL_ROOT" mkinitcpio -p linux &&
 	systemctl --root="$INSTALL_ROOT" enable systemd-boot-update.service &&
 	true || return 1
 
