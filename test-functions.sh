@@ -209,6 +209,38 @@ function test_get_ipv6prefix {
 	return 0
 }
 
+function test_wait_kubepods {
+	# Parameters:
+	#     1 - Kubernetes Labels to identify relevant pods
+	#     2 - timeout in seconds [default=60]
+	if [ "$#" -lt 1 ] ; then
+		printf "%s: Internal error: too few parameters (%s < 1)\n" \
+			"${BASH_FUNC[0]}" "$#"
+		return 1
+	fi
+	local -r podlabels="$1"
+	local -r timeout=${2:-60}
+
+	if ! kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+		wait pods \
+		--namespace "$KUBE_NAMESPACE" \
+		--timeout="${timeout}s" \
+		--for=condition=Ready \
+		-l "$podlabels"
+	then
+		kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+			get pods \
+			--namespace "$KUBE_NAMESPACE" \
+			-l "$podlabels"
+		kubectl --kubeconfig "$KUBE_CONFIGFILE" \
+			logs \
+			--namespace "$KUBE_NAMESPACE" \
+			-l "$podlabels"
+		return 1
+	fi
+
+	return 0
+}
 
 function test_exec_cmd {
 	# Parameters:
