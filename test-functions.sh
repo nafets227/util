@@ -523,12 +523,30 @@ function test_exec_kubenode2 {
 	#     3 - expected RC [default: 0]
 	#     4 - optional message to be printed if test fails
 	#     5+ - IP adresses or DNS names to verify connection with
+	local -r nodename="$1"
+	local -r dnsname="$2"
+	local -r rc_exp="$3"
+	local -r msg="$4"
+	shift 4
+	test_exec_kubenode3 "$nodename" "$dnsname" "" "$rc_exp" "$msg" "$@"
+}
+
+function test_exec_kubenode3 {
+	# Parameters:
+	#     1 - name of the node
+	#     2 - DNS name of the VM to run kubectl
+	#         if empty, the current machine will be used (no ssh)
+	#     3 - timeout in sec [default: 3]
+	#     4 - expected RC [default: 0]
+	#     5 - optional message to be printed if test fails
+	#     5+ - IP adresses or DNS names to verify connection with
 	test_exec_init || return 1
 
 	local -r nodename="${1,,}" # lowercase
 	local -r dnsname="$2"
-	local -r rc_exp="${3:-0}"
-	local -r msg="$4"
+	local -r timeout="${3:-3}"
+	local -r rc_exp="${4:-0}"
+	local -r msg="$5"
 	shift 4
 
 	if [ -z "$nodename" ] ; then
@@ -542,10 +560,14 @@ function test_exec_kubenode2 {
 	local bashcmd
 	bashcmd=""
 	bashcmd+=" set -x"
+	bashcmd+=";i=\$(date '+%s')"
+	bashcmd+=";while (( \$(date '+%s') - i \< $timeout )) ; do true "
 	for f in "$@" ; do
 		bashcmd+=" && ping -c 1 -4 $f"
 		bashcmd+=" && ping -c 1 -6 $f"
 	done
+	bashcmd+=" && break"
+	bashcmd+="; sleep 1 ; done"
 
 	local kubecmd
 	kubecmd=""
