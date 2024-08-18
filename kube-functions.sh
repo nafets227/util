@@ -272,17 +272,34 @@ function kube-inst_helm2 {
 	local chart="$4"
 	local version="$5"
 	local envnames="$6"
+	local repotype=""
+	local charturl=""
 
 	kube-inst_internal-verify-initialised &&
 	kube-inst_internal-create_namespace &&
 	true || return 1
 
-	if		[ -z "$release" ] ||
-			[ -z "$repourl" ] ||
-			[ -z "$reponame" ] ||
-			[ -z "$chart" ] ; then
-		printf "Error: Empty parms \"%s\"  \"%s\" \"%s\" \"%s\"\n" \
-			"$release" "$repourl" "$reponame" "$chart"
+	if [ -z "$release" ] || [ -z "$repourl" ] ; then
+		printf "Error: Empty parms \"%s\" \"%s\"\n" \
+			"$release" "$repourl"
+		return 1
+	fi
+
+	if [[ "$repourl" =~ ^https{0,1}:// ]] ; then
+		repotype="http"
+		if [ -z "$reponame" ] || [ -z "$chart" ] ; then
+			printf "Error: reponame and chart are required for http repo %s\n" \
+				"$repourl"
+		fi
+	elif [[ "$repourl" =~ ^oci:// ]] ; then
+		repotype="oci"
+		if [ -n "$reponame" ] || [ -n "$chart" ] ; then
+			printf "Error: reponame \"%s\" and/or chart \"%s\" are not empty for oci repo %s\n" \
+				"$reponame" "$chart" "$repourl"
+		fi
+	else
+		printf "Unknown repotype (not http or oci) in %s\n" \
+			"$repourl"
 		return 1
 	fi
 
@@ -296,9 +313,17 @@ function kube-inst_helm2 {
 	fi
 
 	if [ "$KUBE_ACTION" == "install" ] ; then
-		helm repo add "$reponame" "$repourl" && # does not fail if already exists
-		helm repo update "$reponame" &&
-		true || return 1
+		if [ "$repotype" == "http" ] ; then
+			helm repo add "$reponame" "$repourl" && # does not fail if already exists
+			helm repo update "$reponame" &&
+			charturl="$reponame/$chart"
+			true || return 1
+		elif [ "$repotype" == "oci" ] ; then
+			charturl="$repourl"
+		else
+			printf "Internal Error\n"
+			return 1
+		fi
 
 		if ! inputyaml=$(kube-inst_internal-environize "$envnames") ; then
 			printf "Error environizing HELM values\n"
@@ -312,11 +337,11 @@ function kube-inst_helm2 {
 			--values - \
 			$prm_version \
 			"$release" \
-			"$reponame/$chart" \
+			"$charturl" \
 			<<<"$inputyaml"
 		then
 			printf "Error in helm upgrade --install %s\n" \
-				"$release $reponame/$chart"
+				"$release $charturl"
 			printf "\tValues File:\n%s\n" "$inputyaml"
 			return 1
 		fi
@@ -326,7 +351,9 @@ function kube-inst_helm2 {
 			--kubeconfig "$KUBE_CONFIGFILE" \
 			--namespace "$KUBE_NAMESPACE" \
 			"$release"
-		helm repo remove "$reponame"
+		if [ "$repotype" == "http" ] ; then
+			helm repo remove "$reponame"
+		fi
 	else
 		printf "%s: Error. Action (Parm1) %s unknown." \
 			"${FUNCNAME[0]}" "$1"
