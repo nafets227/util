@@ -380,7 +380,6 @@ function test_exec_url {
 	local url="$1"
 	local rc_exp=${2-200}
 	shift 2
-	local http_code=""
 
 	TESTRC=$(curl -s "$@" \
 		-i \
@@ -390,7 +389,7 @@ function test_exec_url {
 	local rc=$?
 	if [ $rc -ne 0 ] || [ "x$TESTRC" != "x$rc_exp" ] ; then
 		printf "FAILED. RC=%d HTTP-Code=%s (exp=%s)\n" \
-		"$rc" "$http_code" "$rc_exp"
+		"$rc" "$TESTRC" "$rc_exp"
 		printf "URL: %s\n" "$url"
 		printf "Options: %s\n" "$@"
 		printf "========== Output Test %d Begin ==========\n" "$testnr"
