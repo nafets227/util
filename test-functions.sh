@@ -258,8 +258,8 @@ function test_wait_url {
 	i=$(date '+%s') || return 1
 	while (( $(date '+%s') - i < timeout )) ; do
 		if \
-			curl -k -f -4 "$url" &&
-			curl -k -f -6 "$url"
+			curl -k -f -4 "$url" -o /dev/null &&
+			curl -k -f -6 "$url" -o /dev/null
 		then
 			printf "%s reachable\n" "wlan.$SITE_BASEDOM"
 			return 0
