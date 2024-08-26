@@ -246,22 +246,62 @@ function test_wait_url {
 	# Parameters:
 	#     1 - url
 	#     2 - timeout in seconds
+	#     3ff - additional dnsnames or IPs to wait for
+	#           the request is done with the original url but network
+	#           connects to this adresses (curl --connect-to)
 	local -r url="$1"
 	local -r timeout="$2"
-	if [ "$#" -lt 2 ] ; then
-		printf "%s: Internal error: too few parameters (%s < 2)\n" \
-			"${FUNCNAME[0]}" "$#"
+	shift 2
+
+	if
+		[[ ! "$url" =~ ^http://.* ]] &&
+		[[ ! "$url" =~ ^https://.* ]]
+	then
+		printf "%s: Invalid url (not http[s]) \"%s\"\n" "${FUNCNAME[0]}" "$url"
+		return 1
+	elif [ -z "$timeout" ] ; then
+		printf "%s: No timeout given for %s\n" \
+			"${FUNCNAME[0]}" "$url"
 		return 1
 	fi
 
-	local i
+	local i dnsname
+	dnsname=${url#*://}
+	dnsname=${dnsname%%/*}
+
 	i=$(date '+%s') || return 1
-	while (( $(date '+%s') - i < timeout )) ; do
-		if \
-			curl -k -f -4 "$url" -o /dev/null &&
-			curl -k -f -6 "$url" -o /dev/null
-		then
-			printf "%s reachable\n" "wlan.$SITE_BASEDOM"
+	# tricky solution: "error error" is an invalid arithmetic producing an
+	# error and abort. Please note that "error" would just represent the value
+	# of the (unset) variable error and NOT produce an abort
+	while (( $(date '+%s' || echo "error error") - i < timeout )) ; do
+		local ips=() iptemp=() ip="" ok="1" n || return 1
+		for n in "$dnsname" "$@" ; do
+			util-getIP "$n" "" "iptemp" &&
+			ips+=( "${iptemp[@]}" ) &&
+			true || return 1
+		done
+
+		for ip in "${ips[@]}" ; do
+			if [[ "$ip" == *:* ]] ; then
+				ip="[$ip]" # curl needs IPv6 adresses enclosed in brackets
+			fi
+			if \
+				curl -k -f "$url" \
+					-o /dev/null \
+					--connect-to "$dnsname::$ip" \
+					--no-progress-meter
+			then
+				printf "Successfully connected to %s with IP %s\n" \
+					"$url" "$ip"
+			else
+				printf "Error connecting to %s with IP %s - retrying\n" \
+					"$url" "$ip"
+				ok=0
+			fi
+		done
+
+		if [ "$ok" == 1 ] ; then
+			printf "%s reachable\n" "$url"
 			return 0
 		fi
 
@@ -270,6 +310,7 @@ function test_wait_url {
 		sleep 5
 	done
 
+	printf "timed out waiting for url %s\n" "$url"
 	return 1
 }
 
