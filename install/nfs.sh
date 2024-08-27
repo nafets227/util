@@ -109,10 +109,14 @@ function install-nfs_export {
 	fi
 
 	local netopt=""
-	for n in $nets ; do
-		netopt+=" $n($exportopt)"
-	done
-	netopt="${netopt:1}" # remove leading blank
+	if [ "$nets" != "*" ] ; then
+		for n in $nets ; do
+			netopt+=" $n($exportopt)"
+		done
+		netopt="${netopt:1}" # remove leading blank
+	else
+		netopt="*($exportopt)"
+	fi
 
 	cat >>"$INSTALL_ROOT/etc/exports" <<-EOF
 		/srv/nfs4/$exportname $netopt
