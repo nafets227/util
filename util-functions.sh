@@ -152,18 +152,86 @@ function util_verifypwfile {
 
 ##### util-getIP #############################################################
 function util-getIP {
-	local result
-	result=$(dig +short "$1")
-	rc=$?
-	if [ $rc != "0" ] ; then
-		printf "Error getting IP of %s.\n" "$1" >&2
+	local url="$1"
+	local ipfamily="${2:-46}"
+	local resultvar="$3" # if empty print result to stdout
+	local result=()
+	local input=()
+	local digout=""
+
+	if [ -z "$url" ] ; then
+		printf "%s: got no url (parm 1)\n" "${FUNCNAME[0]}" >&2
 		return 1
-	elif [ -z "$result" ] ; then
-		printf "DNS name %s not defined.\n" "$1" >&2
-		return 1;
+	elif [[ "$ipfamily" =~ [^46] ]] ; then
+		printf "%s: invalid parm 2 %s (only 46 allowed)\n" \
+			"${FUNCNAME[0]}" "$ipfamily" >&2
+		return 1
 	fi
 
-	printf "%s\n" "$result"
+	if [[ "$url" =~ [0-9]+\.[0-9]+\.[0-9]+\.[0-9]+ ]] ; then
+		# url is an IPv4 address
+		if [[ "$ipfamily" =~ 4 ]] ; then
+			result+=( "$url" )
+		else
+			printf "%s: IPv4 address but IP family 4 not allowed in %s\n" \
+				"${FUNCNAME[0]}" "$url" >&2
+			return 1
+		fi
+	elif ip -6 route get "$url/128" >/dev/null 2>&1 ; then
+		# trick to verify IPv6 syntax taken from https://stackoverflow.com/questions/26796769/how-to-validate-a-ipv6-address-format-with-shell
+		# url is an IPv6 addrrss
+		if [[ "$ipfamily" =~ 6 ]] ; then
+			result+=( "$url" )
+		else
+			printf "%s: IPv6 address but IP family 6 not allowed in %s\n" \
+				"${FUNCNAME[0]}" "$url" >&2
+			return 1
+		fi
+	else
+		digout=$(dig "$url" A) &&
+		digout+=$(dig "$url" AAAA) &&
+		true || return 1
+
+		while IFS=$'\t ' read -r -a input
+		do
+			if [[ "${input[*]}" =~ ^\; ]] ; then
+				continue
+			elif [ -z "${input[*]}" ] ; then
+				continue
+			fi
+
+			#DEBUG printf "dig Output: %s\n" "$(sed -n l <<<"${input[*]}")"
+			if
+				[[ "$ipfamily" =~ 4 ]] &&
+				[ "${input[2]}" == IN ] &&
+				[ "${input[3]}" == A ]
+			then
+				result+=( "${input[4]}" )
+			fi
+
+			if
+				[[ "$ipfamily" =~ 6 ]] &&
+				[ "${input[2]}" == IN ] &&
+				[ "${input[3]}" == AAAA ]
+			then
+				result+=( "${input[4]}" )
+			fi
+		done <<<"$digout"
+
+		if [ "${#result[@]}" == 0 ] ; then
+			printf "%s: No DNS adress for %s\n" "${FUNCNAME[0]}" "$url" >&2
+			return 1
+		fi
+	fi
+
+	if [ -z "$resultvar" ] ; then
+		for f in "${result[@]}" ; do
+			printf "%s\n" "$f"
+		done
+	else
+		eval "$resultvar"'=("${result[@]}")'
+	fi
+
 	return 0
 }
 

@@ -5,8 +5,7 @@
 # (C) 2023 Stefan Schallenberg
 #
 
-function do_test {
-	testset_init
+function do_test_config {
 	valtest="" # make shellcheck happy
 
 	cat >"$TESTSETDIR/utiltest1.txt" <<-EOF || return 1
@@ -65,9 +64,29 @@ function do_test {
 			test_lastoutput_contains " var5  =   newvalue5"
 	fi
 
-	testset_summary
-
 	return $?
+}
+
+function do_test_ip {
+	test_exec_cmd 0 "" util-getIP 123.456.789.123 &&
+		test_lastoutput_contains "123.456.789.123"
+	test_exec_cmd 1 "" util-getIP 123.456.789
+	test_exec_cmd 1 "" util-getIP 123.456.789.123 123.456.789.123
+
+	test_exec_cmd 0 "" util-getIP 1:2:3:4:5:6:7:8 &&
+		test_lastoutput_contains "1:2:3:4:5:6:7:8"
+	test_exec_cmd 0 "" util-getIP 1:2::7:8 &&
+		test_lastoutput_contains "1:2::7:8"
+	test_exec_cmd 0 "" util-getIP 1::8 &&
+		test_lastoutput_contains "1::8"
+	test_exec_cmd 0 "" util-getIP 1::8 &&
+		test_lastoutput_contains "1::8"
+	test_exec_cmd 1 "" util-getIP 1:2:3:4:5:6:7
+	test_exec_cmd 1 "" util-getIP 1:2:3:4:5:6:7
+
+	test_exec_cmd 0 "" util-getIP nafets.dyndns.eu
+	test_exec_cmd 1 "" util-getIP nafets.dyndns.eu 1.2.3.4
+	test_exec_cmd 1 "" util-getIP doesnotexist.tld
 }
 
 ##### Main ####################################################################
@@ -77,6 +96,9 @@ BASEDIR="$PRJDIR/../.."
 . "$BASEDIR/util/util-functions.sh" || exit 1
 . "$BASEDIR/util/test-functions.sh" || exit 1
 
-do_test
+testset_init || exit 1
+do_test_config
+do_test_ip
+testset_summary
 
 exit $?
