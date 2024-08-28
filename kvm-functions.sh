@@ -501,33 +501,55 @@ function kvm_start_vm {
 	return $?
 }
 
-##### kvm_check-vm ###########################################################
 function kvm_check_vm {
+	# THIS FUNCTION IS DEPRECATED. Use kvm_check_vm2 instead
 	# Parameters:
 	# 1 - DNS name of machine [optional, default=machinename ]
 	# 2 - Timeout to wait for machine to appear in seconds [optional, 60]
-	if [ -z "$1" ] ; then
-		printf "Error: no machine name supplied\n" >&2
+	kvm_check_vm2 "${2:-60}" "$1"
+}
+
+function kvm_check_vm2 {
+	# Parameters:
+	# 1 - Timeout to wait for machine to appear in seconds
+	# 2ff - DNS name or IP addresses to check
+	local -r timeout="$1"
+	shift
+
+	if [ -z "$timeout" ] ; then
+		printf "%s: no timeout supplied\n" "${FUNCNAME[0]}" >&2
+		return 1
+	elif [ -z "$1" ] ; then
+		printf "%s: no dnsname or ip given\n" "${FUNCNAME[0]}" >&2
 		return 1
 	fi
-	local -r dnsname="$1"
-	local -r sleepMax=${2:-60}
-	local -r waitDNS=${3:-0}
 
-	local -r sleepFirst=5
-	local -r sleepNext=5
-
+	local -r sleep=5
 	local slept=0 # beginning
+	local dnsips=() ips=()
+	local ip dnsname
 
-	printf "Waiting initial %s seconds for machine %s to appear (%s/%s)\n" \
-		"$sleepFirst" "$vmname" "$slept" "$sleepMax"
-	sleep $sleepFirst ; slept=$(( slept + sleepFirst ))
+	while [ "$slept" -lt "$timeout" ] ; do
+		printf "Waiting  %s seconds for %s to appear (%s/%s)\n" \
+			"$sleep" "$1" "$slept" "$timeout"
+		sleep $sleep ; slept=$(( slept + sleep ))
 
-	while [ "$slept" -lt "$sleepMax" ] ; do
-		[ -n "$(dig +short "$dnsname")" ] &&
-		ping -c 1 -W 1 "$dnsname" &&
-		ssh -n -o StrictHostKeyChecking=no -n "$dnsname" &&
-		vmstatus=$(ssh -o StrictHostKeyChecking=no "$dnsname" \
+		for dnsname in "$@" ; do
+			util-getIP "$dnsname" "" "dnsips" &&
+			ips+=( "${dnsips[@]}" ) &&
+			true || return 1
+		done
+
+		for ip in "${ips[@]}" ; do
+			{
+			ping -c 1 -W 1 "$ip" &&
+			ssh -n -o StrictHostKeyChecking=no -n "$ip" /bin/true &&
+			true
+			} || continue 2
+		done
+
+		ssh -n -o StrictHostKeyChecking=no -n "$1" &&
+		vmstatus=$(ssh -o StrictHostKeyChecking=no "$1" \
 			<<-EOF |
 			if [ -e /usr/bin/systemctl ] ; then
 				/usr/bin/systemctl is-system-running
@@ -539,22 +561,18 @@ function kvm_check_vm {
 		if [ "$vmstatus" == "running" ] ; then
 			return 0
 		elif [ "$vmstatus" == "degraded" ] ; then
-			printf "ERROR: machine %s did not completely start (degraded)\n" \
+			printf "ERROR: %s did not completely start (degraded)\n" \
 				"$MNAME"
 			printf "Following Services could not be started:\n"
-			ssh -o StrictHostKeyChecking=no -q "$dnsname" <<-EOF
+			ssh -o StrictHostKeyChecking=no -q "$1" <<-EOF
 				/usr/bin/systemctl --failed --no-pager --plain --no-legend --full
 				EOF
 			return 1
 		fi
-
-		printf "Waiting another %s seconds for machine %s to appear (%s/%s) %s\n" \
-			"$sleepNext" "$vmname" "$slept" "$sleepMax" "$vmstatus"
-		sleep "$sleepNext" ; slept=$(( slept + sleepNext ))
 	done
 
-	printf "ERROR: Timed out waiting %s seconds for machine %s\n" \
-		"$sleepMax" "$MNAME"
+	printf "ERROR: Timed out waiting %s seconds for  %s\n" \
+		"$timeout" "$1"
 
 	return 1
 }
