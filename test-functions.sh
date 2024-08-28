@@ -197,7 +197,7 @@ function test_get_ipv6prefix {
 			prefix="$(sed -n 's/^\([0-9a-fA-F]\{1,4\}:[0-9a-fA-F]\{1,4\}:[0-9a-fA-F]\{1,4\}:[0-9a-fA-F]\{1,4\}\).*$/\1/p' <<<"$adr")"
 			break
 		fi
-	done <<< "$($TEST_IP6CFG)"
+	done <<< "$(ip -6 -oneline address show)"
 
 	if [ -z "$prefix" ] ; then
 		printf "Could not determine public IPv6 prefix\n" >&2
@@ -1023,22 +1023,24 @@ function testset_init {
 	testsetfailed=""
 
 	if [[ "$OSTYPE" =~ darwin* ]] ; then
+		if ! which ip ; then
+			printf "ip command on MacOS missing. You may want to install it with\n%s\n" \
+				"brew install iproute2mac"
+			return 1
+		fi
 		printf "Activating MacOS workaround.\n"
 		# TEST_RSYNCOPT="--rsync-path=/usr/local/bin/rsync"
 		TEST_SNAIL=/usr/local/bin/s-nail
-		TEST_IP6CFG=ifconfig
 	elif [ "$(awk -F= '/^NAME/{print $2}' /etc/os-release)" == "\"Ubuntu\"" ] ; then
 		printf "Activating Ubuntu settings.\n"
 		# TEST_RSYNCOPT=""
 		TEST_SNAIL=s-nail
-		TEST_IP6CFG="ip -6 -oneline address show"
 	else
 		printf "Using default OS (OSTYPE=%s, os-release/NAME=%s\n" \
 			"$OSTYPE" \
 			"$(awk -F= '/^NAME/{print $2}' /etc/os-release)"
 		# TEST_RSYNCOPT=""
 		TEST_SNAIL="mailx"
-		TEST_IP6CFG="ip -6 -oneline address show"
 	fi
 
 	TESTSETLOG=0
