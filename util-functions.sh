@@ -185,6 +185,11 @@ function util_updateConfig {
 		printf "%s: Internal Error. Git %s parms (exp=3)\n" \
 			"${FUNCNAME[0]}" "$#"
 		return 1
+	elif [[ "$OSTYPE" =~ darwin* ]] ; then
+		# not supported on MacOS since sed on MacOS does not support
+		# the q<nr> command, only q with no parm.
+		printf "%s: not supported on MacOS\n" "${FUNCNAME[0]}"
+		return 1
 	fi
 
 	# For explanation on sed syntax see
