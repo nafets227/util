@@ -215,7 +215,7 @@ function test_wait_kubepods {
 	#     2 - timeout in seconds [default=60]
 	if [ "$#" -lt 1 ] ; then
 		printf "%s: Internal error: too few parameters (%s < 1)\n" \
-			"${BASH_FUNC[0]}" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 	local -r podlabels="$1"
@@ -250,7 +250,7 @@ function test_wait_url {
 	local -r timeout="$2"
 	if [ "$#" -lt 2 ] ; then
 		printf "%s: Internal error: too few parameters (%s < 2)\n" \
-			"${BASH_FUNC[0]}" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 
@@ -280,7 +280,7 @@ function test_exec_cmd {
 	#     3+ - command to be executed
 	if [ "$#" -lt 3 ] ; then
 		printf "%s: Internal error: too few parameters (%s < 3)\n" \
-			"${BASH_FUNC[0]}" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 

@@ -432,7 +432,7 @@ function inst-arch_baseos {
 	# current x86_64 mirrorlist has all servers commented out.
 	cat >>"$INSTALL_ROOT/etc/pacman.d/mirrorlist" <<-EOF &&
 
-		# added by ${BASH_FUNC[0]} at $(date)
+		# added by ${FUNCNAME[0]} at $(date)
 		Server = $INSTALL_REPOURL
 		EOF
 
@@ -468,7 +468,7 @@ function inst-arch_baseos {
 
 	cat >>"$INSTALL_ROOT/etc/locale.gen" <<-EOF &&
 
-		# by ${BASH_FUNC[0]}
+		# by ${FUNCNAME[0]}
 		de_DE.UTF-8 UTF-8
 		en_DK.UTF-8 UTF-8
 		en_US.UTF-8 UTF-8
@@ -714,7 +714,7 @@ function inst-arch_getpkgurl {
 	local -r pkg="$1"
 
 	if  [ -z "$pkg" ] ; then
-		printf "%s: Error no parm given\n" "${BASH_FUNC[0]}"
+		printf "%s: Error no parm given\n" "${FUNCNAME[0]}"
 		return 1
 	fi
 

@@ -183,7 +183,7 @@ function util_updateConfig {
 
 	if [ "$#" != "3" ] ; then
 		printf "%s: Internal Error. Git %s parms (exp=3)\n" \
-			"${BASH_FUNC[0]}" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 
@@ -230,7 +230,7 @@ function util_retry {
 	# parm 3+: command to be executed
 	if [ "$#" -lt 3 ] ; then
 		printf "%s: Internal error: too few parameters (%s < 3)\n" \
-			"${BASH_FUNC[0]}" "$#"
+			"${FUNCNAME[0]}" "$#"
 		return 1
 	fi
 
