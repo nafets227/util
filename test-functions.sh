@@ -187,26 +187,8 @@ function test_get_lastoutput {
 }
 
 function test_get_ipv6prefix {
-	local prefix
-
-	while IFS= read -r line
-	do
-		adr=$( sed -n 's/^.*inet6 \([0-9a-fA-F:]*\).*$/\1/p' <<<"$line") || return 1
-
-		if [[ $adr =~ ^[23].* ]] ; then
-			prefix="$(sed -n 's/^\([0-9a-fA-F]\{1,4\}:[0-9a-fA-F]\{1,4\}:[0-9a-fA-F]\{1,4\}:[0-9a-fA-F]\{1,4\}\).*$/\1/p' <<<"$adr")"
-			break
-		fi
-	done <<< "$(ip -6 -oneline address show)"
-
-	if [ -z "$prefix" ] ; then
-		printf "Could not determine public IPv6 prefix\n" >&2
-		return 1
-	fi
-
-	printf "%s" "$prefix"
-
-	return 0
+	# @deprecated use util_getipv6prefix instead
+	util_getIP6Prefix
 }
 
 function test_wait_kubepods {
