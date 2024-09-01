@@ -70,16 +70,20 @@ function install-nfs_export {
 	path="$1"
 	exportname="$2"
 	options="$3"
-	nets="${4:-192.168.108.0/24}"
+	nets="$4"
 
 	#----- Input checks --------------------------------------------------
-	if [ $# -lt 2 ]; then
-		printf "%s: Internal Error: Got %s Parms (Exp=2+)\n" \
+	if [ $# -ne 4 ]; then
+		printf "%s: Internal Error: Got %s Parms (Exp=4)\n" \
 			"${FUNCNAME[0]}" "$#" >&2
 		return 1
 	elif [ ! -d "$INSTALL_ROOT" ] ; then
 		printf "%s: Error \$INSTALL_ROOT=%s is no directory\n" \
 			"${FUNCNAME[0]}" "$INSTALL_ROOT" >&2
+		return 1
+	elif [ -z "$nets" ] ; then
+		printf "%s: Error Parm 4 (nets) is empty\n" \
+			"${FUNCNAME[0]}" >&2
 		return 1
 	elif [ -n "$exportname" ] &&
 		grep -F "/srv/nfs4/$exportname" "$INSTALL_ROOT/etc/exports" >&/dev/null ; then
