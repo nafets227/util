@@ -527,28 +527,36 @@ function kvm_check_vm2 {
 	local -r sleep=5
 	local slept=0 # beginning
 	local dnsips=() ips=()
-	local ip dnsname
+	local ip dnsname errmsg
+
+	for dnsname in "$@" ; do
+		util-getIP "$dnsname" "" "dnsips" &&
+		ips+=( "${dnsips[@]}" ) &&
+		true || return 1
+		printf "%s: Waiting for %s (%s)\n" "${FUNCNAME[0]}" "$dnsname" "${dnsips[*]}"
+	done
 
 	while [ "$slept" -lt "$timeout" ] ; do
 		printf "Waiting  %s seconds for %s to appear (%s/%s)\n" \
 			"$sleep" "$1" "$slept" "$timeout"
 		sleep $sleep ; slept=$(( slept + sleep ))
-
-		for dnsname in "$@" ; do
-			util-getIP "$dnsname" "" "dnsips" &&
-			ips+=( "${dnsips[@]}" ) &&
-			true || return 1
-		done
+		errmsg=""
 
 		for ip in "${ips[@]}" ; do
-			{
-			ping -c 1 -W 1 "$ip" &&
-			ssh -n -o StrictHostKeyChecking=no -n "$ip" /bin/true &&
-			true
-			} || continue 2
+			if ping -c 1 -W 1 "$ip" ; then
+				errmsg+="$ip ping OK"$'\n'
+			else
+				errmsg+="$ip ping KO"$'\n'
+				continue 2
+			fi
+			if ssh -n -o StrictHostKeyChecking=no -n "$ip" /bin/true ; then
+				errmsg+="$ip ssh OK"$'\n'
+			else
+				errmsg+="$ip ssh KO"$'\n'
+				continue 2
+			fi
 		done
 
-		ssh -n -o StrictHostKeyChecking=no -n "$1" &&
 		vmstatus=$(ssh -o StrictHostKeyChecking=no "$1" \
 			<<-EOF |
 			if [ -e /usr/bin/systemctl ] ; then
@@ -571,8 +579,8 @@ function kvm_check_vm2 {
 		fi
 	done
 
-	printf "ERROR: Timed out waiting %s seconds for  %s\n" \
-		"$timeout" "$1"
+	printf "ERROR: Timed out waiting %s seconds for  %s\n%s\n" \
+		"$timeout" "$1" "$errmsg"
 
 	return 1
 }
