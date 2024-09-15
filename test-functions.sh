@@ -217,6 +217,7 @@ function test_wait_kubepods {
 		kubectl --kubeconfig "$KUBE_CONFIGFILE" \
 			logs \
 			--namespace "$KUBE_NAMESPACE" \
+			--all-containers \
 			-l "$podlabels"
 		return 1
 	fi
