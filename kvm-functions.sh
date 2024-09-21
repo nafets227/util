@@ -576,6 +576,8 @@ function kvm_check_vm2 {
 				/usr/bin/systemctl --failed --no-pager --plain --no-legend --full
 				EOF
 			return 1
+		else
+			errmsg+="systemctl status $vmstatus"$'\n'
 		fi
 	done
 
