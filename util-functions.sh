@@ -345,6 +345,10 @@ function util_retry {
 			printf "\tOK after %s seconds\n" \
 				"$(( $(date '+%s') - startsecs ))"
 			return 0
+		elif [ "$?" == "255" ] ; then
+			printf "\tABORT after %s seconds\n" \
+				"$(( $(date '+%s') - startsecs ))"
+			return 1
 		fi
 
 		printf "\twaiting another %s seconds (%s/%s)\n" \
