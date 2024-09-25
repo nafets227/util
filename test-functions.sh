@@ -192,37 +192,13 @@ function test_get_ipv6prefix {
 }
 
 function test_wait_kubepods {
+	# @deprecated, use kube_wait_pods_ready inestad
 	# Parameters:
 	#     1 - Kubernetes Labels to identify relevant pods
 	#     2 - timeout in seconds [default=60]
-	if [ "$#" -lt 1 ] ; then
-		printf "%s: Internal error: too few parameters (%s < 1)\n" \
-			"${FUNCNAME[0]}" "$#"
-		return 1
-	fi
-	local -r podlabels="$1"
-	local -r timeout=${2:-60}
+	kube_wait_pods "${2:-60}" 0 "$1"
 
-	if ! kubectl --kubeconfig "$KUBE_CONFIGFILE" \
-		wait pods \
-		--namespace "$KUBE_NAMESPACE" \
-		--timeout="${timeout}s" \
-		--for=condition=Ready \
-		-l "$podlabels"
-	then
-		kubectl --kubeconfig "$KUBE_CONFIGFILE" \
-			get pods \
-			--namespace "$KUBE_NAMESPACE" \
-			-l "$podlabels"
-		kubectl --kubeconfig "$KUBE_CONFIGFILE" \
-			logs \
-			--namespace "$KUBE_NAMESPACE" \
-			--all-containers \
-			-l "$podlabels"
-		return 1
-	fi
-
-	return 0
+	return $?
 }
 
 function test_wait_url {

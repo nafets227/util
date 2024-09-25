@@ -96,7 +96,6 @@ function kube-inst_internal-create_namespace {
 	fi
 }
 
-
 ##### kube-inst_internal-environize ##########################################
 function kube-inst_internal-environize {
 	# Environize stdin to stdout
@@ -891,6 +890,116 @@ function kube-inst_local-volume {
 		$opt
 
 	return $?
+}
+
+function kube_internal_check_pods {
+	local -r minPods="$1"
+	shift
+	# remaining parms are forwarded to kubectl get pods
+
+	local -a pods_defined pods_ready
+	read -r -a pods_defined < <(
+		/usr/bin/kubectl \
+			--kubeconfig "$SITE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
+			get pods -o name \
+			"$@"
+			echo # avoid empty file that produces an error in read builtin
+		) || return 255
+	read -r -a pods_ready < <(
+		/usr/bin/kubectl \
+		--kubeconfig "$SITE_CONFIGFILE" \
+		--namespace "$KUBE_NAMESPACE" \
+		wait "${pods_defined[@]}" \
+		--for condition=Ready \
+		--timeout=0 \
+		--output=name \
+		2>/dev/null
+		) # ignore error!
+
+	if
+		(( ${#pods_defined[@]} >= minPods  )) &&
+		(( ${#pods_ready[@]} >= ${#pods_defined[@]} ))
+	then
+		printf "Pods OK: %s/%s/%s (def/ready/exp)\n" \
+			"${#pods_defined[@]}" "${#pods_ready[@]}" "$minPods"
+		return 0
+	else
+		printf "Waiting for pods: %s/%s/%s (def/ready/exp)" \
+			"${#pods_defined[@]}" "${#pods_ready[@]}" "$minPods"
+		return 1
+	fi
+}
+
+function kube_internal_make_filter {
+	local -r resultArrayName="$1"
+	local -r labels="$2"
+	local -r fields="$3"
+
+	local -a results=()
+
+	if [ -n "$labels" ] ; then
+		if [[ $labels =~ " " ]] ; then
+			printf "%s: Invalid Label search (blanks): \"%s\"\n" \
+				"${FUNCNAME[0}]}" "$labels"
+			return 1
+		fi
+		results+=( "--selector=$labels" )
+	fi
+
+	if [ -n "$fields" ] ; then
+		if [[ $fields =~ " " ]] ; then
+			printf "%s: Invalid field search (blanks): \"%s\"\n" \
+				"${FUNCNAME[0}]}" "$fields"
+			return 1
+		fi
+		results+=( "--field-selector=$fields" )
+	fi
+
+	eval "$resultArrayName=(" "${results[*]}" ")"
+	return 0
+}
+
+#### Wait for Pods to be defined and ready ###################################
+function kube_wait_pods {
+	# Wait for
+	#   - at least $2 pods to be defined
+	#   - and ALL pods (maybe more than $2) pods
+	#     matching the labels $3 and field selector $4
+	#     to be ready
+	# Parameters
+	#     1 - timeout in seconds
+	#     2 - Minimum number of pods (can be 0, then only wait for ready)
+	#     2 - Kubernetes Labels to identify relevant pods [optional]
+	#     3 - Kubernetes Field selector to identify relevant pods [optional]
+	local -r timeout="$1"
+	local -r minPods="$2"
+	local -r labels="$3"
+	local -r fields="$4"
+	local -a podFilter
+
+	kube-inst_internal-verify-initialised &&
+	kube_internal_make_filter podFilter "$labels" "$fields" &&
+	true || return 1
+
+	if ! util_retry "$timeout" 5 \
+		kube_internal_check_pods "$minPods" "${podFilter[@]}"
+	then
+		kubectl \
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
+			get pods \
+			"${podFilter[@]}"
+		kubectl \
+			--kubeconfig "$KUBE_CONFIGFILE" \
+			--namespace "$KUBE_NAMESPACE" \
+			logs \
+			--all-containers \
+			"${podFilter[@]}"
+		return 1
+	fi
+
+	return 0
 }
 
 ##### MAIN-template ##################################################################
