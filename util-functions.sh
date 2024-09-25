@@ -333,19 +333,23 @@ function util_retry {
 	local -r timeout="$1"
 	local -r sleep="$2"
 	shift 2 || return 1
-	local slept=0 # beginning
 
-	while [ "$slept" -lt "$timeout" ] ; do
+	local startsecs
+	startsecs=$(date '+%s') || return 1
+	# tricky solution: "error error" is an invalid arithmetic producing an
+	# error and abort. Please note that "error" would just represent the value
+	# of the (unset) variable error and NOT produce an abort
+	while (( $(date '+%s' || echo "error error") - startsecs < timeout )) ; do
 		if "$@"
 		then
-			printf "\tOK after %s seconds\n" "$slept"
+			printf "\tOK after %s seconds\n" \
+				"$(( $(date '+%s') - startsecs ))"
 			return 0
 		fi
 
 		printf "\twaiting another %s seconds (%s/%s)\n" \
-				"$sleep" "$slept" "$timeout"
+				"$sleep" "$(( $(date '+%s') - startsecs ))" "$timeout"
 		sleep "$sleep"
-		(( slept += sleep ))
 	done
 
 	printf "\tTIMEOUT after %s seconds\n" \
