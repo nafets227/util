@@ -159,7 +159,12 @@ function inst-arch_initinternal () {
 	local bootmnt="$4"
 
 	#install needed utilities
-	pacman -S --needed --noconfirm arch-install-scripts dosfstools >&2 &&
+	if ! which arch-chroot pacstrap genfstab mkfs.fat wipefs >/dev/null
+	then
+		printf "%s(%s): Not all prereqs are installed.\n" \
+			"${BASH_SOURCE[0]}" "${BASH_LINENO[0]}"
+		return 1
+	fi
 
 	# create tempdir to temporary mount the filesystems
 	INSTALL_ROOT=$(mktemp --directory --tmpdir inst-arch.XXXXXXXXXX) &&
