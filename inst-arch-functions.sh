@@ -342,23 +342,24 @@ function inst-arch_keyringinternal {
 			-e "s:#HookDir.*:HookDir = $INSTALL_ROOT/etc/pacman.d/hooks/:" \
 		<"$INSTALL_ROOT/etc/pacman.conf" \
 		>"$INSTALL_ROOT/etc/pacman.conf.installroot" &&
-	pacman-key \
-		--config "$INSTALL_ROOT/etc/pacman.conf.installroot" \
-		--init \
-		&&
 	# workaround, probably solved when both archlinux x86_64 and aarch64 update
 	# to gnupg 2.4.x
+	mkdir -p "$INSTALL_ROOT/etc/pacman.d/gnupg" &&
 	echo allow-weak-key-signatures >>"$INSTALL_ROOT/etc/pacman.d/gnupg/gpg.conf" &&
 	true || return 1
 	for f in "$keyringdir"/*.gpg ; do
 		keyrings+=( "$(basename "$INSTALL_ROOT")/$(basename "$f" .gpg)" )
 	done
-	pacman-key \
-		--config "$INSTALL_ROOT/etc/pacman.conf.installroot" \
-		--populate "${keyrings[@]}" \
-		&&
+	unshare --fork --pid --mount-proc <<-EOF &&
+		pacman-key \
+			--config "$INSTALL_ROOT/etc/pacman.conf.installroot" \
+			--init \
+			&&
+		pacman-key \
+			--config "$INSTALL_ROOT/etc/pacman.conf.installroot" \
+			--populate ${keyrings[@]}
+		EOF
 	rm "$keyringdir" &&
-	killall "gpg-agent" -u root &&
 	true || return 1
 
 	return 0
