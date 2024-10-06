@@ -324,6 +324,7 @@ function inst-arch_confarchinternal {
 ##### initialise keyring on mounted system ###################################
 function inst-arch_keyringinternal {
 	local keyringdir
+	local keyrings=( )
 	# Setup a Keyring for new system
 	keyringdir=/usr/share/pacman/keyrings/$(basename "$INSTALL_ROOT") &&
 	ln -s \
@@ -343,7 +344,7 @@ function inst-arch_keyringinternal {
 	# workaround, probably solved when both archlinux x86_64 and aarch64 update
 	# to gnupg 2.4.x
 	echo allow-weak-key-signatures >>"$INSTALL_ROOT/etc/pacman.d/gnupg/gpg.conf" &&
-	local keyrings=( ) &&
+	true || return 1
 	for f in "$keyringdir"/*.gpg ; do
 		keyrings+=( "$(basename "$INSTALL_ROOT")/$(basename "$f" .gpg)" )
 	done
