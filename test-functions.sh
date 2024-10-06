@@ -638,7 +638,7 @@ function test_exec_kubenode3 {
 
 	local kubecmd
 	kubecmd=""
-	kubecmd+="run kubenodetest"
+	kubecmd+="run kubenodetest-$nodename"
 	kubecmd+=" --image alpine:latest"
 	kubecmd+=" --restart=Never"
 	kubecmd+=" --overrides='{ \"apiVersion\": \"v1\", \"spec\": { \"nodeName\": \"$nodename\" } }'"
