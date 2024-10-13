@@ -87,13 +87,18 @@ function kube-inst_internal-create_namespace {
 	if [ "$KUBE_ACTION" == "install" ] ; then
 		# Create Namespace if it does not exist yet
 		kubectl \
+			--save-config \
+			--dry-run=client \
+			-o yaml \
+			create namespace "$KUBE_NAMESPACE" \
+		| kubectl \
 			--kubeconfig "$KUBE_CONFIGFILE" \
-			get namespace "$KUBE_NAMESPACE" &>/dev/null ||
-		kubectl \
-			--kubeconfig "$KUBE_CONFIGFILE" \
-			create namespace "$KUBE_NAMESPACE" ||
-		return 1
+			"$KUBE_CLI_ACTION" \
+			-f - \
+		|| return 1
 	fi
+
+	return 0
 }
 
 ##### kube-inst_internal-environize ##########################################
