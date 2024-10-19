@@ -903,15 +903,14 @@ function kube_internal_check_pods {
 	# remaining parms are forwarded to kubectl get pods
 
 	local -a pods_defined pods_ready
-	read -r -a pods_defined < <(
+	readarray -t pods_defined < <(
 		/usr/bin/kubectl \
 			--kubeconfig "$SITE_CONFIGFILE" \
 			--namespace "$KUBE_NAMESPACE" \
 			get pods -o name \
 			"$@"
-			echo # avoid empty file that produces an error in read builtin
 		) || return 255
-	read -r -a pods_ready < <(
+	readarray -t pods_ready < <(
 		/usr/bin/kubectl \
 		--kubeconfig "$SITE_CONFIGFILE" \
 		--namespace "$KUBE_NAMESPACE" \
