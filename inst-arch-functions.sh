@@ -410,6 +410,24 @@ function inst-arch_baseos {
 		--setup-machine-id \
 		&&
 
+	# download packages separate from pacstrap since it fails on
+	# archlinuxarm due to low speed
+	mkdir -p "$INSTALL_ROOT/var/lib/pacman" &&
+	cat >"$INSTALL_ROOT/etc/pacman.conf.bootstrap" <<-EOF &&
+		[options]
+		Architecture = $INSTALL_ARCH
+		DBPath = $INSTALL_ROOT/var/lib/pacman
+		SigLevel=Never
+		[core]
+		Server = $INSTALL_REPOURL
+		[extra]
+		Server = $INSTALL_REPOURL
+		EOF
+	util_retry 180 1 \
+	pacman -Syw --noconfirm \
+		--config "$INSTALL_ROOT/etc/pacman.conf.bootstrap" \
+		"${INSTALL_EARLY_PKG[@]}" "${INSTALL_KEYRING_PKG[@]}" &&
+
 	# pacstrap options:
 	# -C <config>    Use an alternate config file for pacman
 	# -c Use the package cache on the host, rather than the target
@@ -421,16 +439,8 @@ function inst-arch_baseos {
 	# -N Run in unshare mode as a regular user
 	# -P Copy the host's pacman config to the target
 	# -U Use pacman -U to install packages
-	pacstrap -C <( cat <<-EOF
-			[options]
-			Architecture = $INSTALL_ARCH
-			SigLevel=Never
-			[core]
-			Server = $INSTALL_REPOURL
-			[extra]
-			Server = $INSTALL_REPOURL
-			EOF
-			) \
+	pacstrap \
+		-C "$INSTALL_ROOT/etc/pacman.conf.bootstrap" \
 		-c -D -G -M \
 		"$INSTALL_ROOT" \
 		"${INSTALL_EARLY_PKG[@]}" "${INSTALL_KEYRING_PKG[@]}" &&
