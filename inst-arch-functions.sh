@@ -410,6 +410,20 @@ function inst-arch_baseos {
 		--setup-machine-id \
 		&&
 
+	# download packages separate from pacstrap since it fails on
+	# archlinuxarm due to low speed
+	pacman -Syw -C <( cat <<-EOF
+			[options]
+			Architecture = $INSTALL_ARCH
+			SigLevel=Never
+			[core]
+			Server = $INSTALL_REPOURL
+			[extra]
+			Server = $INSTALL_REPOURL
+			EOF
+			) \
+		"${INSTALL_EARLY_PKG[@]}" "${INSTALL_KEYRING_PKG[@]}" &&
+
 	# pacstrap options:
 	# -C <config>    Use an alternate config file for pacman
 	# -c Use the package cache on the host, rather than the target
