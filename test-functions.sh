@@ -496,7 +496,7 @@ function test_exec_kubecron {
 		ACTIVE=$(jq '.active // 0' <<<"$STATUS" 2>&1) &&
 		FAILED=$(jq '.failed // 0' <<<"$STATUS" 2>&1) &&
 		SUCCEEDED=$(jq '.succeeded // 0' <<<"$STATUS" 2>&1) &&
-		CONDSTATUS=$(jq -r 'try .conditions[] | select(.status=="True").type' <<<"$STATUS" 2>&1)
+		CONDSTATUS=$(jq -r 'try .conditions[] | select( (.status=="True" ) and ( .type | IN("Complete","Failed") ) ).type' <<<"$STATUS" 2>&1)
 		#shellcheck disable=SC2181 # using $? here helps to keep the structure
 		if [ "$?" != 0 ] ; then
 			printf "%s\nACTIVE=%s\nFAILED=%s\nSUCCEEDED=%s\nCONDSTATUS=%s\n" \
