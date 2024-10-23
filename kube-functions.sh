@@ -168,8 +168,23 @@ function kube-inst_internal-exec {
 	return $rc
 }
 
-##### kube-inst_exec - Execute installation ##################################
 function kube-inst_exec {
+	# @deprecated, use kube-inst_exec2 and kube-inst_finalize instead
+	kube-inst_exec2 "$@" &&
+	kube-inst_finalize &&
+	true || return 1
+
+	return 0
+}
+
+function kube-inst_finalize {
+	unset KUBE_CONFIGFILE KUBE_ACTION KUBE_NAMESPACE KUBE_APP
+
+	return 0
+}
+
+##### kube-inst_exec2 - Execute installation ##################################
+function kube-inst_exec2 {
 	# Prerequisite: kube-inst_init has been called
 	# Parameters:
 	#   1 - confdir Directory containing all yamls and templates
@@ -252,8 +267,6 @@ function kube-inst_exec {
 			--cascade=true --ignore-not-found \
 		|| return 1
 	done
-
-	unset KUBE_CONFIGFILE KUBE_ACTION KUBE_NAMESPACE KUBE_APP
 
 	return 0
 }
